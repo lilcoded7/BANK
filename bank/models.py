@@ -27,11 +27,13 @@ class Transaction(models.Model):
         ('W', 'Withdrawal'),
         ('T', 'Transfer'),
     ]
+    customer = models.ForeignKey(Customer, on_delete=models.CASCADE, null=True, blank=True)
     account = models.ForeignKey(Account, related_name='transactions', on_delete=models.CASCADE)
     transaction_type = models.CharField(max_length=1, choices=TRANSACTION_TYPES)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     timestamp = models.DateTimeField(auto_now_add=True)
     description = models.TextField(blank=True, null=True)
+    transaction_id = models.CharField(max_length=100, null=True, blank=True)
 
     def __str__(self):
         return f"{self.get_transaction_type_display()} of {self.amount} on {self.timestamp}"

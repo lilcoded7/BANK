@@ -1,0 +1,1124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prestige Banking | Dashboard</title>
+    <style>
+        :root {
+            --primary: #d10000;
+            --primary-dark: #a00000;
+            --primary-light: #ff3333;
+            --secondary: #ffffff;
+            --secondary-dark: #f5f5f5;
+            --accent: #ffd700;
+            --accent-dark: #c5a600;
+            --text-dark: #333333;
+            --text-light: #ffffff;
+            --glass: rgba(255, 255, 255, 0.15);
+            --glass-border: rgba(255, 255, 255, 0.2);
+            --shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            --transition: all 0.3s ease;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Montserrat', sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #ffffff 0%, #f5f5f5 100%);
+            color: var(--text-dark);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .flex-center {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .glass {
+            background: var(--glass);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
+            box-shadow: var(--shadow);
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            background: linear-gradient(180deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: var(--text-light);
+            padding: 2rem 1rem;
+            box-shadow: 5px 0 15px rgba(0, 0, 0, 0.1);
+            z-index: 100;
+            position: fixed;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            width: 280px;
+            transition: var(--transition);
+            transform: translateX(-100%);
+        }
+
+        .sidebar.active {
+            transform: translateX(0);
+        }
+
+        .logo {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 2rem;
+            padding-left: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .logo span {
+            color: var(--accent);
+        }
+
+        .nav-menu {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .nav-item {
+            padding: 0.8rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            font-weight: 500;
+        }
+
+        .nav-item:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .nav-item.active {
+            background-color: var(--secondary);
+            color: var(--primary);
+            font-weight: 600;
+        }
+
+        .nav-item i {
+            font-size: 1.2rem;
+        }
+
+        .main-content {
+            padding: 2rem;
+            overflow-y: auto;
+            grid-column: 1 / -1;
+            transition: var(--transition);
+        }
+
+        .sidebar.active + .main-content {
+            transform: translateX(280px);
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+
+        .page-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .user-profile {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            cursor: pointer;
+        }
+
+        .user-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background-color: var(--primary);
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: 600;
+            font-size: 1.2rem;
+        }
+
+        .user-name {
+            font-weight: 600;
+        }
+
+        .mobile-menu-toggle {
+            display: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--primary);
+            background: none;
+            border: none;
+            padding: 0.5rem;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .card {
+            background: var(--secondary);
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+            transition: var(--transition);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .card-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .card-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: rgba(209, 0, 0, 0.1);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: var(--primary);
+        }
+
+        .card-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .card-change {
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+            font-size: 0.9rem;
+            color: #4caf50;
+        }
+
+        .card-change.negative {
+            color: #f44336;
+        }
+
+        .section {
+            margin-bottom: 2.5rem;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .section-link {
+            color: var(--primary);
+            font-weight: 500;
+            text-decoration: none;
+            transition: var(--transition);
+        }
+
+        .section-link:hover {
+            text-decoration: underline;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 1.2rem;
+        }
+
+        .feature-card {
+            background: var(--secondary);
+            border-radius: 10px;
+            padding: 1.5rem;
+            text-align: center;
+            cursor: pointer;
+            transition: var(--transition);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03);
+        }
+
+        .feature-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+            background: linear-gradient(135deg, var(--secondary) 0%, var(--secondary-dark) 100%);
+        }
+
+        .feature-icon {
+            width: 60px;
+            height: 60px;
+            margin: 0 auto 1rem;
+            background: linear-gradient(135deg, var(--primary-light) 0%, var(--primary-dark) 100%);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-size: 1.5rem;
+            box-shadow: 0 4px 15px rgba(209, 0, 0, 0.2);
+        }
+
+        .feature-title {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--text-dark);
+        }
+
+        .feature-desc {
+            font-size: 0.85rem;
+            color: #666;
+        }
+
+        .ai-feature .feature-icon {
+            background: linear-gradient(135deg, #4a00e0 0%, #8e2de2 100%);
+            box-shadow: 0 4px 15px rgba(74, 0, 224, 0.2);
+        }
+
+        .tool-feature .feature-icon {
+            background: linear-gradient(135deg, #00b09b 0%, #96c93d 100%);
+            box-shadow: 0 4px 15px rgba(0, 176, 155, 0.2);
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: var(--transition);
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal {
+            background: white;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
+            transform: translateY(20px);
+            transition: var(--transition);
+            position: relative;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .modal-overlay.active .modal {
+            transform: translateY(0);
+        }
+
+        .modal-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #666;
+            transition: var(--transition);
+        }
+
+        .modal-close:hover {
+            color: var(--primary);
+        }
+
+        .modal-body {
+            padding: 1.5rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.2rem;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: #555;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 0.8rem 1rem;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 1rem;
+            transition: var(--transition);
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(209, 0, 0, 0.1);
+        }
+
+        .modal-footer {
+            padding: 1rem 1.5rem;
+            border-top: 1px solid #eee;
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.8rem;
+        }
+
+        .btn {
+            padding: 0.8rem 1.5rem;
+            border-radius: 6px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition);
+            border: none;
+            font-size: 0.95rem;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 1px solid #ddd;
+            color: #555;
+        }
+
+        .btn-outline:hover {
+            background: #f5f5f5;
+        }
+
+        .assistant {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #4a00e0 0%, #8e2de2 100%);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-size: 1.5rem;
+            box-shadow: 0 5px 20px rgba(74, 0, 224, 0.3);
+            cursor: pointer;
+            z-index: 100;
+            transition: var(--transition);
+        }
+
+        .assistant:hover {
+            transform: scale(1.1);
+            box-shadow: 0 8px 25px rgba(74, 0, 224, 0.4);
+        }
+
+        @media (min-width: 993px) {
+            .sidebar {
+                transform: translateX(0) !important;
+                position: relative;
+            }
+            
+            .main-content {
+                grid-column: 2;
+            }
+        }
+
+        @media (max-width: 992px) {
+            .mobile-menu-toggle {
+                display: block;
+            }
+            
+            .sidebar {
+                transform: translateX(-100%);
+            }
+            
+            .sidebar.active {
+                transform: translateX(0);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .feature-grid {
+                grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            }
+
+            .main-content {
+                padding: 1rem;
+            }
+            
+            .header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 1rem;
+            }
+            
+            .user-profile {
+                width: 100%;
+                justify-content: flex-end;
+            }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease forwards;
+        }
+
+        .slide-up {
+            animation: slideUp 0.5s ease forwards;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+    <div class="dashboard">
+        <!-- Sidebar -->
+        <div class="sidebar" id="sidebar">
+            <div class="logo">
+                <i class="fas fa-university"></i>
+                <span>Prestige</span>Bank
+            </div>
+            <div class="nav-menu">
+                <div class="nav-item active">
+                    <i class="fas fa-home"></i>
+                    <span>Dashboard</span>
+                </div>
+                <div class="nav-item">
+                    <i class="fas fa-wallet"></i>
+                    <span>Accounts</span>
+                </div>
+                <div class="nav-item">
+                    <i class="fas fa-exchange-alt"></i>
+                    <span>Transactions</span>
+                </div>
+                <div class="nav-item">
+                    <i class="fas fa-chart-line"></i>
+                    <span>Investments</span>
+                </div>
+                <div class="nav-item">
+                    <i class="fas fa-credit-card"></i>
+                    <span>Cards</span>
+                </div>
+                <div class="nav-item">
+                    <i class="fas fa-cog"></i>
+                    <span>Settings</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <div class="header">
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <button class="mobile-menu-toggle" id="menuToggle">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <div class="page-title">Dashboard</div>
+                </div>
+                <div class="user-profile">
+                    <div class="user-avatar">JD</div>
+                    <div class="user-name">John Doe</div>
+                </div>
+            </div>
+
+            <!-- Account Overview -->
+            <div class="dashboard-grid">
+                <div class="card slide-up" style="animation-delay: 0.1s;">
+                    <div class="card-header">
+                        <div class="card-title">Total Balance</div>
+                        <div class="card-icon">
+                            <i class="fas fa-wallet"></i>
+                        </div>
+                    </div>
+                    <div class="card-value">$42,589.00</div>
+                    <div class="card-change">
+                        <i class="fas fa-arrow-up"></i>
+                        <span>2.4% from last month</span>
+                    </div>
+                </div>
+                <div class="card slide-up" style="animation-delay: 0.2s;">
+                    <div class="card-header">
+                        <div class="card-title">Savings</div>
+                        <div class="card-icon">
+                            <i class="fas fa-piggy-bank"></i>
+                        </div>
+                    </div>
+                    <div class="card-value">$15,200.00</div>
+                    <div class="card-change">
+                        <i class="fas fa-arrow-up"></i>
+                        <span>5.1% from last month</span>
+                    </div>
+                </div>
+                <div class="card slide-up" style="animation-delay: 0.3s;">
+                    <div class="card-header">
+                        <div class="card-title">Investments</div>
+                        <div class="card-icon">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                    </div>
+                    <div class="card-value">$27,389.00</div>
+                    <div class="card-change negative">
+                        <i class="fas fa-arrow-down"></i>
+                        <span>1.2% from last month</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Core Banking Features -->
+            <div class="section">
+                <div class="section-header">
+                    <div class="section-title">Core Banking</div>
+                    <a href="#" class="section-link">View All</a>
+                </div>
+                <div class="feature-grid">
+                    <div class="feature-card" onclick="openModal('Account Summary')">
+                        <div class="feature-icon">
+                            <i class="fas fa-file-invoice-dollar"></i>
+                        </div>
+                        <div class="feature-title">Account Summary</div>
+                        <div class="feature-desc">View your account details and balance</div>
+                    </div>
+                    <div class="feature-card" onclick="openModal('Transaction History')">
+                        <div class="feature-icon">
+                            <i class="fas fa-history"></i>
+                        </div>
+                        <div class="feature-title">Transaction History</div>
+                        <div class="feature-desc">Review all your past transactions</div>
+                    </div>
+                    <div class="feature-card" onclick="openModal('Withdraw Funds')">
+                        <div class="feature-icon">
+                            <i class="fas fa-money-bill-wave"></i>
+                        </div>
+                        <div class="feature-title">Withdraw Funds</div>
+                        <div class="feature-desc">Transfer money to external accounts</div>
+                    </div>
+                    <div class="feature-card" onclick="openModal('Deposit Funds')">
+                        <div class="feature-icon">
+                            <i class="fas fa-hand-holding-usd"></i>
+                        </div>
+                        <div class="feature-title">Deposit Funds</div>
+                        <div class="feature-desc">Add money to your account</div>
+                    </div>
+                    <div class="feature-card" onclick="openModal('Transfer Funds')">
+                        <div class="feature-icon">
+                            <i class="fas fa-exchange-alt"></i>
+                        </div>
+                        <div class="feature-title">Transfer Funds</div>
+                        <div class="feature-desc">Move money between your accounts</div>
+                    </div>
+                    <div class="feature-card" onclick="openModal('Pay Bills')">
+                        <div class="feature-icon">
+                            <i class="fas fa-file-invoice"></i>
+                        </div>
+                        <div class="feature-title">Pay Bills</div>
+                        <div class="feature-desc">Pay your bills and utilities</div>
+                    </div>
+                    <div class="feature-card" onclick="openModal('Mobile Check Deposit')">
+                        <div class="feature-icon">
+                            <i class="fas fa-mobile-alt"></i>
+                        </div>
+                        <div class="feature-title">Mobile Check Deposit</div>
+                        <div class="feature-desc">Deposit checks using your phone</div>
+                    </div>
+                    <div class="feature-card" onclick="openModal('Manage Cards')">
+                        <div class="feature-icon">
+                            <i class="fas fa-credit-card"></i>
+                        </div>
+                        <div class="feature-title">Manage Cards</div>
+                        <div class="feature-desc">View and manage your debit/credit cards</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Smart & AI Features -->
+            <div class="section">
+                <div class="section-header">
+                    <div class="section-title">Smart Banking</div>
+                    <a href="#" class="section-link">Learn More</a>
+                </div>
+                <div class="feature-grid">
+                    <div class="feature-card ai-feature" onclick="openModal('AI Expense Insights')">
+                        <div class="feature-icon">
+                            <i class="fas fa-brain"></i>
+                        </div>
+                        <div class="feature-title">AI Expense Insights</div>
+                        <div class="feature-desc">Get personalized spending analysis</div>
+                    </div>
+                    <div class="feature-card ai-feature" onclick="openModal('Set Financial Goals')">
+                        <div class="feature-icon">
+                            <i class="fas fa-bullseye"></i>
+                        </div>
+                        <div class="feature-title">Set Financial Goals</div>
+                        <div class="feature-desc">Plan and track your financial objectives</div>
+                    </div>
+                    <div class="feature-card ai-feature" onclick="openModal('Budget Planner')">
+                        <div class="feature-icon">
+                            <i class="fas fa-chart-pie"></i>
+                        </div>
+                        <div class="feature-title">Budget Planner</div>
+                        <div class="feature-desc">Create and manage your budget</div>
+                    </div>
+                    <div class="feature-card ai-feature" onclick="openModal('Auto-Savings Setup')">
+                        <div class="feature-icon">
+                            <i class="fas fa-robot"></i>
+                        </div>
+                        <div class="feature-title">Auto-Savings Setup</div>
+                        <div class="feature-desc">Automate your savings strategy</div>
+                    </div>
+                    <div class="feature-card ai-feature" onclick="openModal('Smart Assistant Chat')">
+                        <div class="feature-icon">
+                            <i class="fas fa-comments"></i>
+                        </div>
+                        <div class="feature-title">Smart Assistant</div>
+                        <div class="feature-desc">Chat with our AI financial assistant</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Account Tools -->
+            <div class="section">
+                <div class="section-header">
+                    <div class="section-title">Account Tools</div>
+                </div>
+                <div class="feature-grid">
+                    <div class="feature-card tool-feature" onclick="openModal('Update Profile')">
+                        <div class="feature-icon">
+                            <i class="fas fa-user-edit"></i>
+                        </div>
+                        <div class="feature-title">Update Profile</div>
+                        <div class="feature-desc">Edit your personal information</div>
+                    </div>
+                    <div class="feature-card tool-feature" onclick="openModal('Change Password')">
+                        <div class="feature-icon">
+                            <i class="fas fa-key"></i>
+                        </div>
+                        <div class="feature-title">Change Password</div>
+                        <div class="feature-desc">Update your account password</div>
+                    </div>
+                    <div class="feature-card tool-feature" onclick="openModal('Security Settings')">
+                        <div class="feature-icon">
+                            <i class="fas fa-shield-alt"></i>
+                        </div>
+                        <div class="feature-title">Security Settings</div>
+                        <div class="feature-desc">Manage security preferences</div>
+                    </div>
+                    <div class="feature-card tool-feature" onclick="openModal('Notification Preferences')">
+                        <div class="feature-icon">
+                            <i class="fas fa-bell"></i>
+                        </div>
+                        <div class="feature-title">Notifications</div>
+                        <div class="feature-desc">Configure your alert settings</div>
+                    </div>
+                    <div class="feature-card tool-feature" onclick="openModal('Logout')">
+                        <div class="feature-icon">
+                            <i class="fas fa-sign-out-alt"></i>
+                        </div>
+                        <div class="feature-title">Logout</div>
+                        <div class="feature-desc">Securely sign out of your account</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Smart Assistant Floating Button -->
+    <div class="assistant" onclick="openModal('Smart Assistant Chat')">
+        <i class="fas fa-robot"></i>
+    </div>
+
+    <!-- Modal Structure -->
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal">
+            <div class="modal-header">
+                <div class="modal-title" id="modalTitle">Modal Title</div>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body" id="modalBody">
+                <!-- Content will be dynamically inserted here -->
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+                <button class="btn btn-primary" id="modalActionBtn">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Mobile Menu Toggle - Fixed Version
+        const menuToggle = document.getElementById('menuToggle');
+        const sidebar = document.getElementById('sidebar');
+        
+        menuToggle.addEventListener('click', function(e) {
+            e.stopPropagation(); // Prevent this click from bubbling up
+            sidebar.classList.toggle('active');
+        });
+        
+        // Close sidebar when clicking outside on mobile
+        document.addEventListener('click', function() {
+            if (window.innerWidth <= 992) {
+                sidebar.classList.remove('active');
+            }
+        });
+
+        // Prevent clicks inside sidebar from closing it
+        sidebar.addEventListener('click', function(e) {
+            e.stopPropagation();
+        });
+
+        // Modal Handling
+        function openModal(title) {
+            const modalOverlay = document.getElementById('modalOverlay');
+            const modalTitle = document.getElementById('modalTitle');
+            const modalBody = document.getElementById('modalBody');
+            const modalActionBtn = document.getElementById('modalActionBtn');
+            
+            modalTitle.textContent = title;
+            
+            // Set different content based on the feature clicked
+            let content = '';
+            let btnText = 'Confirm';
+            
+            switch(title) {
+                case 'Account Summary':
+                    content = `
+                        <div class="form-group">
+                            <label class="form-label">Select Account</label>
+                            <select class="form-control">
+                                <option>Primary Checking (•••• 5678)</option>
+                                <option>Savings Account (•••• 9012)</option>
+                                <option>Investment Account (•••• 3456)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Date Range</label>
+                            <select class="form-control">
+                                <option>Last 30 Days</option>
+                                <option>Last 90 Days</option>
+                                <option>This Year</option>
+                                <option>Custom Range</option>
+                            </select>
+                        </div>
+                    `;
+                    btnText = 'View Summary';
+                    break;
+                    
+                case 'Transaction History':
+                    content = `
+                        <div class="form-group">
+                            <label class="form-label">Select Account</label>
+                            <select class="form-control">
+                                <option>All Accounts</option>
+                                <option>Primary Checking (•••• 5678)</option>
+                                <option>Savings Account (•••• 9012)</option>
+                                <option>Investment Account (•••• 3456)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Date Range</label>
+                            <select class="form-control">
+                                <option>Last 30 Days</option>
+                                <option>Last 90 Days</option>
+                                <option>This Year</option>
+                                <option>Custom Range</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Transaction Type</label>
+                            <select class="form-control">
+                                <option>All Transactions</option>
+                                <option>Deposits</option>
+                                <option>Withdrawals</option>
+                                <option>Transfers</option>
+                                <option>Payments</option>
+                            </select>
+                        </div>
+                    `;
+                    btnText = 'View Transactions';
+                    break;
+                    
+                case 'Withdraw Funds':
+                    content = `
+                        <div class="form-group">
+                            <label class="form-label">From Account</label>
+                            <select class="form-control">
+                                <option>Primary Checking (•••• 5678)</option>
+                                <option>Savings Account (•••• 9012)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">To Account</label>
+                            <input type="text" class="form-control" placeholder="Account Number or IBAN">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Amount ($)</label>
+                            <input type="number" class="form-control" placeholder="0.00">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Description (Optional)</label>
+                            <input type="text" class="form-control" placeholder="e.g. Rent payment">
+                        </div>
+                    `;
+                    break;
+                    
+                case 'Deposit Funds':
+                    content = `
+                        <div class="form-group">
+                            <label class="form-label">To Account</label>
+                            <select class="form-control">
+                                <option>Primary Checking (•••• 5678)</option>
+                                <option>Savings Account (•••• 9012)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Amount ($)</label>
+                            <input type="number" class="form-control" placeholder="0.00">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Deposit Method</label>
+                            <select class="form-control">
+                                <option>Bank Transfer</option>
+                                <option>Mobile Check Deposit</option>
+                                <option>Cash Deposit (ATM)</option>
+                                <option>Wire Transfer</option>
+                            </select>
+                        </div>
+                    `;
+                    break;
+                    
+                case 'Transfer Funds':
+                    content = `
+                        <div class="form-group">
+                            <label class="form-label">From Account</label>
+                            <select class="form-control">
+                                <option>Primary Checking (•••• 5678)</option>
+                                <option>Savings Account (•••• 9012)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">To Account</label>
+                            <select class="form-control">
+                                <option>Primary Checking (•••• 5678)</option>
+                                <option>Savings Account (•••• 9012)</option>
+                                <option>Investment Account (•••• 3456)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Amount ($)</label>
+                            <input type="number" class="form-control" placeholder="0.00">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Description (Optional)</label>
+                            <input type="text" class="form-control" placeholder="e.g. Monthly savings">
+                        </div>
+                    `;
+                    break;
+                    
+                case 'AI Expense Insights':
+                    content = `
+                        <div class="form-group">
+                            <label class="form-label">Analysis Period</label>
+                            <select class="form-control">
+                                <option>Last 30 Days</option>
+                                <option>Last 90 Days</option>
+                                <option>This Year</option>
+                                <option>Last Year</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Focus Area</label>
+                            <select class="form-control">
+                                <option>All Expenses</option>
+                                <option>Recurring Bills</option>
+                                <option>Entertainment</option>
+                                <option>Food & Dining</option>
+                                <option>Shopping</option>
+                                <option>Travel</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <p>Our AI will analyze your spending patterns and provide personalized recommendations to help you save money and optimize your finances.</p>
+                        </div>
+                    `;
+                    btnText = 'Generate Insights';
+                    break;
+                    
+                case 'Smart Assistant Chat':
+                    content = `
+                        <div style="background: #f9f9f9; border-radius: 8px; padding: 1rem; min-height: 200px; margin-bottom: 1rem;">
+                            <div style="display: flex; margin-bottom: 1rem;">
+                                <div style="width: 30px; height: 30px; background: #8e2de2; color: white; border-radius: 50%; display: flex; justify-content: center; align-items: center; margin-right: 0.5rem;">
+                                    <i class="fas fa-robot" style="font-size: 0.8rem;"></i>
+                                </div>
+                                <div style="background: white; padding: 0.5rem 1rem; border-radius: 0 10px 10px 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
+                                    Hello! I'm your PrestigeBank AI assistant. How can I help you today?
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <input type="text" class="form-control" placeholder="Type your message here...">
+                        </div>
+                    `;
+                    btnText = 'Send Message';
+                    break;
+                    
+                case 'Logout':
+                    content = `
+                        <div style="text-align: center; padding: 1rem 0;">
+                            <div style="font-size: 3rem; color: var(--primary); margin-bottom: 1rem;">
+                                <i class="fas fa-sign-out-alt"></i>
+                            </div>
+                            <h3 style="margin-bottom: 0.5rem;">Are you sure you want to logout?</h3>
+                            <p style="color: #666;">You'll need to sign in again to access your account.</p>
+                        </div>
+                    `;
+                    btnText = 'Yes, Logout';
+                    break;
+                    
+                default:
+                    content = `
+                        <div class="form-group">
+                            <label class="form-label">Feature</label>
+                            <input type="text" class="form-control" value="${title}" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Details</label>
+                            <textarea class="form-control" rows="3" placeholder="Enter details here..."></textarea>
+                        </div>
+                    `;
+            }
+            
+            modalBody.innerHTML = content;
+            modalActionBtn.textContent = btnText;
+            modalOverlay.classList.add('active');
+            document.body.style.overflow = 'hidden';
+            
+            // Close sidebar when opening modal on mobile
+            if (window.innerWidth <= 992) {
+                sidebar.classList.remove('active');
+            }
+        }
+        
+        function closeModal() {
+            const modalOverlay = document.getElementById('modalOverlay');
+            modalOverlay.classList.remove('active');
+            document.body.style.overflow = 'auto';
+        }
+        
+        // Close modal when clicking outside
+        document.getElementById('modalOverlay').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeModal();
+            }
+        });
+        
+        // Close modal with ESC key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeModal();
+            }
+        });
+        
+        // Simulate loading animations
+        document.querySelectorAll('.card, .feature-card').forEach((card, index) => {
+            card.style.animationDelay = `${index * 0.1}s`;
+        });
+    </script>
+</body>
+</html>

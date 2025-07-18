@@ -8,10 +8,6 @@ def home(request):
     return render(request, 'main/home.html')
 
 
-def withdraw_cash(request):
+def dashboard(request):
 
-    
-
-
-
-    return render(request, 'home.hmtl')
+    return render(request, 'main/dashboard.html')

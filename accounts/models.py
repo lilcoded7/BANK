@@ -39,21 +39,18 @@ class User(AbstractBaseUser):
     email = models.EmailField(unique=True)
     phone = models.CharField(max_length=20, null=True, blank=True)
     
-    # Biometric fields
     biometric_data = models.TextField(null=True, blank=True)
     is_biometric_enabled = models.BooleanField(default=False)
     
-    # Status fields
     is_active = models.BooleanField(default=True)
     date_joined = models.DateTimeField(verbose_name="date joined", auto_now_add=True)
     last_login = models.DateTimeField(verbose_name="last joined", auto_now=True)
     
-    # Permission fields
     is_admin = models.BooleanField(default=False)
     is_staff = models.BooleanField(default=False)
     is_superuser = models.BooleanField(default=False)
 
-    # Role fields
+ 
     is_ceo = models.BooleanField(default=False, null=True, blank=True)
     is_manager = models.BooleanField(default=False, null=True, blank=True)
 

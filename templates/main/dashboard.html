@@ -1,3 +1,4 @@
+<!-- templates/dashboard.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -615,8 +616,8 @@
                                         <i class="fas fa-mobile-alt" style="color: var(--primary); margin-left: 0.5rem;"></i>
                                     {% endif %}
                                 </td>
-                                <td style="text-align: right; {% if transaction.sender_account.user == user %}color: var(--danger){% else %}color: var(--success){% endif %}">
-                                    {% if transaction.sender_account.user == user %}-{% else %}+{% endif %}
+                                <td style="text-align: right; {% if transaction.sender_account.customer == user %}color: var(--danger){% else %}color: var(--success){% endif %}">
+                                    {% if transaction.sender_account.customer == user %}-{% else %}+{% endif %}
                                     ₵{{ transaction.amount|floatformat:2 }}
                                 </td>
                                 <td>
@@ -685,27 +686,267 @@
         <i class="fas fa-robot"></i>
     </div>
 
-    <script>
-        // Mobile Menu Toggle
-        const menuToggle = document.getElementById('menuToggle');
-        const sidebar = document.getElementById('sidebar');
-        
-        menuToggle.addEventListener('click', function(e) {
-            e.stopPropagation();
-            sidebar.classList.toggle('active');
-        });
-        
-        // Close sidebar when clicking outside on mobile
-        document.addEventListener('click', function(e) {
-            if (window.innerWidth <= 992 && !sidebar.contains(e.target) {
-                sidebar.classList.remove('active');
-            }
-        });
+    
 
-        // Prevent clicks inside sidebar from closing it
-        sidebar.addEventListener('click', function(e) {
-            e.stopPropagation();
-        });
-    </script>
+<!-- Add this modal structure right before the closing </body> tag -->
+<div class="modal-overlay" id="modalOverlay" style="display: none;">
+    <div class="modal-container">
+        <div class="modal-header">
+            <h3 id="modalTitle">Modal Title</h3>
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+        </div>
+        <div class="modal-body" id="modalBody">
+            <!-- Form content will be inserted here -->
+        </div>
+    </div>
+</div>
+
+<!-- Add these hidden forms at the bottom of the body -->
+<div id="transferForm" style="display: none;">
+    <form method="POST" action="{% url 'transfer_funds' %}">
+        {% csrf_token %}
+        <div class="form-group">
+            <label>From Account</label>
+            <select class="form-control" name="from_account">
+                {% for account in accounts %}
+                <option value="{{ account.id }}">{{ account.account_number }} (₵{{ account.balance|floatformat:2 }})</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label>To Account</label>
+            <input type="text" class="form-control" name="to_account" placeholder="Enter account number">
+        </div>
+        <div class="form-group">
+            <label>Amount (GHS)</label>
+            <input type="number" class="form-control" name="amount" placeholder="0.00" step="0.01" min="0.01">
+        </div>
+        <div class="form-group">
+            <label>Description (Optional)</label>
+            <textarea class="form-control" name="description" rows="2" placeholder="Optional description"></textarea>
+        </div>
+        <button type="submit" class="btn btn-block">Transfer Funds</button>
+    </form>
+</div>
+
+<div id="mobileMoneyForm" style="display: none;">
+    <form method="POST" action="{% url 'mobile_money' %}">
+        {% csrf_token %}
+        <div class="form-group">
+            <label>From Account</label>
+            <select class="form-control" name="from_account">
+                {% for account in accounts %}
+                <option value="{{ account.id }}">{{ account.account_number }} (₵{{ account.balance|floatformat:2 }})</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Mobile Number</label>
+            <input type="text" class="form-control" name="mobile_number" placeholder="0244123456">
+        </div>
+        <div class="form-group">
+            <label>Network</label>
+            <select class="form-control" name="network">
+                <option value="MTN">MTN Mobile Money</option>
+                <option value="VODAFONE">Vodafone Cash</option>
+                <option value="AIRTELTIGO">AirtelTigo Money</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Amount (GHS)</label>
+            <input type="number" class="form-control" name="amount" placeholder="0.00" step="0.01" min="0.01">
+        </div>
+        <div class="form-group">
+            <label>Description (Optional)</label>
+            <textarea class="form-control" name="description" rows="2" placeholder="Optional description"></textarea>
+        </div>
+        <button type="submit" class="btn btn-block">Send Mobile Money</button>
+    </form>
+</div>
+
+<div id="payBillsForm" style="display: none;">
+    <form method="POST" action="#">
+        {% csrf_token %}
+        <div class="form-group">
+            <label>From Account</label>
+            <select class="form-control" name="from_account">
+                {% for account in accounts %}
+                <option value="{{ account.id }}">{{ account.account_number }} (₵{{ account.balance|floatformat:2 }})</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Bill Type</label>
+            <select class="form-control" name="bill_type">
+                <option value="ELECTRICITY">Electricity</option>
+                <option value="WATER">Water</option>
+                <option value="TV">TV License</option>
+                <option value="INTERNET">Internet</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Account Number</label>
+            <input type="text" class="form-control" name="account_number" placeholder="Enter bill account number">
+        </div>
+        <div class="form-group">
+            <label>Amount (GHS)</label>
+            <input type="number" class="form-control" name="amount" placeholder="0.00" step="0.01" min="0.01">
+        </div>
+        <button type="submit" class="btn btn-block">Pay Bill</button>
+    </form>
+</div>
+
+<!-- Add this CSS to your style section -->
+<style>
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+    }
+    
+    .modal-container {
+        background: white;
+        border-radius: 12px;
+        width: 90%;
+        max-width: 500px;
+        max-height: 90vh;
+        overflow-y: auto;
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+        animation: modalFadeIn 0.3s ease;
+    }
+    
+    @keyframes modalFadeIn {
+        from { opacity: 0; transform: translateY(-20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1.5rem;
+        border-bottom: 1px solid #eee;
+    }
+    
+    .modal-header h3 {
+        margin: 0;
+        color: var(--primary);
+    }
+    
+    .modal-close {
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        cursor: pointer;
+        color: #666;
+    }
+    
+    .modal-body {
+        padding: 1.5rem;
+    }
+    
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+    
+    .form-group label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 500;
+    }
+    
+    .form-control {
+        width: 100%;
+        padding: 0.8rem;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        font-size: 1rem;
+    }
+    
+    .btn-block {
+        display: block;
+        width: 100%;
+        padding: 0.8rem;
+        background: var(--primary);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 1rem;
+        cursor: pointer;
+    }
+    
+    .btn-block:hover {
+        background: var(--primary-dark);
+    }
+</style>
+
+<!-- Update the JavaScript section -->
+<script>
+    // Mobile Menu Toggle
+    const menuToggle = document.getElementById('menuToggle');
+    const sidebar = document.getElementById('sidebar');
+    
+    menuToggle.addEventListener('click', function(e) {
+        e.stopPropagation();
+        sidebar.classList.toggle('active');
+    });
+    
+    // Close sidebar when clicking outside on mobile
+    document.addEventListener('click', function(e) {
+        if (window.innerWidth <= 992 && !sidebar.contains(e.target)) {
+            sidebar.classList.remove('active');
+        }
+    });
+
+    // Prevent clicks inside sidebar from closing it
+    sidebar.addEventListener('click', function(e) {
+        e.stopPropagation();
+    });
+
+    // Modal functions
+    function openModal(title, formId) {
+        const modalOverlay = document.getElementById('modalOverlay');
+        const modalTitle = document.getElementById('modalTitle');
+        const modalBody = document.getElementById('modalBody');
+        const form = document.getElementById(formId).cloneNode(true);
+        
+        form.style.display = 'block';
+        modalTitle.textContent = title;
+        modalBody.innerHTML = '';
+        modalBody.appendChild(form);
+        modalOverlay.style.display = 'flex';
+    }
+
+    function closeModal() {
+        document.getElementById('modalOverlay').style.display = 'none';
+    }
+
+    // Update quick action buttons to open modals
+    document.querySelector('.feature-card:nth-child(1)').onclick = function() {
+        openModal('Transfer Funds', 'transferForm');
+    };
+    
+    document.querySelector('.feature-card:nth-child(2)').onclick = function() {
+        openModal('Mobile Money', 'mobileMoneyForm');
+    };
+    
+    document.querySelector('.feature-card:nth-child(4)').onclick = function() {
+        openModal('Pay Bills', 'payBillsForm');
+    };
+
+    // Close modal when clicking outside
+    document.getElementById('modalOverlay').addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeModal();
+        }
+    });
+</script>
 </body>
 </html>

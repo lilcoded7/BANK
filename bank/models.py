@@ -1,10 +1,12 @@
+# models.py
 from django.db import models
-from django.core.validators import MinValueValidator
 from django.utils import timezone
-import uuid
-import json
+from django.contrib.auth import get_user_model
+from setup.basemodel import TimeBaseModel
 
-class Account(models.Model):
+User = get_user_model()
+
+class Account(TimeBaseModel):
     ACCOUNT_TYPES = [
         ('SAVINGS', 'Savings Account'),
         ('CHECKING', 'Checking Account'),
@@ -16,10 +18,9 @@ class Account(models.Model):
         ('DORMANT', 'Dormant'),
         ('CLOSED', 'Closed'),
     ]
-    
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user = models.ForeignKey('User', on_delete=models.CASCADE, related_name='accounts')
-    account_number = models.CharField(max_length=20, unique=True)
+    BIN = "123456"
+    customer = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
+    account_number = models.CharField(max_length=20, unique=True, null=True, blank=True)
     account_type = models.CharField(max_length=20, choices=ACCOUNT_TYPES)
     balance = models.DecimalField(max_digits=15, decimal_places=2, default=0.00)
     currency = models.CharField(max_length=3, default='GHS')
@@ -29,8 +30,25 @@ class Account(models.Model):
     
     def __str__(self):
         return f"{self.account_number} - {self.get_account_type_display()}"
+    
+    def save(self, *args, **kwargs):
+        if not self.account_number:
+            self.account_number = self.generate_account_number()
+        super().save(*args, **kwargs)
 
-class Transaction(models.Model):
+    def generate_account_number(self):
+        latest = Account.objects.filter(account_number__startswith=self.BIN).order_by('-account_number').first()
+
+        if latest and latest.account_number:
+            last_seq = int(latest.account_number[-4:])  
+        else:
+            last_seq = 0
+
+        new_seq = str(last_seq + 1).zfill(4)
+        return f"{self.BIN}{new_seq}"
+
+
+class Transaction(TimeBaseModel):
     TRANSACTION_TYPES = [
         ('TRANSFER', 'Bank Transfer'),
         ('MOBILE_MONEY', 'Mobile Money'),
@@ -44,8 +62,7 @@ class Transaction(models.Model):
         ('COMPLETED', 'Completed'),
         ('FAILED', 'Failed'),
     ]
-    
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    account = models.ForeignKey(Account, on_delete=models.CASCADE, null=True, blank=True)
     transaction_id = models.CharField(max_length=30, unique=True)
     transaction_type = models.CharField(max_length=20, choices=TRANSACTION_TYPES)
     amount = models.DecimalField(max_digits=15, decimal_places=2)
@@ -61,7 +78,8 @@ class Transaction(models.Model):
     def __str__(self):
         return f"{self.transaction_id} - {self.get_transaction_type_display()}"
 
-class SecurityLog(models.Model):
+
+class SecurityLog(TimeBaseModel):
     EVENT_TYPES = [
         ('LOGIN', 'User Login'),
         ('LOGOUT', 'User Logout'),
@@ -70,8 +88,7 @@ class SecurityLog(models.Model):
         ('BIOMETRIC_UPDATE', 'Biometric Update'),
     ]
     
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user = models.ForeignKey('User', on_delete=models.CASCADE, related_name='security_logs')
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
     event_type = models.CharField(max_length=20, choices=EVENT_TYPES)
     ip_address = models.GenericIPAddressField()
     device_info = models.JSONField(default=dict)

@@ -1,3 +1,4 @@
+# forms.py
 from django import forms
 from django.core.validators import MinValueValidator
 from .models import Account
@@ -52,7 +53,7 @@ class TransferForm(forms.Form):
 
     def __init__(self, user, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['from_account'].queryset = Account.objects.filter(user=user, status='ACTIVE')
+        self.fields['from_account'].queryset = Account.objects.filter(customer=user, status='ACTIVE')
         self.fields['to_account'].queryset = Account.objects.filter(status='ACTIVE')
 
 class MobileMoneyForm(forms.Form):
@@ -105,7 +106,7 @@ class MobileMoneyForm(forms.Form):
 
     def __init__(self, user, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['from_account'].queryset = Account.objects.filter(user=user, status='ACTIVE')
+        self.fields['from_account'].queryset = Account.objects.filter(customer=user, status='ACTIVE')
 
 class SecuritySettingsForm(forms.Form):
     enable_biometric = forms.BooleanField(

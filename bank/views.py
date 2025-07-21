@@ -1,6 +1,8 @@
+# views.py
 from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
+from django.db.models import Q
 from django.contrib import messages
 from django.urls import reverse
 from .models import Account, Transaction, SecurityLog
@@ -32,7 +34,7 @@ def login_view(request):
             messages.error(request, "Please correct the errors below")
     else:
         form = LoginForm()
-    return render(request, 'login.html', {'form': form})
+    return render(request, 'auth/login.html', {'form': form})
 
 @login_required
 def logout_view(request):
@@ -47,29 +49,28 @@ def logout_view(request):
 
 @login_required
 def dashboard(request):
-    accounts = Account.objects.filter(user=request.user, status='ACTIVE')
+    accounts = Account.objects.filter(customer=request.user, status='ACTIVE')
     total_balance = sum(account.balance for account in accounts)
-    
+
     recent_transactions = Transaction.objects.filter(
-        models.Q(sender_account__user=request.user) | 
-        models.Q(recipient_account__user=request.user)
+        Q(sender_account__customer=request.user) | 
+        Q(recipient_account__customer=request.user)
     ).order_by('-timestamp')[:5]
-    
+
     context = {
         'user': request.user,
         'accounts': accounts,
         'total_balance': total_balance,
         'recent_transactions': recent_transactions,
-        'has_biometric': request.user.is_biometric_enabled,
+        'has_biometric': getattr(request.user, 'is_biometric_enabled', False),
     }
-    return render(request, 'dashboard.html', context)
+    return render(request, 'main/dashboard.html', context)
 
 @login_required
 def transfer_funds(request):
     if request.method == 'POST':
         form = TransferForm(request.user, request.POST)
         if form.is_valid():
-            # Create transaction
             transaction = Transaction.objects.create(
                 transaction_id=f"TX{datetime.now().strftime('%Y%m%d')}{uuid.uuid4().hex[:6].upper()}",
                 transaction_type='TRANSFER',
@@ -100,14 +101,13 @@ def transfer_funds(request):
     else:
         form = TransferForm(request.user)
     
-    return render(request, 'transfer.html', {'form': form})
+    return render(request, 'main/transfer.html', {'form': form})
 
 @login_required
 def mobile_money(request):
     if request.method == 'POST':
         form = MobileMoneyForm(request.user, request.POST)
         if form.is_valid():
-            # Create transaction
             transaction = Transaction.objects.create(
                 transaction_id=f"MM{datetime.now().strftime('%Y%m%d')}{uuid.uuid4().hex[:6].upper()}",
                 transaction_type='MOBILE_MONEY',
@@ -139,7 +139,7 @@ def mobile_money(request):
     else:
         form = MobileMoneyForm(request.user)
     
-    return render(request, 'mobile_money.html', {'form': form})
+    return render(request, 'main/dashboard.html', {'form': form})
 
 @login_required
 def security_settings(request):
@@ -149,6 +149,7 @@ def security_settings(request):
             # Handle password change
             if form.cleaned_data.get('new_password'):
                 request.user.set_password(form.cleaned_data['new_password'])
+                request.user.save()
                 messages.success(request, "Password changed successfully!")
                 SecurityLog.objects.create(
                     user=request.user,
@@ -160,6 +161,7 @@ def security_settings(request):
             # Handle biometric enablement
             if form.cleaned_data.get('enable_biometric'):
                 request.user.is_biometric_enabled = True
+                request.user.save()
                 messages.success(request, "Biometric authentication enabled!")
                 SecurityLog.objects.create(
                     user=request.user,
@@ -168,14 +170,13 @@ def security_settings(request):
                     details='Biometric authentication enabled'
                 )
             
-            request.user.save()
             return redirect('security_settings')
     else:
         form = SecuritySettingsForm(request.user)
     
     security_logs = SecurityLog.objects.filter(user=request.user).order_by('-timestamp')[:10]
     
-    return render(request, 'security.html', {
+    return render(request, 'main/security.html', {
         'form': form,
         'security_logs': security_logs
     })

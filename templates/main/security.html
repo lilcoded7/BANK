@@ -25,6 +25,7 @@
             --success: #4caf50;
             --warning: #ff9800;
             --danger: #f44336;
+            --info: #2196F3;
         }
 
         * {
@@ -57,6 +58,7 @@
             left: 0;
             bottom: 0;
             width: 280px;
+            z-index: 1000;
         }
 
         .logo {
@@ -152,7 +154,7 @@
             margin: 0 auto;
         }
 
-        .profile-card {
+        .profile-card, .security-card {
             background: white;
             border-radius: 12px;
             padding: 2rem;
@@ -210,14 +212,6 @@
             padding: 0.5rem;
             background: var(--secondary-dark);
             border-radius: 6px;
-        }
-
-        .security-card {
-            background: white;
-            border-radius: 12px;
-            padding: 2rem;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
-            margin-bottom: 2rem;
         }
 
         .security-section {
@@ -291,6 +285,71 @@
 
         .toggle-label span {
             font-weight: 500;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: var(--transition);
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(209, 0, 0, 0.1);
+        }
+
+        .password-strength {
+            margin-top: 0.5rem;
+            height: 4px;
+            background: #eee;
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .password-strength-bar {
+            height: 100%;
+            width: 0%;
+            background: var(--danger);
+            transition: var(--transition);
+        }
+
+        .password-requirements {
+            margin-top: 0.5rem;
+            padding: 0.75rem;
+            background: var(--secondary-dark);
+            border-radius: 8px;
+            font-size: 0.9rem;
+        }
+
+        .password-requirements ul {
+            margin-top: 0.5rem;
+            padding-left: 1.5rem;
+        }
+
+        .password-requirements li {
+            margin-bottom: 0.25rem;
+        }
+
+        .password-requirements li.valid {
+            color: var(--success);
+        }
+
+        .password-requirements li.valid:before {
+            content: "✓ ";
         }
 
         .security-log {
@@ -378,6 +437,12 @@
             border-left: 4px solid var(--warning);
         }
 
+        .message-info {
+            background-color: rgba(33, 150, 243, 0.1);
+            color: var(--info);
+            border-left: 4px solid var(--info);
+        }
+
         .btn {
             display: inline-block;
             padding: 0.8rem 1.5rem;
@@ -395,6 +460,33 @@
             background: var(--primary-dark);
         }
 
+        .btn-secondary {
+            background: #6c757d;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .btn-block {
+            display: block;
+            width: 100%;
+        }
+
+        .text-muted {
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+
+        .mobile-menu-toggle {
+            display: none;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: var(--primary);
+            cursor: pointer;
+        }
+
         @media (max-width: 992px) {
             .dashboard {
                 grid-template-columns: 1fr;
@@ -402,7 +494,6 @@
             
             .sidebar {
                 transform: translateX(-100%);
-                z-index: 1000;
                 transition: var(--transition);
             }
             
@@ -416,12 +507,6 @@
             
             .mobile-menu-toggle {
                 display: block;
-                font-size: 1.5rem;
-                cursor: pointer;
-                color: var(--primary);
-                background: none;
-                border: none;
-                padding: 0.5rem;
             }
         }
 
@@ -438,6 +523,17 @@
             
             .profile-details {
                 grid-template-columns: 1fr;
+            }
+            
+            .header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 1rem;
+            }
+            
+            .user-profile {
+                width: 100%;
+                justify-content: flex-end;
             }
         }
     </style>
@@ -463,7 +559,7 @@
                     <i class="fas fa-mobile-alt"></i>
                     <span>Mobile Money</span>
                 </div>
-                <div class="nav-item active" onclick="window.location.href='{% url 'security_settings' %}'">
+                <div class="nav-item active">
                     <i class="fas fa-shield-alt"></i>
                     <span>Security</span>
                 </div>
@@ -502,6 +598,7 @@
                         <i class="fas 
                             {% if message.tags == 'success' %}fa-check-circle
                             {% elif message.tags == 'error' %}fa-exclamation-circle
+                            {% elif message.tags == 'warning' %}fa-exclamation-triangle
                             {% else %}fa-info-circle{% endif %}"></i>
                         {{ message }}
                     </div>
@@ -548,35 +645,77 @@
                 <div class="security-card">
                     <form method="POST">
                         {% csrf_token %}
+                        {% if form.errors %}
+                            <div class="message message-error">
+                                <i class="fas fa-exclamation-circle"></i>
+                                Please correct the errors below.
+                            </div>
+                        {% endif %}
+                        
                         <div class="security-section">
                             <h3><i class="fas fa-fingerprint"></i> Biometric Authentication</h3>
                             <div class="toggle-label">
                                 <label class="toggle-switch">
-                                    <input type="checkbox" name="enable_biometric" {% if user.is_biometric_enabled %}checked{% endif %}>
+                                    <input type="checkbox" name="enable_biometric" id="enable_biometric" {% if user.is_biometric_enabled %}checked{% endif %}>
                                     <span class="slider"></span>
                                 </label>
                                 <span>Enable Fingerprint/Face ID Login</span>
                             </div>
-                            <p style="color: #666; font-size: 0.9rem;">
+                            <p class="text-muted">
                                 Allows you to log in using your device's biometric authentication instead of a password.
                             </p>
                         </div>
 
                         <div class="security-section">
                             <h3><i class="fas fa-lock"></i> Change Password</h3>
+                            
                             <div class="form-group">
                                 <label for="current_password">Current Password</label>
                                 <input type="password" id="current_password" name="current_password" class="form-control" placeholder="Enter current password">
+                                {% if form.current_password.errors %}
+                                    <div class="message message-error">
+                                        <i class="fas fa-exclamation-circle"></i>
+                                        {{ form.current_password.errors.0 }}
+                                    </div>
+                                {% endif %}
                             </div>
+                            
                             <div class="form-group">
                                 <label for="new_password">New Password</label>
-                                <input type="password" id="new_password" name="new_password" class="form-control" placeholder="Enter new password">
+                                <input type="password" id="new_password" name="new_password" class="form-control" placeholder="Enter new password (min 8 characters)">
+                                <div class="password-strength">
+                                    <div class="password-strength-bar" id="password-strength-bar"></div>
+                                </div>
+                                <div class="password-requirements" id="password-requirements">
+                                    <small>Password must contain:</small>
+                                    <ul>
+                                        <li id="req-length">At least 8 characters</li>
+                                        <li id="req-uppercase">1 uppercase letter</li>
+                                        <li id="req-lowercase">1 lowercase letter</li>
+                                        <li id="req-number">1 number</li>
+                                        <li id="req-special">1 special character</li>
+                                    </ul>
+                                </div>
+                                {% if form.new_password.errors %}
+                                    <div class="message message-error">
+                                        <i class="fas fa-exclamation-circle"></i>
+                                        {{ form.new_password.errors.0 }}
+                                    </div>
+                                {% endif %}
                             </div>
+                            
                             <div class="form-group">
                                 <label for="confirm_password">Confirm New Password</label>
                                 <input type="password" id="confirm_password" name="confirm_password" class="form-control" placeholder="Confirm new password">
+                                {% if form.confirm_password.errors %}
+                                    <div class="message message-error">
+                                        <i class="fas fa-exclamation-circle"></i>
+                                        {{ form.confirm_password.errors.0 }}
+                                    </div>
+                                {% endif %}
                             </div>
-                            <button type="submit" class="btn">Update Security Settings</button>
+                            
+                            <button type="submit" class="btn btn-block">Update Security Settings</button>
                         </div>
                     </form>
                 </div>
@@ -585,7 +724,7 @@
                 <div class="security-card">
                     <div class="security-section">
                         <h3><i class="fas fa-history"></i> Security Log</h3>
-                        <p>Recent security-related activities on your account</p>
+                        <p class="text-muted">Recent security-related activities on your account</p>
                         
                         <div class="security-log">
                             <table class="log-table">
@@ -650,6 +789,89 @@
         sidebar.addEventListener('click', function(e) {
             e.stopPropagation();
         });
+
+        // Password strength checker
+        const passwordInput = document.getElementById('new_password');
+        const passwordBar = document.getElementById('password-strength-bar');
+        const passwordRequirements = {
+            length: document.getElementById('req-length'),
+            uppercase: document.getElementById('req-uppercase'),
+            lowercase: document.getElementById('req-lowercase'),
+            number: document.getElementById('req-number'),
+            special: document.getElementById('req-special')
+        };
+
+        if (passwordInput) {
+            passwordInput.addEventListener('input', function() {
+                const password = this.value;
+                let strength = 0;
+                
+                // Check length
+                if (password.length >= 8) {
+                    strength += 20;
+                    passwordRequirements.length.classList.add('valid');
+                } else {
+                    passwordRequirements.length.classList.remove('valid');
+                }
+                
+                // Check uppercase
+                if (/[A-Z]/.test(password)) {
+                    strength += 20;
+                    passwordRequirements.uppercase.classList.add('valid');
+                } else {
+                    passwordRequirements.uppercase.classList.remove('valid');
+                }
+                
+                // Check lowercase
+                if (/[a-z]/.test(password)) {
+                    strength += 20;
+                    passwordRequirements.lowercase.classList.add('valid');
+                } else {
+                    passwordRequirements.lowercase.classList.remove('valid');
+                }
+                
+                // Check number
+                if (/[0-9]/.test(password)) {
+                    strength += 20;
+                    passwordRequirements.number.classList.add('valid');
+                } else {
+                    passwordRequirements.number.classList.remove('valid');
+                }
+                
+                // Check special character
+                if (/[^A-Za-z0-9]/.test(password)) {
+                    strength += 20;
+                    passwordRequirements.special.classList.add('valid');
+                } else {
+                    passwordRequirements.special.classList.remove('valid');
+                }
+                
+                // Update strength bar
+                passwordBar.style.width = strength + '%';
+                
+                // Update color based on strength
+                if (strength < 40) {
+                    passwordBar.style.backgroundColor = 'var(--danger)';
+                } else if (strength < 80) {
+                    passwordBar.style.backgroundColor = 'var(--warning)';
+                } else {
+                    passwordBar.style.backgroundColor = 'var(--success)';
+                }
+            });
+        }
+
+        // Confirm password match
+        const confirmPassword = document.getElementById('confirm_password');
+        if (confirmPassword) {
+            confirmPassword.addEventListener('input', function() {
+                const password = document.getElementById('new_password').value;
+                if (this.value && password !== this.value) {
+                    this.style.borderColor = 'var(--danger)';
+                } else {
+                    this.style.borderColor = '';
+                }
+            });
+        }
     </script>
 </body>
 </html>

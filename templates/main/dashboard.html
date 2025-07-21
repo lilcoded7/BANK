@@ -569,25 +569,25 @@
                     <div class="section-title">My Accounts</div>
                 </div>
                 <div class="feature-grid">
-                    {% for account in accounts %}
-                    <div class="feature-card" onclick="window.location.href='#'">
-                        <div class="feature-icon">
-                            {% if account.account_type == 'SAVINGS' %}
-                                <i class="fas fa-piggy-bank"></i>
-                            {% elif account.account_type == 'CHECKING' %}
-                                <i class="fas fa-money-bill-wave"></i>
-                            {% else %}
-                                <i class="fas fa-university"></i>
-                            {% endif %}
-                        </div>
-                        <div class="feature-title">{{ account.get_account_type_display }}</div>
-                        <div class="feature-desc">
-                            {{ account.account_number }}<br>
-                            ₵{{ account.balance|floatformat:2 }}
-                        </div>
+                {% for account in accounts %}
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        {% if account.account_type == 'SAVINGS' %}
+                            <i class="fas fa-piggy-bank"></i>
+                        {% elif account.account_type == 'CHECKING' %}
+                            <i class="fas fa-money-bill-wave"></i>
+                        {% else %}
+                            <i class="fas fa-university"></i>
+                        {% endif %}
                     </div>
-                    {% endfor %}
+                    <div class="feature-title">{{ account.get_account_type_display }}</div>
+                    <div class="feature-desc">
+                        {{ account.account_number }}<br>
+                        ₵{{ account.balance|floatformat:2 }}
+                    </div>
                 </div>
+                {% endfor %}
+            </div>
             </div>
 
             <!-- Recent Transactions -->
@@ -645,7 +645,7 @@
                     <div class="section-title">Quick Actions</div>
                 </div>
                 <div class="feature-grid">
-                    <div class="feature-card" onclick="window.location.href='{% url 'transfer_funds' %}'">
+                    <div class="feature-card" onclick="openModal('Transfer Funds', 'transferForm')">
                         <div class="feature-icon">
                             <i class="fas fa-exchange-alt"></i>
                         </div>

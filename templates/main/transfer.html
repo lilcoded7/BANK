@@ -148,12 +148,33 @@
         }
 
         .transfer-container {
-            max-width: 600px;
+            max-width: 800px;
             margin: 0 auto;
             background: white;
             padding: 2rem;
             border-radius: 12px;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+            margin-bottom: 2rem;
+            display: none; /* Initially hidden */
+        }
+
+        .btn-new-transfer {
+            display: block;
+            width: 200px;
+            margin: 0 auto 2rem;
+            padding: 0.8rem 1.5rem;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .btn-new-transfer:hover {
+            background: var(--primary-dark);
         }
 
         .form-group {
@@ -237,6 +258,154 @@
             list-style: none;
         }
 
+        /* Transactions Table */
+        .transactions-section {
+            margin-top: 2rem;
+        }
+
+        .transactions-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .filter-buttons {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .filter-btn {
+            padding: 0.5rem 1rem;
+            background: var(--secondary);
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .filter-btn.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .transactions-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 2rem;
+        }
+
+        .transactions-table th {
+            text-align: left;
+            padding: 1rem;
+            background: var(--secondary-dark);
+            color: var(--text-dark);
+            font-weight: 600;
+        }
+
+        .transactions-table td {
+            padding: 1rem;
+            border-bottom: 1px solid #eee;
+        }
+
+        .transaction-amount {
+            font-weight: 600;
+        }
+
+        .transaction-amount.credit {
+            color: var(--success);
+        }
+
+        .transaction-amount.debit {
+            color: var(--danger);
+        }
+
+        .transaction-status {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+        }
+
+        .status-completed {
+            background: rgba(76, 175, 80, 0.1);
+            color: var(--success);
+        }
+
+        .status-pending {
+            background: rgba(255, 152, 0, 0.1);
+            color: var(--warning);
+        }
+
+        .status-failed {
+            background: rgba(244, 67, 54, 0.1);
+            color: var(--danger);
+        }
+
+        /* Modal styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-container {
+            background: white;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+            animation: modalFadeIn 0.3s ease;
+        }
+
+        @keyframes modalFadeIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.5rem;
+            border-bottom: 1px solid #eee;
+        }
+
+        .modal-header h3 {
+            margin: 0;
+            color: var(--primary);
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #666;
+        }
+
+        .modal-body {
+            padding: 1.5rem;
+        }
+
         @media (max-width: 992px) {
             .dashboard {
                 grid-template-columns: 1fr;
@@ -270,6 +439,10 @@
         @media (max-width: 768px) {
             .transfer-container {
                 padding: 1.5rem;
+            }
+            
+            .filter-buttons {
+                flex-wrap: wrap;
             }
         }
     </style>
@@ -340,9 +513,14 @@
                 {% endfor %}
             {% endif %}
 
-            <!-- Transfer Form -->
-            <div class="transfer-container">
-                <form method="POST">
+            <!-- New Transfer Button -->
+            <button class="btn-new-transfer" id="newTransferBtn">
+                <i class="fas fa-plus"></i> New Transfer
+            </button>
+
+            <!-- Transfer Form (Hidden by default) -->
+            <div class="transfer-container" id="transferForm">
+                <form method="POST" id="transferFormElement">
                     {% csrf_token %}
                     
                     {% if form.non_field_errors %}
@@ -400,8 +578,69 @@
                         {% endif %}
                     </div>
                     
-                    <button type="submit" class="btn btn-block">Transfer Funds</button>
+                    <div class="form-group">
+                        <button type="submit" class="btn btn-block">Transfer Funds</button>
+                        <button type="button" class="btn btn-block" style="background: #666; margin-top: 0.5rem;" onclick="closeTransferForm()">Cancel</button>
+                    </div>
                 </form>
+            </div>
+
+            <!-- Transactions Section -->
+            <div class="transactions-section">
+                <div class="transactions-header">
+                    <h2 class="section-title">Transaction History</h2>
+                    <div class="filter-buttons">
+                        <button class="filter-btn active" data-filter="all">All</button>
+                        <button class="filter-btn" data-filter="completed">Completed</button>
+                        <button class="filter-btn" data-filter="pending">Pending</button>
+                        <button class="filter-btn" data-filter="failed">Failed</button>
+                    </div>
+                </div>
+
+                <table class="transactions-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Description</th>
+                            <th>From/To</th>
+                            <th>Amount</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for transaction in transactions %}
+                        <tr class="transaction-row" data-status="{{ transaction.status|lower }}">
+                            <td>{{ transaction.timestamp|date:"M d, Y" }}</td>
+                            <td>
+                                {{ transaction.description|default:"No description" }}
+                                {% if transaction.transaction_type == 'MOBILE_MONEY' %}
+                                    <i class="fas fa-mobile-alt" style="color: var(--primary); margin-left: 0.5rem;"></i>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if transaction.sender_account.customer == user %}
+                                    To: {{ transaction.recipient_account.account_number|default:transaction.recipient_number }}
+                                {% else %}
+                                    From: {{ transaction.sender_account.account_number }}
+                                {% endif %}
+                            </td>
+                            <td class="transaction-amount {% if transaction.sender_account.customer == user %}debit{% else %}credit{% endif %}">
+                                {% if transaction.sender_account.customer == user %}-{% else %}+{% endif %}
+                                ₵{{ transaction.amount|floatformat:2 }}
+                            </td>
+                            <td>
+                                <span class="transaction-status status-{{ transaction.status|lower }}">
+                                    {{ transaction.get_status_display }}
+                                </span>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" style="text-align: center; padding: 2rem;">No transactions found</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
@@ -427,6 +666,57 @@
         sidebar.addEventListener('click', function(e) {
             e.stopPropagation();
         });
+
+        // Transfer Form Toggle
+        const newTransferBtn = document.getElementById('newTransferBtn');
+        const transferForm = document.getElementById('transferForm');
+        
+        newTransferBtn.addEventListener('click', function() {
+            transferForm.style.display = 'block';
+            newTransferBtn.style.display = 'none';
+            window.scrollTo({ top: transferForm.offsetTop - 20, behavior: 'smooth' });
+        });
+        
+        function closeTransferForm() {
+            transferForm.style.display = 'none';
+            newTransferBtn.style.display = 'block';
+        }
+
+        // Filter transactions
+        const filterBtns = document.querySelectorAll('.filter-btn');
+        const transactionRows = document.querySelectorAll('.transaction-row');
+        
+        filterBtns.forEach(btn => {
+            btn.addEventListener('click', function() {
+                // Update active button
+                filterBtns.forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                
+                const filter = this.dataset.filter;
+                
+                // Filter rows
+                transactionRows.forEach(row => {
+                    if (filter === 'all' || row.dataset.status === filter) {
+                        row.style.display = '';
+                    } else {
+                        row.style.display = 'none';
+                    }
+                });
+            });
+        });
+
+        // Reset form on successful submission
+        const transferFormElement = document.getElementById('transferFormElement');
+        if (transferFormElement) {
+            transferFormElement.addEventListener('submit', function() {
+                setTimeout(() => {
+                    if (!this.querySelector('.message-error')) {
+                        this.reset();
+                        closeTransferForm();
+                    }
+                }, 100);
+            });
+        }
     </script>
 </body>
 </html>

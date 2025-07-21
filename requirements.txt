@@ -1,5 +1,7 @@
 asgiref==3.8.1
 Django==5.2.1
+django-appconf==1.1.0
+django-select2==8.4.1
 gunicorn==23.0.0
 packaging==25.0
 pillow==11.2.1

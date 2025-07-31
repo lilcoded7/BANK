@@ -801,25 +801,21 @@
                 <span>Prestige</span>Bank
             </div>
             <div class="nav-menu">
-                <div class="nav-item" onclick="window.location.href='{% url 'dashboard' %}'">
-                    <i class="fas fa-home"></i>
-                    <span>Dashboard</span>
-                </div>
-                <div class="nav-item" onclick="window.location.href='{% url 'transfer_funds' %}'">
-                    <i class="fas fa-exchange-alt"></i>
-                    <span>Transfer Funds</span>
-                </div>
-                <div class="nav-item" onclick="window.location.href='{% url 'mobile_money' %}'">
-                    <i class="fas fa-mobile-alt"></i>
-                    <span>Mobile Money</span>
-                </div>
                 <div class="nav-item active" onclick="window.location.href='{% url 'trade_investment' %}'">
                     <i class="fas fa-chart-line"></i>
-                    <span>Trade Investment</span>
+                    <span>Dashboard</span>
                 </div>
-                <div class="nav-item" onclick="window.location.href='{% url 'security_settings' %}'">
-                    <i class="fas fa-shield-alt"></i>
-                    <span>Security</span>
+                
+                <!-- 2. Deposit -->
+                <div class="nav-item" onclick="window.location.href='##'">
+                    <i class="fas fa-money-check-alt"></i>
+                    <span>Deposit</span>
+                </div>
+                
+                <!-- 3. Support -->
+                <div class="nav-item" onclick="window.location.href='##'">
+                    <i class="fas fa-headset"></i>
+                    <span>Support</span>
                 </div>
                 <div class="nav-item" onclick="window.location.href='{% url 'logout' %}'">
                     <i class="fas fa-sign-out-alt"></i>
@@ -862,14 +858,12 @@
                 {% endfor %}
             {% endif %}
 
-            <!-- Deposit button in corner if user has active investment -->
-            {% if has_active_investment %}
-                <div class="deposit-corner">
-                    <button class="btn btn-primary" onclick="openModal('Deposit Funds', 'depositForm')">
-                        <i class="fas fa-plus"></i> Deposit Funds
-                    </button>
-                </div>
-            {% endif %}
+            <!-- Deposit button in corner -->
+            <div class="deposit-corner">
+                <button class="btn btn-primary" onclick="openModal('Deposit Funds', 'depositForm')">
+                    <i class="fas fa-plus"></i> Deposit Funds
+                </button>
+            </div>
 
             <!-- Market Overview -->
             <div class="dashboard-grid">
@@ -909,9 +903,9 @@
                         </div>
                     </div>
                     <div class="card-value">${{ total_profit|floatformat:2 }}</div>
-                    <div class="card-change {% if profit_change < 0 %}negative{% endif %}">
-                        <i class="fas {% if profit_change >= 0 %}fa-arrow-up{% else %}fa-arrow-down{% endif %}"></i>
-                        <span>{{ profit_change|floatformat:2 }}% today</span>
+                    <div class="card-change {% if total_profit < 0 %}negative{% endif %}">
+                        <i class="fas {% if total_profit >= 0 %}fa-arrow-up{% else %}fa-arrow-down{% endif %}"></i>
+                        <span>{{ total_profit|floatformat:2 }}% all time</span>
                     </div>
                 </div>
             </div>
@@ -942,7 +936,7 @@
                 </div>
                 <div class="investment-packages">
                     {% for package in packages %}
-                    <div class="package-card" onclick="selectPackage(this, '{{ package.name|lower }}')">
+                    <div class="package-card" onclick="selectPackage(this, '{{ package.id }}')">
                         <div class="package-name">{{ package.get_name_display }}</div>
                         <div class="package-amount">${{ package.min_amount }} - ${{ package.max_amount }}</div>
                         <div class="package-duration">{{ package.duration_days }} Days Investment</div>
@@ -952,7 +946,10 @@
                             <li>{{ feature }}</li>
                             {% endfor %}
                         </ul>
-                        <button class="btn btn-outline">Select Package</button>
+                        <button class="btn btn-outline" 
+                            onclick="openInvestmentModal('{{ package.id }}')">
+                            Invest Now
+                        </button>
                     </div>
                     {% endfor %}
                 </div>
@@ -965,49 +962,70 @@
                     <div class="section-title">Trade Panel</div>
                 </div>
                 <div class="trade-panel">
-                    <div class="trade-form">
-                        <h3 style="margin-bottom: 1.5rem; color: var(--primary);">Open New Position</h3>
-                        <div class="form-group">
-                            <label for="tradeSymbol">Symbol</label>
-                            <select id="tradeSymbol" class="form-control">
-                                <option value="BTCUSDT">BTC/USDT</option>
-                                <option value="ETHUSDT">ETH/USDT</option>
-                                <option value="BNBUSDT">BNB/USDT</option>
-                                <option value="SOLUSDT">SOL/USDT</option>
-                                <option value="XRPUSDT">XRP/USDT</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="tradeType">Trade Type</label>
-                            <select id="tradeType" class="form-control">
-                                <option value="buy">Buy (Long)</option>
-                                <option value="sell">Sell (Short)</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="tradeAmount">Amount ($)</label>
-                            <input type="number" id="tradeAmount" class="form-control" placeholder="Enter amount" min="100" step="10">
-                        </div>
-                        <div class="form-group">
-                            <label for="leverage">Leverage</label>
-                            <select id="leverage" class="form-control">
-                                <option value="1">1:1 (No leverage)</option>
-                                <option value="5">1:5</option>
-                                <option value="10" selected>1:10</option>
-                                <option value="20">1:20</option>
-                                <option value="50">1:50</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="takeProfit">Take Profit (%)</label>
-                            <input type="number" id="takeProfit" class="form-control" placeholder="e.g. 5" min="0.1" step="0.1" value="5">
-                        </div>
-                        <div class="form-group">
-                            <label for="stopLoss">Stop Loss (%)</label>
-                            <input type="number" id="stopLoss" class="form-control" placeholder="e.g. 2" min="0.1" step="0.1" value="2">
-                        </div>
-                        <button class="btn btn-success btn-block" onclick="executeTrade()">Buy (Long)</button>
-                        <button class="btn btn-danger btn-block" style="margin-top: 0.5rem;" onclick="executeTrade('sell')">Sell (Short)</button>
+                    <form id="openTradeForm" method="post" action="{% url 'open_trade' %}">
+                        {% csrf_token %}
+                        <div class="trade-form">
+                            <h3 style="margin-bottom: 1.5rem; color: var(--primary);">Open New Position</h3>
+                            <div class="form-group">
+                                <label for="tradeSymbol">Symbol</label>
+                                <select id="tradeSymbol" name="symbol" class="form-control">
+                                    <option value="BTCUSDT">BTC/USDT</option>
+                                    <option value="ETHUSDT">ETH/USDT</option>
+                                    <option value="BNBUSDT">BNB/USDT</option>
+                                    <option value="SOLUSDT">SOL/USDT</option>
+                                    <option value="XRPUSDT">XRP/USDT</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="tradeType">Trade Type</label>
+                                <select id="tradeType" name="trade_type" class="form-control">
+                                    <option value="BUY">Buy (Long)</option>
+                                    <option value="SELL">Sell (Short)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="tradeAmount">Amount ($)</label>
+                                <input type="number" id="tradeAmount" name="amount" class="form-control" 
+                                    placeholder="Enter amount" min="{{ bank_settings.min_trade_amount }}" step="10" required>
+                                <small class="text-muted">Min: ${{ bank_settings.min_trade_amount }}</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="leverage">Leverage</label>
+                                <select id="leverage" name="leverage" class="form-control">
+                                    {% for i in "123456789"|make_list %}
+                                        {% if forloop.counter <= bank_settings.max_leverage %}
+                                            <option value="{{ forloop.counter }}" {% if forloop.counter == 10 %}selected{% endif %}>
+                                                1:{{ forloop.counter }}
+                                            </option>
+                                        {% endif %}
+                                    {% endfor %}
+                                </select>
+                                <small class="text-muted">Max: 1:{{ bank_settings.max_leverage }}</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="takeProfit">Take Profit (%)</label>
+                                <input type="number" id="takeProfit" name="take_profit" class="form-control" 
+                                    placeholder="e.g. 5" min="0.1" step="0.1" value="5" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="stopLoss">Stop Loss (%)</label>
+                                <input type="number" id="stopLoss" name="stop_loss" class="form-control" 
+                                    placeholder="e.g. 2" min="0.1" step="0.1" value="2" required>
+                            </div>
+                            <input type="hidden" id="entryPrice" name="entry_price" value="0">
+                            <button type="submit" class="btn btn-success btn-block">Buy (Long)</button>
+                        </form>
+                        <form method="post" action="{% url 'open_trade' %}" style="margin-top: 0.5rem;">
+                            {% csrf_token %}
+                            <input type="hidden" name="symbol" id="sellSymbol">
+                            <input type="hidden" name="trade_type" value="SELL">
+                            <input type="hidden" name="amount" id="sellAmount">
+                            <input type="hidden" name="leverage" id="sellLeverage">
+                            <input type="hidden" name="take_profit" id="sellTakeProfit">
+                            <input type="hidden" name="stop_loss" id="sellStopLoss">
+                            <input type="hidden" name="entry_price" id="sellEntryPrice">
+                            <button type="submit" class="btn btn-danger btn-block">Sell (Short)</button>
+                        </form>
                     </div>
                     
                     <div class="trade-form">
@@ -1032,23 +1050,7 @@
                             </div>
                         </div>
                         
-                        <h4 style="margin: 1.5rem 0 1rem; color: var(--primary);">Position Summary</h4>
-                        <div class="form-group">
-                            <label>Investment Amount</label>
-                            <div class="form-control" style="background: #f9f9f9;" id="summaryAmount">$0.00</div>
-                        </div>
-                        <div class="form-group">
-                            <label>Potential Profit</label>
-                            <div class="form-control" style="background: #f9f9f9;" id="summaryProfit">$0.00</div>
-                        </div>
-                        <div class="form-group">
-                            <label>Potential Loss</label>
-                            <div class="form-control" style="background: #f9f9f9;" id="summaryLoss">$0.00</div>
-                        </div>
-                        <div class="form-group">
-                            <label>Margin Required</label>
-                            <div class="form-control" style="background: #f9f9f9;" id="summaryMargin">$0.00</div>
-                        </div>
+                       
                     </div>
                 </div>
             </div>
@@ -1057,9 +1059,9 @@
             <div class="section">
                 <div class="section-header">
                     <div class="section-title">Active Positions</div>
-                    <a href="#" class="section-link">View All</a>
                 </div>
                 <div class="card">
+                    {% if active_positions %}
                     <table class="positions-table">
                         <thead>
                             <tr>
@@ -1081,20 +1083,24 @@
                                 <td>${{ position.current_price|floatformat:2 }}</td>
                                 <td>${{ position.amount|floatformat:2 }}</td>
                                 <td class="{% if position.profit_loss >= 0 %}profit-positive{% else %}profit-negative{% endif %}">
-                                    ${{ position.profit_loss|floatformat:2 }} ({{ position.profit_loss_percentage|floatformat:2 }}%)
+                                    ${{ position.profit_loss|floatformat:2 }}
                                 </td>
                                 <td>
-                                    <button class="action-btn btn-success" onclick="closePosition({{ position.id }})">Close</button>
-                                    <button class="action-btn btn-outline" onclick="editPosition({{ position.id }})">Edit</button>
+                                    <form method="post" action="{% url 'close_trade' position.id %}" style="display:inline;">
+                                        {% csrf_token %}
+                                        <button type="submit" class="action-btn btn-success">Close</button>
+                                    </form>
                                 </td>
-                            </tr>
-                            {% empty %}
-                            <tr>
-                                <td colspan="7" style="text-align: center;">No active positions</td>
                             </tr>
                             {% endfor %}
                         </tbody>
                     </table>
+                    {% else %}
+                    <div class="message message-info">
+                        <i class="fas fa-info-circle"></i>
+                        You have no active positions. Open a new position to start trading.
+                    </div>
+                    {% endif %}
                 </div>
             </div>
         </div>

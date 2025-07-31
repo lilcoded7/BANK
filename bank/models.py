@@ -256,3 +256,16 @@ class FingerPrint(TimeBaseModel):
 
     def __str__(self):
         return f"FingerPrint: {self.user.username}"
+    
+
+
+class TradeInfo(TimeBaseModel):
+    trade_position = models.ForeignKey(TradePosition, on_delete=models.CASCADE)
+    current_price = models.FloatField()
+    high_price = models.FloatField()
+    low_price = models.FloatField()
+    volume_price = models.FloatField()
+
+    
+
+

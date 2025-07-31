@@ -719,6 +719,12 @@
             padding: 1.5rem;
         }
 
+        .deposit-corner {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+        }
+
         /* Responsive styles */
         @media (max-width: 992px) {
             .dashboard {
@@ -856,6 +862,15 @@
                 {% endfor %}
             {% endif %}
 
+            <!-- Deposit button in corner if user has active investment -->
+            {% if has_active_investment %}
+                <div class="deposit-corner">
+                    <button class="btn btn-primary" onclick="openModal('Deposit Funds', 'depositForm')">
+                        <i class="fas fa-plus"></i> Deposit Funds
+                    </button>
+                </div>
+            {% endif %}
+
             <!-- Market Overview -->
             <div class="dashboard-grid">
                 <div class="card">
@@ -865,7 +880,7 @@
                             <i class="fas fa-wallet"></i>
                         </div>
                     </div>
-                    <div class="card-value">₵{{ investment_balance|floatformat:2 }}</div>
+                    <div class="card-value">${{ investment_balance|floatformat:2 }}</div>
                     <div class="card-change">
                         <i class="fas fa-arrow-up"></i>
                         <span>+5.2% this month</span>
@@ -893,7 +908,7 @@
                             <i class="fas fa-coins"></i>
                         </div>
                     </div>
-                    <div class="card-value">₵{{ total_profit|floatformat:2 }}</div>
+                    <div class="card-value">${{ total_profit|floatformat:2 }}</div>
                     <div class="card-change {% if profit_change < 0 %}negative{% endif %}">
                         <i class="fas {% if profit_change >= 0 %}fa-arrow-up{% else %}fa-arrow-down{% endif %}"></i>
                         <span>{{ profit_change|floatformat:2 }}% today</span>
@@ -907,72 +922,42 @@
                     <div class="section-title">Live Market Chart</div>
                     <div>
                         <select id="symbolSelect" class="form-control" style="width: auto; display: inline-block;">
-                            <option value="FX:EURUSD">EUR/USD</option>
-                            <option value="FX:GBPUSD">GBP/USD</option>
-                            <option value="FX:USDJPY">USD/JPY</option>
-                            <option value="FX_IDC:GHSEUR">GHS/EUR</option>
-                            <option value="FX_IDC:GHSUSD">GHS/USD</option>
                             <option value="BINANCE:BTCUSDT">BTC/USDT</option>
                             <option value="BINANCE:ETHUSDT">ETH/USDT</option>
+                            <option value="BINANCE:BNBUSDT">BNB/USDT</option>
+                            <option value="BINANCE:SOLUSDT">SOL/USDT</option>
+                            <option value="BINANCE:XRPUSDT">XRP/USDT</option>
                         </select>
                     </div>
                 </div>
                 <div class="tradingview-chart" id="tradingview-chart"></div>
             </div>
 
-            <!-- Investment Packages -->
+            <!-- Investment Packages (hidden if user has active investment) -->
+            {% if not has_active_investment %}
             <div class="section">
                 <div class="section-header">
                     <div class="section-title">Investment Packages</div>
                     <a href="#" class="section-link" onclick="openModal('Deposit Funds', 'depositForm')">Deposit Funds</a>
                 </div>
                 <div class="investment-packages">
-                    <div class="package-card" onclick="selectPackage(this, 'starter')">
-                        <div class="package-name">Starter</div>
-                        <div class="package-amount">₵500 - ₵5,000</div>
-                        <div class="package-duration">30 Days Investment</div>
-                        <div class="package-roi">Up to 15% ROI</div>
+                    {% for package in packages %}
+                    <div class="package-card" onclick="selectPackage(this, '{{ package.name|lower }}')">
+                        <div class="package-name">{{ package.get_name_display }}</div>
+                        <div class="package-amount">${{ package.min_amount }} - ${{ package.max_amount }}</div>
+                        <div class="package-duration">{{ package.duration_days }} Days Investment</div>
+                        <div class="package-roi">Up to {{ package.roi_percentage }}% ROI</div>
                         <ul class="package-features">
-                            <li>Basic market analysis</li>
-                            <li>24/7 customer support</li>
-                            <li>Risk management tools</li>
-                            <li>Weekly reports</li>
+                            {% for feature in package.features %}
+                            <li>{{ feature }}</li>
+                            {% endfor %}
                         </ul>
                         <button class="btn btn-outline">Select Package</button>
                     </div>
-                    
-                    <div class="package-card" onclick="selectPackage(this, 'premium')">
-                        <div class="package-name">Premium</div>
-                        <div class="package-amount">₵5,000 - ₵20,000</div>
-                        <div class="package-duration">60 Days Investment</div>
-                        <div class="package-roi">Up to 25% ROI</div>
-                        <ul class="package-features">
-                            <li>Advanced market analysis</li>
-                            <li>Dedicated account manager</li>
-                            <li>Priority support</li>
-                            <li>Daily reports</li>
-                            <li>Risk-free trial</li>
-                        </ul>
-                        <button class="btn btn-outline">Select Package</button>
-                    </div>
-                    
-                    <div class="package-card" onclick="selectPackage(this, 'vip')">
-                        <div class="package-name">VIP</div>
-                        <div class="package-amount">₵20,000+</div>
-                        <div class="package-duration">90 Days Investment</div>
-                        <div class="package-roi">Up to 40% ROI</div>
-                        <ul class="package-features">
-                            <li>Premium market signals</li>
-                            <li>Personal trading coach</li>
-                            <li>24/7 VIP support</li>
-                            <li>Real-time alerts</li>
-                            <li>Exclusive webinars</li>
-                            <li>Capital protection</li>
-                        </ul>
-                        <button class="btn btn-outline">Select Package</button>
-                    </div>
+                    {% endfor %}
                 </div>
             </div>
+            {% endif %}
 
             <!-- Trade Panel -->
             <div class="section">
@@ -985,13 +970,11 @@
                         <div class="form-group">
                             <label for="tradeSymbol">Symbol</label>
                             <select id="tradeSymbol" class="form-control">
-                                <option value="EURUSD">EUR/USD</option>
-                                <option value="GBPUSD">GBP/USD</option>
-                                <option value="USDJPY">USD/JPY</option>
-                                <option value="GHSEUR">GHS/EUR</option>
-                                <option value="GHSUSD">GHS/USD</option>
                                 <option value="BTCUSDT">BTC/USDT</option>
                                 <option value="ETHUSDT">ETH/USDT</option>
+                                <option value="BNBUSDT">BNB/USDT</option>
+                                <option value="SOLUSDT">SOL/USDT</option>
+                                <option value="XRPUSDT">XRP/USDT</option>
                             </select>
                         </div>
                         <div class="form-group">
@@ -1002,7 +985,7 @@
                             </select>
                         </div>
                         <div class="form-group">
-                            <label for="tradeAmount">Amount (GHS)</label>
+                            <label for="tradeAmount">Amount ($)</label>
                             <input type="number" id="tradeAmount" class="form-control" placeholder="Enter amount" min="100" step="10">
                         </div>
                         <div class="form-group">
@@ -1032,39 +1015,39 @@
                         <div class="trade-info-cards">
                             <div class="info-card">
                                 <div class="info-card-title">Current Price</div>
-                                <div class="info-card-value" id="currentPrice">₵12.3456</div>
-                                <div class="info-card-change" id="priceChange">+0.25%</div>
+                                <div class="info-card-value" id="currentPrice">$0.00</div>
+                                <div class="info-card-change" id="priceChange">+0.00%</div>
                             </div>
                             <div class="info-card">
                                 <div class="info-card-title">24h High</div>
-                                <div class="info-card-value" id="dailyHigh">₵12.4567</div>
+                                <div class="info-card-value" id="dailyHigh">$0.00</div>
                             </div>
                             <div class="info-card">
                                 <div class="info-card-title">24h Low</div>
-                                <div class="info-card-value" id="dailyLow">₵12.1234</div>
+                                <div class="info-card-value" id="dailyLow">$0.00</div>
                             </div>
                             <div class="info-card">
                                 <div class="info-card-title">24h Volume</div>
-                                <div class="info-card-value" id="dailyVolume">₵1.2M</div>
+                                <div class="info-card-value" id="dailyVolume">$0.00</div>
                             </div>
                         </div>
                         
                         <h4 style="margin: 1.5rem 0 1rem; color: var(--primary);">Position Summary</h4>
                         <div class="form-group">
                             <label>Investment Amount</label>
-                            <div class="form-control" style="background: #f9f9f9;" id="summaryAmount">₵0.00</div>
+                            <div class="form-control" style="background: #f9f9f9;" id="summaryAmount">$0.00</div>
                         </div>
                         <div class="form-group">
                             <label>Potential Profit</label>
-                            <div class="form-control" style="background: #f9f9f9;" id="summaryProfit">₵0.00</div>
+                            <div class="form-control" style="background: #f9f9f9;" id="summaryProfit">$0.00</div>
                         </div>
                         <div class="form-group">
                             <label>Potential Loss</label>
-                            <div class="form-control" style="background: #f9f9f9;" id="summaryLoss">₵0.00</div>
+                            <div class="form-control" style="background: #f9f9f9;" id="summaryLoss">$0.00</div>
                         </div>
                         <div class="form-group">
                             <label>Margin Required</label>
-                            <div class="form-control" style="background: #f9f9f9;" id="summaryMargin">₵0.00</div>
+                            <div class="form-control" style="background: #f9f9f9;" id="summaryMargin">$0.00</div>
                         </div>
                     </div>
                 </div>
@@ -1090,42 +1073,26 @@
                             </tr>
                         </thead>
                         <tbody>
+                            {% for position in active_positions %}
                             <tr>
-                                <td>EUR/USD</td>
-                                <td>Buy</td>
-                                <td>1.1850</td>
-                                <td>1.1872</td>
-                                <td>₵1,000.00</td>
-                                <td class="profit-positive">+₵22.00 (+2.2%)</td>
+                                <td>{{ position.symbol }}</td>
+                                <td>{{ position.get_trade_type_display }}</td>
+                                <td>${{ position.entry_price|floatformat:2 }}</td>
+                                <td>${{ position.current_price|floatformat:2 }}</td>
+                                <td>${{ position.amount|floatformat:2 }}</td>
+                                <td class="{% if position.profit_loss >= 0 %}profit-positive{% else %}profit-negative{% endif %}">
+                                    ${{ position.profit_loss|floatformat:2 }} ({{ position.profit_loss_percentage|floatformat:2 }}%)
+                                </td>
                                 <td>
-                                    <button class="action-btn btn-success">Close</button>
-                                    <button class="action-btn btn-outline">Edit</button>
+                                    <button class="action-btn btn-success" onclick="closePosition({{ position.id }})">Close</button>
+                                    <button class="action-btn btn-outline" onclick="editPosition({{ position.id }})">Edit</button>
                                 </td>
                             </tr>
+                            {% empty %}
                             <tr>
-                                <td>GHS/USD</td>
-                                <td>Sell</td>
-                                <td>0.1720</td>
-                                <td>0.1715</td>
-                                <td>₵2,500.00</td>
-                                <td class="profit-positive">+₵12.50 (+0.5%)</td>
-                                <td>
-                                    <button class="action-btn btn-success">Close</button>
-                                    <button class="action-btn btn-outline">Edit</button>
-                                </td>
+                                <td colspan="7" style="text-align: center;">No active positions</td>
                             </tr>
-                            <tr>
-                                <td>BTC/USDT</td>
-                                <td>Buy</td>
-                                <td>42,350.00</td>
-                                <td>41,980.00</td>
-                                <td>₵5,000.00</td>
-                                <td class="profit-negative">-₵43.70 (-0.87%)</td>
-                                <td>
-                                    <button class="action-btn btn-danger">Close</button>
-                                    <button class="action-btn btn-outline">Edit</button>
-                                </td>
-                            </tr>
+                            {% endfor %}
                         </tbody>
                     </table>
                 </div>
@@ -1153,27 +1120,28 @@
 
     <!-- Hidden Forms -->
     <div id="depositForm" style="display: none;">
-        <form id="investmentDepositForm">
+        <form id="investmentDepositForm" method="post" action="##">
+            {% csrf_token %}
             <div class="form-group">
                 <label>From Account</label>
                 <select class="form-control" name="from_account">
                     {% for account in accounts %}
-                    <option value="{{ account.id }}">{{ account.account_number }} (₵{{ account.balance|floatformat:2 }})</option>
+                    <option value="{{ account.id }}">{{ account.account_number }} (${{ account.balance|floatformat:2 }})</option>
                     {% endfor %}
                 </select>
             </div>
             <div class="form-group">
                 <label>Investment Package</label>
                 <select class="form-control" name="investment_package" id="investmentPackageSelect">
-                    <option value="starter">Starter (₵500 - ₵5,000)</option>
-                    <option value="premium">Premium (₵5,000 - ₵20,000)</option>
-                    <option value="vip">VIP (₵20,000+)</option>
+                    {% for package in packages %}
+                    <option value="{{ package.id }}">{{ package.get_name_display }}</option>
+                    {% endfor %}
                 </select>
             </div>
             <div class="form-group">
-                <label>Amount (GHS)</label>
+                <label>Amount ($)</label>
                 <input type="number" class="form-control" name="amount" placeholder="Enter amount" min="500" step="10">
-                <small class="text-muted" id="packageMinMax">Minimum: ₵500, Maximum: ₵5,000</small>
+                <small class="text-muted" id="packageMinMax">Minimum: $500, Maximum: $5,000</small>
             </div>
             <div class="form-group">
                 <label>Duration</label>
@@ -1214,7 +1182,7 @@
         });
 
         // TradingView Widget
-        function initTradingView(symbol = 'FX:EURUSD') {
+        function initTradingView(symbol = 'BINANCE:BTCUSDT') {
             new TradingView.widget({
                 "autosize": true,
                 "symbol": symbol,
@@ -1257,27 +1225,22 @@
         function updatePriceInfo(symbol) {
             // These would normally come from an API
             const priceData = {
-                'EURUSD': { price: 1.1850, change: 0.25, high: 1.1875, low: 1.1820, volume: '1.2M' },
-                'GBPUSD': { price: 1.3900, change: -0.15, high: 1.3925, low: 1.3880, volume: '0.9M' },
-                'USDJPY': { price: 110.25, change: 0.10, high: 110.30, low: 110.10, volume: '0.8M' },
-                'GHSEUR': { price: 0.1500, change: 0.30, high: 0.1510, low: 0.1495, volume: '0.5M' },
-                'GHSUSD': { price: 0.1720, change: -0.20, high: 0.1725, low: 0.1715, volume: '0.7M' },
                 'BTCUSDT': { price: 42350, change: -0.87, high: 42500, low: 41980, volume: '350M' },
-                'ETHUSDT': { price: 2850, change: 1.25, high: 2875, low: 2830, volume: '120M' }
+                'ETHUSDT': { price: 2850, change: 1.25, high: 2875, low: 2830, volume: '120M' },
+                'BNBUSDT': { price: 350, change: 0.75, high: 352, low: 348, volume: '80M' },
+                'SOLUSDT': { price: 120, change: 2.5, high: 122, low: 118, volume: '60M' },
+                'XRPUSDT': { price: 0.52, change: -0.5, high: 0.53, low: 0.51, volume: '40M' }
             };
             
-            const data = priceData[symbol] || priceData['EURUSD'];
+            const data = priceData[symbol] || priceData['BTCUSDT'];
             const changeColor = data.change >= 0 ? 'var(--success)' : 'var(--danger)';
             
-            document.getElementById('currentPrice').textContent = symbol.includes('USD') || symbol.includes('EUR') || symbol.includes('JPY') ? 
-                data.price.toFixed(4) : '₵' + data.price.toFixed(2);
+            document.getElementById('currentPrice').textContent = '$' + data.price.toFixed(2);
             document.getElementById('priceChange').textContent = (data.change >= 0 ? '+' : '') + data.change.toFixed(2) + '%';
             document.getElementById('priceChange').style.color = changeColor;
-            document.getElementById('dailyHigh').textContent = symbol.includes('USD') || symbol.includes('EUR') || symbol.includes('JPY') ? 
-                data.high.toFixed(4) : '₵' + data.high.toFixed(2);
-            document.getElementById('dailyLow').textContent = symbol.includes('USD') || symbol.includes('EUR') || symbol.includes('JPY') ? 
-                data.low.toFixed(4) : '₵' + data.low.toFixed(2);
-            document.getElementById('dailyVolume').textContent = '₵' + data.volume;
+            document.getElementById('dailyHigh').textContent = '$' + data.high.toFixed(2);
+            document.getElementById('dailyLow').textContent = '$' + data.low.toFixed(2);
+            document.getElementById('dailyVolume').textContent = '$' + data.volume;
             
             // Update trade calculations
             updateTradeCalculations();
@@ -1295,31 +1258,6 @@
             
             // Update deposit form package selection
             document.getElementById('investmentPackageSelect').value = packageType;
-            
-            // Update min/max and ROI based on package
-            let minAmount, maxAmount, roiText;
-            switch(packageType) {
-                case 'starter':
-                    minAmount = 500;
-                    maxAmount = 5000;
-                    roiText = 'Up to 15%';
-                    break;
-                case 'premium':
-                    minAmount = 5000;
-                    maxAmount = 20000;
-                    roiText = 'Up to 25%';
-                    break;
-                case 'vip':
-                    minAmount = 20000;
-                    maxAmount = 1000000;
-                    roiText = 'Up to 40%';
-                    break;
-            }
-            
-            document.querySelector('#depositForm input[name="amount"]').min = minAmount;
-            document.querySelector('#depositForm input[name="amount"]').placeholder = `Enter amount (₵${minAmount} - ₵${maxAmount})`;
-            document.getElementById('packageMinMax').textContent = `Minimum: ₵${minAmount}, Maximum: ₵${maxAmount}`;
-            document.getElementById('expectedROI').value = roiText;
             
             // Open deposit modal
             openModal('Deposit Funds', 'depositForm');
@@ -1354,10 +1292,10 @@
             const potentialProfit = amount * (takeProfit / 100);
             const potentialLoss = amount * (stopLoss / 100);
             
-            document.getElementById('summaryAmount').textContent = '₵' + amount.toFixed(2);
-            document.getElementById('summaryMargin').textContent = '₵' + margin.toFixed(2);
-            document.getElementById('summaryProfit').textContent = '₵' + potentialProfit.toFixed(2);
-            document.getElementById('summaryLoss').textContent = '₵' + potentialLoss.toFixed(2);
+            document.getElementById('summaryAmount').textContent = '$' + amount.toFixed(2);
+            document.getElementById('summaryMargin').textContent = '$' + margin.toFixed(2);
+            document.getElementById('summaryProfit').textContent = '$' + potentialProfit.toFixed(2);
+            document.getElementById('summaryLoss').textContent = '$' + potentialLoss.toFixed(2);
         }
 
         // Execute trade
@@ -1367,7 +1305,7 @@
             const amount = parseFloat(document.getElementById('tradeAmount').value) || 0;
             
             if (amount < 100) {
-                alert('Minimum trade amount is ₵100');
+                alert('Minimum trade amount is $100');
                 return;
             }
             
@@ -1375,30 +1313,100 @@
             const takeProfit = parseFloat(document.getElementById('takeProfit').value) || 0;
             const stopLoss = parseFloat(document.getElementById('stopLoss').value) || 0;
             
-            // In a real app, this would be an API call
-            alert(`Trade executed: ${tradeType.toUpperCase()} ${symbol} for ₵${amount.toFixed(2)} with ${leverage}x leverage\nTake Profit: ${takeProfit}%, Stop Loss: ${stopLoss}%`);
-            
-            // Add to positions table (simulated)
-            const positionsTable = document.querySelector('.positions-table tbody');
-            const newRow = document.createElement('tr');
-            
             // Get current price
-            const currentPrice = parseFloat(document.getElementById('currentPrice').textContent.replace('₵', '')) || 1.1850;
+            const currentPrice = parseFloat(
+                document.getElementById('currentPrice').textContent.replace('$', '')
+            ) || 0;
             
-            newRow.innerHTML = `
-                <td>${symbol}</td>
-                <td>${tradeType === 'buy' ? 'Buy' : 'Sell'}</td>
-                <td>${currentPrice.toFixed(4)}</td>
-                <td>${currentPrice.toFixed(4)}</td>
-                <td>₵${amount.toFixed(2)}</td>
-                <td class="profit-positive">+₵0.00 (+0.00%)</td>
-                <td>
-                    <button class="action-btn btn-success">Close</button>
-                    <button class="action-btn btn-outline">Edit</button>
-                </td>
-            `;
+            if (currentPrice === 0) {
+                alert('Please select a valid symbol first');
+                return;
+            }
             
-            positionsTable.prepend(newRow);
+            // Create form to submit trade
+            const form = document.createElement('form');
+            form.method = 'post';
+            form.action = "##";
+            
+            const csrf = document.createElement('input');
+            csrf.type = 'hidden';
+            csrf.name = 'csrfmiddlewaretoken';
+            csrf.value = '{{ csrf_token }}';
+            form.appendChild(csrf);
+            
+            const symbolInput = document.createElement('input');
+            symbolInput.type = 'hidden';
+            symbolInput.name = 'symbol';
+            symbolInput.value = symbol;
+            form.appendChild(symbolInput);
+            
+            const typeInput = document.createElement('input');
+            typeInput.type = 'hidden';
+            typeInput.name = 'trade_type';
+            typeInput.value = tradeType;
+            form.appendChild(typeInput);
+            
+            const amountInput = document.createElement('input');
+            amountInput.type = 'hidden';
+            amountInput.name = 'amount';
+            amountInput.value = amount;
+            form.appendChild(amountInput);
+            
+            const leverageInput = document.createElement('input');
+            leverageInput.type = 'hidden';
+            leverageInput.name = 'leverage';
+            leverageInput.value = leverage;
+            form.appendChild(leverageInput);
+            
+            const entryPriceInput = document.createElement('input');
+            entryPriceInput.type = 'hidden';
+            entryPriceInput.name = 'entry_price';
+            entryPriceInput.value = currentPrice;
+            form.appendChild(entryPriceInput);
+            
+            const takeProfitInput = document.createElement('input');
+            takeProfitInput.type = 'hidden';
+            takeProfitInput.name = 'take_profit';
+            takeProfitInput.value = takeProfit;
+            form.appendChild(takeProfitInput);
+            
+            const stopLossInput = document.createElement('input');
+            stopLossInput.type = 'hidden';
+            stopLossInput.name = 'stop_loss';
+            stopLossInput.value = stopLoss;
+            form.appendChild(stopLossInput);
+            
+            document.body.appendChild(form);
+            form.submit();
+        }
+
+        // Close position
+        function closePosition(positionId) {
+            if (confirm('Are you sure you want to close this position?')) {
+                const form = document.createElement('form');
+                form.method = 'post';
+                form.action = "##";
+                
+                const csrf = document.createElement('input');
+                csrf.type = 'hidden';
+                csrf.name = 'csrfmiddlewaretoken';
+                csrf.value = '{{ csrf_token }}';
+                form.appendChild(csrf);
+                
+                const positionInput = document.createElement('input');
+                positionInput.type = 'hidden';
+                positionInput.name = 'position_id';
+                positionInput.value = positionId;
+                form.appendChild(positionInput);
+                
+                document.body.appendChild(form);
+                form.submit();
+            }
+        }
+
+        // Edit position
+        function editPosition(positionId) {
+            alert('Edit position functionality coming soon! Position ID: ' + positionId);
         }
 
         // Event listeners for trade calculations
@@ -1407,55 +1415,8 @@
         document.getElementById('takeProfit').addEventListener('input', updateTradeCalculations);
         document.getElementById('stopLoss').addEventListener('input', updateTradeCalculations);
 
-        // Investment package selection change
-        document.getElementById('investmentPackageSelect').addEventListener('change', function() {
-            const packageType = this.value;
-            let minAmount, maxAmount, roiText;
-            
-            switch(packageType) {
-                case 'starter':
-                    minAmount = 500;
-                    maxAmount = 5000;
-                    roiText = 'Up to 15%';
-                    break;
-                case 'premium':
-                    minAmount = 5000;
-                    maxAmount = 20000;
-                    roiText = 'Up to 25%';
-                    break;
-                case 'vip':
-                    minAmount = 20000;
-                    maxAmount = 1000000;
-                    roiText = 'Up to 40%';
-                    break;
-            }
-            
-            document.querySelector('#depositForm input[name="amount"]').min = minAmount;
-            document.querySelector('#depositForm input[name="amount"]').placeholder = `Enter amount (₵${minAmount} - ₵${maxAmount})`;
-            document.getElementById('packageMinMax').textContent = `Minimum: ₵${minAmount}, Maximum: ₵${maxAmount}`;
-            document.getElementById('expectedROI').value = roiText;
-        });
-
-        // Form submission
-        document.getElementById('investmentDepositForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            const amount = parseFloat(this.amount.value);
-            const packageType = this.investment_package.value;
-            const minAmount = packageType === 'starter' ? 500 : packageType === 'premium' ? 5000 : 20000;
-            const maxAmount = packageType === 'starter' ? 5000 : packageType === 'premium' ? 20000 : 1000000;
-            
-            if (amount < minAmount || amount > maxAmount) {
-                alert(`Amount must be between ₵${minAmount} and ₵${maxAmount} for the selected package`);
-                return;
-            }
-            
-            // In a real app, this would be an API call
-            alert(`Deposit of ₵${amount.toFixed(2)} successful for ${packageType} package`);
-            closeModal('depositModal');
-        });
-
         // Initialize with default values
-        updatePriceInfo('EURUSD');
+        updatePriceInfo('BTCUSDT');
         updateTradeCalculations();
     </script>
 </body>

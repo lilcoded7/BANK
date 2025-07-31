@@ -13,7 +13,7 @@ class Account(TimeBaseModel):
         ("SAVINGS", "Savings Account"),
         ("CHECKING", "Checking Account"),
         ("FIXED", "Fixed Deposit"),
-        ("INVESTMENT", "Investment Account"),  # New account type
+        ("INVESTMENT", "Investment Account"),  
     ]
 
     STATUS_CHOICES = [

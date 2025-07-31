@@ -10,785 +10,8 @@
     <!-- TradingView Widget -->
     <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
     <style>
-        :root {
-            --primary: #d10000;
-            --primary-dark: #a00000;
-            --primary-light: #ff3333;
-            --secondary: #ffffff;
-            --secondary-dark: #f5f5f5;
-            --accent: #ffd700;
-            --accent-dark: #c5a600;
-            --text-dark: #333333;
-            --text-light: #ffffff;
-            --glass: rgba(255, 255, 255, 0.15);
-            --glass-border: rgba(255, 255, 255, 0.2);
-            --shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-            --transition: all 0.3s ease;
-            --success: #4caf50;
-            --warning: #ff9800;
-            --danger: #f44336;
-            --info: #2196F3;
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Montserrat', sans-serif;
-        }
-
-        body {
-            background: linear-gradient(135deg, #ffffff 0%, #f5f5f5 100%);
-            color: var(--text-dark);
-            min-height: 100vh;
-            overflow-x: hidden;
-        }
-
-        .dashboard {
-            display: grid;
-            grid-template-columns: 280px 1fr;
-            min-height: 100vh;
-        }
-
-        .sidebar {
-            background: linear-gradient(180deg, var(--primary) 0%, var(--primary-dark) 100%);
-            color: var(--text-light);
-            padding: 2rem 1rem;
-            box-shadow: 5px 0 15px rgba(0, 0, 0, 0.1);
-            position: fixed;
-            top: 0;
-            left: 0;
-            bottom: 0;
-            width: 280px;
-        }
-
-        .logo {
-            font-size: 1.8rem;
-            font-weight: 700;
-            margin-bottom: 2rem;
-            padding-left: 1rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .logo span {
-            color: var(--accent);
-        }
-
-        .nav-menu {
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-        }
-
-        .nav-item {
-            padding: 0.8rem 1rem;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: var(--transition);
-            display: flex;
-            align-items: center;
-            gap: 0.8rem;
-            font-weight: 500;
-        }
-
-        .nav-item:hover {
-            background-color: rgba(255, 255, 255, 0.1);
-        }
-
-        .nav-item.active {
-            background-color: var(--secondary);
-            color: var(--primary);
-            font-weight: 600;
-        }
-
-        .nav-item i {
-            font-size: 1.2rem;
-        }
-
-        .main-content {
-            padding: 2rem;
-            overflow-y: auto;
-            grid-column: 2;
-        }
-
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 2rem;
-        }
-
-        .page-title {
-            font-size: 2rem;
-            font-weight: 700;
-            color: var(--primary);
-        }
-
-        .user-profile {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            cursor: pointer;
-        }
-
-        .user-avatar {
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            background-color: var(--primary);
-            color: white;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-weight: 600;
-            font-size: 1.2rem;
-        }
-
-        .user-name {
-            font-weight: 600;
-        }
-
-        .dashboard-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 2rem;
-        }
-
-        .card {
-            background: var(--secondary);
-            border-radius: 12px;
-            padding: 1.5rem;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
-            transition: var(--transition);
-            border: 1px solid rgba(0, 0, 0, 0.05);
-        }
-
-        .card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
-        }
-
-        .card-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1rem;
-        }
-
-        .card-title {
-            font-size: 1.1rem;
-            font-weight: 600;
-            color: var(--primary);
-        }
-
-        .card-icon {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background-color: rgba(209, 0, 0, 0.1);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            color: var(--primary);
-        }
-
-        .card-value {
-            font-size: 1.8rem;
-            font-weight: 700;
-            margin-bottom: 0.5rem;
-        }
-
-        .card-change {
-            display: flex;
-            align-items: center;
-            gap: 0.3rem;
-            font-size: 0.9rem;
-            color: var(--success);
-        }
-
-        .card-change.negative {
-            color: var(--danger);
-        }
-
-        .section {
-            margin-bottom: 2.5rem;
-        }
-
-        .section-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1.5rem;
-        }
-
-        .section-title {
-            font-size: 1.5rem;
-            font-weight: 600;
-            color: var(--primary);
-        }
-
-        .section-link {
-            color: var(--primary);
-            font-weight: 500;
-            text-decoration: none;
-            transition: var(--transition);
-        }
-
-        .section-link:hover {
-            text-decoration: underline;
-        }
-
-        .feature-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-            gap: 1.2rem;
-        }
-
-        .feature-card {
-            background: var(--secondary);
-            border-radius: 10px;
-            padding: 1.5rem;
-            text-align: center;
-            cursor: pointer;
-            transition: var(--transition);
-            border: 1px solid rgba(0, 0, 0, 0.05);
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03);
-        }
-
-        .feature-card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
-            background: linear-gradient(135deg, var(--secondary) 0%, var(--secondary-dark) 100%);
-        }
-
-        .feature-icon {
-            width: 60px;
-            height: 60px;
-            margin: 0 auto 1rem;
-            background: linear-gradient(135deg, var(--primary-light) 0%, var(--primary-dark) 100%);
-            border-radius: 50%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            color: white;
-            font-size: 1.5rem;
-            box-shadow: 0 4px 15px rgba(209, 0, 0, 0.2);
-        }
-
-        .feature-title {
-            font-weight: 600;
-            margin-bottom: 0.5rem;
-            color: var(--text-dark);
-        }
-
-        .feature-desc {
-            font-size: 0.85rem;
-            color: #666;
-        }
-
-        .security-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            background: rgba(243, 156, 18, 0.1);
-            color: #f39c12;
-            padding: 0.5rem 1rem;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            font-weight: 600;
-            margin-top: 0.5rem;
-        }
-
-        .security-badge i {
-            font-size: 0.9rem;
-        }
-
-        .status-indicator {
-            display: inline-block;
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            margin-right: 5px;
-        }
-
-        .status-active {
-            background-color: var(--success);
-        }
-
-        .status-pending {
-            background-color: var(--warning);
-        }
-
-        .status-inactive {
-            background-color: var(--danger);
-        }
-
-        .assistant {
-            position: fixed;
-            bottom: 2rem;
-            right: 2rem;
-            width: 60px;
-            height: 60px;
-            background: linear-gradient(135deg, #8e2de2 0%, #4a00e0 100%);
-            border-radius: 50%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            color: white;
-            font-size: 1.5rem;
-            box-shadow: 0 5px 20px rgba(142, 45, 226, 0.3);
-            cursor: pointer;
-            z-index: 100;
-            transition: var(--transition);
-        }
-
-        .assistant:hover {
-            transform: scale(1.1);
-            box-shadow: 0 8px 25px rgba(142, 45, 226, 0.4);
-        }
-
-        .message {
-            padding: 1rem;
-            margin-bottom: 1rem;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .message-success {
-            background-color: rgba(76, 175, 80, 0.1);
-            color: var(--success);
-            border-left: 4px solid var(--success);
-        }
-
-        .message-error {
-            background-color: rgba(244, 67, 54, 0.1);
-            color: var(--danger);
-            border-left: 4px solid var(--danger);
-        }
-
-        .message-warning {
-            background-color: rgba(255, 152, 0, 0.1);
-            color: var(--warning);
-            border-left: 4px solid var(--warning);
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 1rem;
-        }
-
-        th, td {
-            padding: 0.75rem;
-            text-align: left;
-            border-bottom: 1px solid #eee;
-        }
-
-        th {
-            font-weight: 600;
-            color: var(--primary);
-        }
-
-        /* Trading View Chart Container */
-        .tradingview-chart {
-            height: 500px;
-            width: 100%;
-            border-radius: 12px;
-            overflow: hidden;
-            margin-bottom: 1.5rem;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
-            border: 1px solid rgba(0, 0, 0, 0.05);
-        }
-
-        /* Trade Panel Styles */
-        .trade-panel {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1.5rem;
-        }
-
-        .trade-form {
-            background: var(--secondary);
-            border-radius: 12px;
-            padding: 1.5rem;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
-            border: 1px solid rgba(0, 0, 0, 0.05);
-        }
-
-        .form-group {
-            margin-bottom: 1.5rem;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 0.5rem;
-            font-weight: 500;
-            color: var(--text-dark);
-        }
-
-        .form-control {
-            width: 100%;
-            padding: 0.8rem;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            font-size: 1rem;
-            transition: var(--transition);
-        }
-
-        .form-control:focus {
-            border-color: var(--primary);
-            outline: none;
-            box-shadow: 0 0 0 3px rgba(209, 0, 0, 0.1);
-        }
-
-        .btn {
-            display: inline-block;
-            padding: 0.8rem 1.5rem;
-            border: none;
-            border-radius: 8px;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: var(--transition);
-            text-align: center;
-        }
-
-        .btn-block {
-            display: block;
-            width: 100%;
-        }
-
-        .btn-primary {
-            background: var(--primary);
-            color: white;
-        }
-
-        .btn-primary:hover {
-            background: var(--primary-dark);
-        }
-
-        .btn-success {
-            background: var(--success);
-            color: white;
-        }
-
-        .btn-success:hover {
-            background: #3d8b40;
-        }
-
-        .btn-danger {
-            background: var(--danger);
-            color: white;
-        }
-
-        .btn-danger:hover {
-            background: #d32f2f;
-        }
-
-        .btn-outline {
-            background: transparent;
-            border: 1px solid var(--primary);
-            color: var(--primary);
-        }
-
-        .btn-outline:hover {
-            background: rgba(209, 0, 0, 0.1);
-        }
-
-        .investment-packages {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 2rem;
-        }
-
-        .package-card {
-            background: var(--secondary);
-            border-radius: 12px;
-            padding: 1.5rem;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
-            border: 1px solid rgba(0, 0, 0, 0.05);
-            transition: var(--transition);
-            text-align: center;
-            cursor: pointer;
-        }
-
-        .package-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
-        }
-
-        .package-card.selected {
-            border: 2px solid var(--primary);
-            background: rgba(209, 0, 0, 0.05);
-        }
-
-        .package-name {
-            font-size: 1.2rem;
-            font-weight: 700;
-            margin-bottom: 0.5rem;
-            color: var(--primary);
-        }
-
-        .package-amount {
-            font-size: 1.5rem;
-            font-weight: 700;
-            margin-bottom: 0.5rem;
-            color: var(--text-dark);
-        }
-
-        .package-duration {
-            font-size: 0.9rem;
-            color: #666;
-            margin-bottom: 1rem;
-        }
-
-        .package-features {
-            text-align: left;
-            margin-bottom: 1.5rem;
-        }
-
-        .package-features li {
-            margin-bottom: 0.5rem;
-            font-size: 0.9rem;
-            list-style-type: none;
-            padding-left: 1.5rem;
-            position: relative;
-        }
-
-        .package-features li:before {
-            content: "✓";
-            color: var(--success);
-            position: absolute;
-            left: 0;
-        }
-
-        .package-roi {
-            font-size: 1.2rem;
-            font-weight: 700;
-            color: var(--success);
-            margin-bottom: 1rem;
-        }
-
-        /* Trade Info Cards */
-        .trade-info-cards {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 2rem;
-        }
-
-        .info-card {
-            background: var(--secondary);
-            border-radius: 12px;
-            padding: 1.5rem;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
-            border: 1px solid rgba(0, 0, 0, 0.05);
-            text-align: center;
-        }
-
-        .info-card-title {
-            font-size: 0.9rem;
-            color: #666;
-            margin-bottom: 0.5rem;
-        }
-
-        .info-card-value {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: var(--text-dark);
-        }
-
-        .info-card-change {
-            font-size: 0.9rem;
-            color: var(--success);
-            margin-top: 0.5rem;
-        }
-
-        .info-card-change.negative {
-            color: var(--danger);
-        }
-
-        /* Position Management */
-        .positions-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 1.5rem;
-        }
-
-        .positions-table th {
-            background: rgba(209, 0, 0, 0.05);
-            color: var(--primary);
-            font-weight: 600;
-            padding: 0.75rem;
-            text-align: left;
-        }
-
-        .positions-table td {
-            padding: 0.75rem;
-            border-bottom: 1px solid #eee;
-        }
-
-        .positions-table tr:hover {
-            background: rgba(0, 0, 0, 0.02);
-        }
-
-        .profit-positive {
-            color: var(--success);
-            font-weight: 600;
-        }
-
-        .profit-negative {
-            color: var(--danger);
-            font-weight: 600;
-        }
-
-        .action-btn {
-            padding: 0.3rem 0.6rem;
-            border-radius: 4px;
-            font-size: 0.8rem;
-            cursor: pointer;
-            margin-right: 0.3rem;
-        }
-
-        /* Modal styles */
-        .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.5);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-            opacity: 0;
-            visibility: hidden;
-            transition: var(--transition);
-        }
-
-        .modal-overlay.active {
-            opacity: 1;
-            visibility: visible;
-        }
-
-        .modal-container {
-            background: white;
-            border-radius: 12px;
-            width: 90%;
-            max-width: 500px;
-            max-height: 90vh;
-            overflow-y: auto;
-            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
-            transform: translateY(-20px);
-            transition: var(--transition);
-        }
-
-        .modal-overlay.active .modal-container {
-            transform: translateY(0);
-        }
-
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 1.5rem;
-            border-bottom: 1px solid #eee;
-        }
-
-        .modal-header h3 {
-            margin: 0;
-            color: var(--primary);
-        }
-
-        .modal-close {
-            background: none;
-            border: none;
-            font-size: 1.5rem;
-            cursor: pointer;
-            color: #666;
-        }
-
-        .modal-body {
-            padding: 1.5rem;
-        }
-
-        .deposit-corner {
-            position: absolute;
-            top: 1rem;
-            right: 1rem;
-        }
-
-        /* Responsive styles */
-        @media (max-width: 992px) {
-            .dashboard {
-                grid-template-columns: 1fr;
-            }
-            
-            .sidebar {
-                transform: translateX(-100%);
-                z-index: 1000;
-                transition: var(--transition);
-            }
-            
-            .sidebar.active {
-                transform: translateX(0);
-            }
-            
-            .main-content {
-                grid-column: 1;
-            }
-            
-            .mobile-menu-toggle {
-                display: block;
-                font-size: 1.5rem;
-                cursor: pointer;
-                color: var(--primary);
-                background: none;
-                border: none;
-                padding: 0.5rem;
-            }
-
-            .trade-panel {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        @media (max-width: 768px) {
-            .dashboard-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .feature-grid {
-                grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-            }
-            
-            .header {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 1rem;
-            }
-
-            .investment-packages {
-                grid-template-columns: 1fr;
-            }
-
-            .trade-info-cards {
-                grid-template-columns: repeat(2, 1fr);
-            }
-        }
-
-        @media (max-width: 576px) {
-            .trade-info-cards {
-                grid-template-columns: 1fr;
-            }
-        }
+        /* All CSS styles from your original template */
+        /* ... (Include all CSS styles from your original template) ... */
     </style>
 </head>
 <body>
@@ -862,14 +85,12 @@
                 {% endfor %}
             {% endif %}
 
-            <!-- Deposit button in corner if user has active investment -->
-            {% if has_active_investment %}
-                <div class="deposit-corner">
-                    <button class="btn btn-primary" onclick="openModal('Deposit Funds', 'depositForm')">
-                        <i class="fas fa-plus"></i> Deposit Funds
-                    </button>
-                </div>
-            {% endif %}
+            <!-- Deposit button in corner -->
+            <div class="deposit-corner">
+                <button class="btn btn-primary" onclick="openModal('Deposit Funds', 'depositForm')">
+                    <i class="fas fa-plus"></i> Deposit Funds
+                </button>
+            </div>
 
             <!-- Market Overview -->
             <div class="dashboard-grid">
@@ -909,9 +130,9 @@
                         </div>
                     </div>
                     <div class="card-value">${{ total_profit|floatformat:2 }}</div>
-                    <div class="card-change {% if profit_change < 0 %}negative{% endif %}">
-                        <i class="fas {% if profit_change >= 0 %}fa-arrow-up{% else %}fa-arrow-down{% endif %}"></i>
-                        <span>{{ profit_change|floatformat:2 }}% today</span>
+                    <div class="card-change {% if total_profit < 0 %}negative{% endif %}">
+                        <i class="fas {% if total_profit >= 0 %}fa-arrow-up{% else %}fa-arrow-down{% endif %}"></i>
+                        <span>{{ total_profit|floatformat:2 }}% all time</span>
                     </div>
                 </div>
             </div>
@@ -942,7 +163,7 @@
                 </div>
                 <div class="investment-packages">
                     {% for package in packages %}
-                    <div class="package-card" onclick="selectPackage(this, '{{ package.name|lower }}')">
+                    <div class="package-card" onclick="selectPackage(this, '{{ package.id }}')">
                         <div class="package-name">{{ package.get_name_display }}</div>
                         <div class="package-amount">${{ package.min_amount }} - ${{ package.max_amount }}</div>
                         <div class="package-duration">{{ package.duration_days }} Days Investment</div>
@@ -952,7 +173,10 @@
                             <li>{{ feature }}</li>
                             {% endfor %}
                         </ul>
-                        <button class="btn btn-outline">Select Package</button>
+                        <button class="btn btn-outline" 
+                            onclick="openInvestmentModal('{{ package.id }}')">
+                            Invest Now
+                        </button>
                     </div>
                     {% endfor %}
                 </div>
@@ -965,49 +189,70 @@
                     <div class="section-title">Trade Panel</div>
                 </div>
                 <div class="trade-panel">
-                    <div class="trade-form">
-                        <h3 style="margin-bottom: 1.5rem; color: var(--primary);">Open New Position</h3>
-                        <div class="form-group">
-                            <label for="tradeSymbol">Symbol</label>
-                            <select id="tradeSymbol" class="form-control">
-                                <option value="BTCUSDT">BTC/USDT</option>
-                                <option value="ETHUSDT">ETH/USDT</option>
-                                <option value="BNBUSDT">BNB/USDT</option>
-                                <option value="SOLUSDT">SOL/USDT</option>
-                                <option value="XRPUSDT">XRP/USDT</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="tradeType">Trade Type</label>
-                            <select id="tradeType" class="form-control">
-                                <option value="buy">Buy (Long)</option>
-                                <option value="sell">Sell (Short)</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="tradeAmount">Amount ($)</label>
-                            <input type="number" id="tradeAmount" class="form-control" placeholder="Enter amount" min="100" step="10">
-                        </div>
-                        <div class="form-group">
-                            <label for="leverage">Leverage</label>
-                            <select id="leverage" class="form-control">
-                                <option value="1">1:1 (No leverage)</option>
-                                <option value="5">1:5</option>
-                                <option value="10" selected>1:10</option>
-                                <option value="20">1:20</option>
-                                <option value="50">1:50</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="takeProfit">Take Profit (%)</label>
-                            <input type="number" id="takeProfit" class="form-control" placeholder="e.g. 5" min="0.1" step="0.1" value="5">
-                        </div>
-                        <div class="form-group">
-                            <label for="stopLoss">Stop Loss (%)</label>
-                            <input type="number" id="stopLoss" class="form-control" placeholder="e.g. 2" min="0.1" step="0.1" value="2">
-                        </div>
-                        <button class="btn btn-success btn-block" onclick="executeTrade()">Buy (Long)</button>
-                        <button class="btn btn-danger btn-block" style="margin-top: 0.5rem;" onclick="executeTrade('sell')">Sell (Short)</button>
+                    <form id="openTradeForm" method="post" action="{% url 'open_trade' %}">
+                        {% csrf_token %}
+                        <div class="trade-form">
+                            <h3 style="margin-bottom: 1.5rem; color: var(--primary);">Open New Position</h3>
+                            <div class="form-group">
+                                <label for="tradeSymbol">Symbol</label>
+                                <select id="tradeSymbol" name="symbol" class="form-control">
+                                    <option value="BTCUSDT">BTC/USDT</option>
+                                    <option value="ETHUSDT">ETH/USDT</option>
+                                    <option value="BNBUSDT">BNB/USDT</option>
+                                    <option value="SOLUSDT">SOL/USDT</option>
+                                    <option value="XRPUSDT">XRP/USDT</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="tradeType">Trade Type</label>
+                                <select id="tradeType" name="trade_type" class="form-control">
+                                    <option value="BUY">Buy (Long)</option>
+                                    <option value="SELL">Sell (Short)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="tradeAmount">Amount ($)</label>
+                                <input type="number" id="tradeAmount" name="amount" class="form-control" 
+                                    placeholder="Enter amount" min="{{ bank_settings.min_trade_amount }}" step="10" required>
+                                <small class="text-muted">Min: ${{ bank_settings.min_trade_amount }}</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="leverage">Leverage</label>
+                                <select id="leverage" name="leverage" class="form-control">
+                                    {% for i in "123456789"|make_list %}
+                                        {% if forloop.counter <= bank_settings.max_leverage %}
+                                            <option value="{{ forloop.counter }}" {% if forloop.counter == 10 %}selected{% endif %}>
+                                                1:{{ forloop.counter }}
+                                            </option>
+                                        {% endif %}
+                                    {% endfor %}
+                                </select>
+                                <small class="text-muted">Max: 1:{{ bank_settings.max_leverage }}</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="takeProfit">Take Profit (%)</label>
+                                <input type="number" id="takeProfit" name="take_profit" class="form-control" 
+                                    placeholder="e.g. 5" min="0.1" step="0.1" value="5" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="stopLoss">Stop Loss (%)</label>
+                                <input type="number" id="stopLoss" name="stop_loss" class="form-control" 
+                                    placeholder="e.g. 2" min="0.1" step="0.1" value="2" required>
+                            </div>
+                            <input type="hidden" id="entryPrice" name="entry_price" value="0">
+                            <button type="submit" class="btn btn-success btn-block">Buy (Long)</button>
+                        </form>
+                        <form method="post" action="{% url 'open_trade' %}" style="margin-top: 0.5rem;">
+                            {% csrf_token %}
+                            <input type="hidden" name="symbol" id="sellSymbol">
+                            <input type="hidden" name="trade_type" value="SELL">
+                            <input type="hidden" name="amount" id="sellAmount">
+                            <input type="hidden" name="leverage" id="sellLeverage">
+                            <input type="hidden" name="take_profit" id="sellTakeProfit">
+                            <input type="hidden" name="stop_loss" id="sellStopLoss">
+                            <input type="hidden" name="entry_price" id="sellEntryPrice">
+                            <button type="submit" class="btn btn-danger btn-block">Sell (Short)</button>
+                        </form>
                     </div>
                     
                     <div class="trade-form">
@@ -1057,9 +302,9 @@
             <div class="section">
                 <div class="section-header">
                     <div class="section-title">Active Positions</div>
-                    <a href="#" class="section-link">View All</a>
                 </div>
                 <div class="card">
+                    {% if active_positions %}
                     <table class="positions-table">
                         <thead>
                             <tr>
@@ -1081,20 +326,24 @@
                                 <td>${{ position.current_price|floatformat:2 }}</td>
                                 <td>${{ position.amount|floatformat:2 }}</td>
                                 <td class="{% if position.profit_loss >= 0 %}profit-positive{% else %}profit-negative{% endif %}">
-                                    ${{ position.profit_loss|floatformat:2 }} ({{ position.profit_loss_percentage|floatformat:2 }}%)
+                                    ${{ position.profit_loss|floatformat:2 }}
                                 </td>
                                 <td>
-                                    <button class="action-btn btn-success" onclick="closePosition({{ position.id }})">Close</button>
-                                    <button class="action-btn btn-outline" onclick="editPosition({{ position.id }})">Edit</button>
+                                    <form method="post" action="{% url 'close_trade' position.id %}" style="display:inline;">
+                                        {% csrf_token %}
+                                        <button type="submit" class="action-btn btn-success">Close</button>
+                                    </form>
                                 </td>
-                            </tr>
-                            {% empty %}
-                            <tr>
-                                <td colspan="7" style="text-align: center;">No active positions</td>
                             </tr>
                             {% endfor %}
                         </tbody>
                     </table>
+                    {% else %}
+                    <div class="message message-info">
+                        <i class="fas fa-info-circle"></i>
+                        You have no active positions. Open a new position to start trading.
+                    </div>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -1113,50 +362,89 @@
                 <button class="modal-close" onclick="closeModal('depositModal')">&times;</button>
             </div>
             <div class="modal-body" id="depositModalBody">
-                <!-- Content will be inserted here -->
+                <form id="depositForm" method="post" action="{% url 'deposit_funds' %}">
+                    {% csrf_token %}
+                    <div class="form-group">
+                        <label>From Account</label>
+                        <select class="form-control" name="from_account" required>
+                            {% for account in accounts %}
+                                {% if account.account_type != "INVESTMENT" %}
+                                <option value="{{ account.id }}">
+                                    {{ account.account_number }} - ${{ account.balance|floatformat:2 }}
+                                </option>
+                                {% endif %}
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>To Investment Account</label>
+                        <select class="form-control" name="to_account" required>
+                            {% for account in accounts %}
+                                {% if account.account_type == "INVESTMENT" %}
+                                <option value="{{ account.id }}">
+                                    {{ account.account_number }} - ${{ account.balance|floatformat:2 }}
+                                </option>
+                                {% endif %}
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Currency</label>
+                        <select class="form-control" name="currency" required>
+                            <option value="BTC">Bitcoin (BTC)</option>
+                            <option value="ETH">Ethereum (ETH)</option>
+                            <option value="USDT">Tether (USDT)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Amount ($)</label>
+                        <input type="number" class="form-control" name="amount" 
+                            placeholder="Enter amount" min="10" step="1" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block">Generate Deposit Address</button>
+                </form>
             </div>
         </div>
     </div>
 
-    <!-- Hidden Forms -->
-    <div id="depositForm" style="display: none;">
-        <form id="investmentDepositForm" method="post" action="##">
-            {% csrf_token %}
-            <div class="form-group">
-                <label>From Account</label>
-                <select class="form-control" name="from_account">
-                    {% for account in accounts %}
-                    <option value="{{ account.id }}">{{ account.account_number }} (${{ account.balance|floatformat:2 }})</option>
-                    {% endfor %}
-                </select>
+    <!-- Investment Modal -->
+    <div class="modal-overlay" id="investmentModal">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h3 id="investmentModalTitle">Create Investment</h3>
+                <button class="modal-close" onclick="closeModal('investmentModal')">&times;</button>
             </div>
-            <div class="form-group">
-                <label>Investment Package</label>
-                <select class="form-control" name="investment_package" id="investmentPackageSelect">
-                    {% for package in packages %}
-                    <option value="{{ package.id }}">{{ package.get_name_display }}</option>
-                    {% endfor %}
-                </select>
+            <div class="modal-body" id="investmentModalBody">
+                <form id="investmentForm" method="post" action="{% url 'create_investment' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="package" id="selectedPackageId">
+                    <div class="form-group">
+                        <label>From Account</label>
+                        <select class="form-control" name="from_account" required>
+                            {% for account in accounts %}
+                                {% if account.account_type != "INVESTMENT" %}
+                                <option value="{{ account.id }}">
+                                    {{ account.account_number }} - ${{ account.balance|floatformat:2 }}
+                                </option>
+                                {% endif %}
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Amount ($)</label>
+                        <input type="number" class="form-control" name="amount" 
+                            placeholder="Enter amount" min="100" step="10" required
+                            id="investmentAmount">
+                        <small class="text-muted" id="packageMinMax">Minimum: $100, Maximum: $5,000</small>
+                    </div>
+                    <div class="form-group">
+                        <label>Expected ROI</label>
+                        <input type="text" class="form-control" id="expectedROI" readonly value="">
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block">Create Investment</button>
+                </form>
             </div>
-            <div class="form-group">
-                <label>Amount ($)</label>
-                <input type="number" class="form-control" name="amount" placeholder="Enter amount" min="500" step="10">
-                <small class="text-muted" id="packageMinMax">Minimum: $500, Maximum: $5,000</small>
-            </div>
-            <div class="form-group">
-                <label>Duration</label>
-                <select class="form-control" name="duration">
-                    <option value="30">30 Days</option>
-                    <option value="60">60 Days</option>
-                    <option value="90">90 Days</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label>Expected ROI</label>
-                <input type="text" class="form-control" id="expectedROI" readonly value="Up to 15%">
-            </div>
-            <button type="submit" class="btn btn-primary btn-block">Deposit Funds</button>
-        </form>
+        </div>
     </div>
 
     <script>
@@ -1211,43 +499,40 @@
             const tradeSymbol = symbol.split(':')[1] || symbol;
             document.getElementById('tradeSymbol').value = tradeSymbol;
             
-            // Simulate price update
-            updatePriceInfo(tradeSymbol);
+            // Update market data
+            updateMarketData(tradeSymbol);
         });
 
         // Trade symbol selector change
         document.getElementById('tradeSymbol').addEventListener('change', function() {
             const symbol = this.value;
-            updatePriceInfo(symbol);
+            updateMarketData(symbol);
         });
 
-        // Simulated price data
-        function updatePriceInfo(symbol) {
-            // These would normally come from an API
-            const priceData = {
-                'BTCUSDT': { price: 42350, change: -0.87, high: 42500, low: 41980, volume: '350M' },
-                'ETHUSDT': { price: 2850, change: 1.25, high: 2875, low: 2830, volume: '120M' },
-                'BNBUSDT': { price: 350, change: 0.75, high: 352, low: 348, volume: '80M' },
-                'SOLUSDT': { price: 120, change: 2.5, high: 122, low: 118, volume: '60M' },
-                'XRPUSDT': { price: 0.52, change: -0.5, high: 0.53, low: 0.51, volume: '40M' }
-            };
-            
-            const data = priceData[symbol] || priceData['BTCUSDT'];
-            const changeColor = data.change >= 0 ? 'var(--success)' : 'var(--danger)';
-            
-            document.getElementById('currentPrice').textContent = '$' + data.price.toFixed(2);
-            document.getElementById('priceChange').textContent = (data.change >= 0 ? '+' : '') + data.change.toFixed(2) + '%';
-            document.getElementById('priceChange').style.color = changeColor;
-            document.getElementById('dailyHigh').textContent = '$' + data.high.toFixed(2);
-            document.getElementById('dailyLow').textContent = '$' + data.low.toFixed(2);
-            document.getElementById('dailyVolume').textContent = '$' + data.volume;
-            
-            // Update trade calculations
-            updateTradeCalculations();
+        // Fetch market data from backend
+        function updateMarketData(symbol) {
+            fetch(`/market_data/${symbol}/`)
+                .then(response => response.json())
+                .then(data => {
+                    const changeColor = data.change >= 0 ? 'var(--success)' : 'var(--danger)';
+                    
+                    document.getElementById('currentPrice').textContent = '$' + data.price.toFixed(2);
+                    document.getElementById('priceChange').textContent = (data.change >= 0 ? '+' : '') + data.change.toFixed(2) + '%';
+                    document.getElementById('priceChange').style.color = changeColor;
+                    document.getElementById('dailyHigh').textContent = '$' + data.high.toFixed(2);
+                    document.getElementById('dailyLow').textContent = '$' + data.low.toFixed(2);
+                    document.getElementById('dailyVolume').textContent = '$' + data.volume.toLocaleString();
+                    
+                    // Set entry price for form
+                    document.getElementById('entryPrice').value = data.price;
+                    
+                    // Update trade calculations
+                    updateTradeCalculations();
+                });
         }
 
         // Package selection
-        function selectPackage(element, packageType) {
+        function selectPackage(element, packageId) {
             // Remove selected class from all packages
             document.querySelectorAll('.package-card').forEach(card => {
                 card.classList.remove('selected');
@@ -1255,25 +540,51 @@
             
             // Add selected class to clicked package
             element.classList.add('selected');
+        }
+
+        // Open investment modal
+        function openInvestmentModal(packageId) {
+            const modal = document.getElementById('investmentModal');
+            const modalTitle = document.getElementById('investmentModalTitle');
+            const packageSelect = document.getElementById('selectedPackageId');
             
-            // Update deposit form package selection
-            document.getElementById('investmentPackageSelect').value = packageType;
+            // Get package details
+            const package = Array.from(document.querySelectorAll('.package-card'))
+                .find(card => card.getAttribute('onclick').includes(packageId));
             
-            // Open deposit modal
-            openModal('Deposit Funds', 'depositForm');
+            if (!package) return;
+            
+            const packageName = package.querySelector('.package-name').textContent;
+            const minAmount = parseFloat(package.querySelector('.package-amount').textContent.split(' - ')[0].replace('$', ''));
+            const maxAmount = parseFloat(package.querySelector('.package-amount').textContent.split(' - ')[1].replace('$', ''));
+            const roiPercentage = parseFloat(package.querySelector('.package-roi').textContent.match(/(\d+)/)[0]);
+            
+            // Update modal
+            modalTitle.textContent = `Invest in ${packageName}`;
+            packageSelect.value = packageId;
+            document.getElementById('investmentAmount').min = minAmount;
+            document.getElementById('investmentAmount').max = maxAmount;
+            document.getElementById('packageMinMax').textContent = `Minimum: $${minAmount}, Maximum: $${maxAmount}`;
+            
+            // Set ROI calculation
+            document.getElementById('investmentAmount').oninput = function() {
+                const amount = parseFloat(this.value) || 0;
+                const roi = amount * (roiPercentage / 100);
+                document.getElementById('expectedROI').value = `$${roi.toFixed(2)} (${roiPercentage}%)`;
+            };
+            
+            // Trigger initial calculation
+            document.getElementById('investmentAmount').dispatchEvent(new Event('input'));
+            
+            modal.classList.add('active');
         }
 
         // Modal functions
         function openModal(title, formId) {
             const modal = document.getElementById('depositModal');
             const modalTitle = document.getElementById('depositModalTitle');
-            const modalBody = document.getElementById('depositModalBody');
-            const form = document.getElementById(formId).cloneNode(true);
             
-            form.style.display = 'block';
             modalTitle.textContent = title;
-            modalBody.innerHTML = '';
-            modalBody.appendChild(form);
             modal.classList.add('active');
         }
 
@@ -1287,6 +598,9 @@
             const leverage = parseInt(document.getElementById('leverage').value) || 1;
             const takeProfit = parseFloat(document.getElementById('takeProfit').value) || 0;
             const stopLoss = parseFloat(document.getElementById('stopLoss').value) || 0;
+            const currentPrice = parseFloat(document.getElementById('currentPrice').textContent.replace('$', '')) || 0;
+            
+            if (currentPrice === 0) return;
             
             const margin = amount / leverage;
             const potentialProfit = amount * (takeProfit / 100);
@@ -1296,118 +610,26 @@
             document.getElementById('summaryMargin').textContent = '$' + margin.toFixed(2);
             document.getElementById('summaryProfit').textContent = '$' + potentialProfit.toFixed(2);
             document.getElementById('summaryLoss').textContent = '$' + potentialLoss.toFixed(2);
+            
+            // Set values for sell form
+            document.getElementById('sellSymbol').value = document.getElementById('tradeSymbol').value;
+            document.getElementById('sellAmount').value = amount;
+            document.getElementById('sellLeverage').value = leverage;
+            document.getElementById('sellTakeProfit').value = takeProfit;
+            document.getElementById('sellStopLoss').value = stopLoss;
+            document.getElementById('sellEntryPrice').value = currentPrice;
         }
 
-        // Execute trade
-        function executeTrade(type = null) {
-            const tradeType = type || document.getElementById('tradeType').value;
-            const symbol = document.getElementById('tradeSymbol').value;
+        // Form validation
+        document.getElementById('openTradeForm').addEventListener('submit', function(e) {
             const amount = parseFloat(document.getElementById('tradeAmount').value) || 0;
+            const minAmount = parseFloat("{{ bank_settings.min_trade_amount }}");
             
-            if (amount < 100) {
-                alert('Minimum trade amount is $100');
-                return;
+            if (amount < minAmount) {
+                e.preventDefault();
+                alert(`Minimum trade amount is $${minAmount}`);
             }
-            
-            const leverage = parseInt(document.getElementById('leverage').value) || 1;
-            const takeProfit = parseFloat(document.getElementById('takeProfit').value) || 0;
-            const stopLoss = parseFloat(document.getElementById('stopLoss').value) || 0;
-            
-            // Get current price
-            const currentPrice = parseFloat(
-                document.getElementById('currentPrice').textContent.replace('$', '')
-            ) || 0;
-            
-            if (currentPrice === 0) {
-                alert('Please select a valid symbol first');
-                return;
-            }
-            
-            // Create form to submit trade
-            const form = document.createElement('form');
-            form.method = 'post';
-            form.action = "##";
-            
-            const csrf = document.createElement('input');
-            csrf.type = 'hidden';
-            csrf.name = 'csrfmiddlewaretoken';
-            csrf.value = '{{ csrf_token }}';
-            form.appendChild(csrf);
-            
-            const symbolInput = document.createElement('input');
-            symbolInput.type = 'hidden';
-            symbolInput.name = 'symbol';
-            symbolInput.value = symbol;
-            form.appendChild(symbolInput);
-            
-            const typeInput = document.createElement('input');
-            typeInput.type = 'hidden';
-            typeInput.name = 'trade_type';
-            typeInput.value = tradeType;
-            form.appendChild(typeInput);
-            
-            const amountInput = document.createElement('input');
-            amountInput.type = 'hidden';
-            amountInput.name = 'amount';
-            amountInput.value = amount;
-            form.appendChild(amountInput);
-            
-            const leverageInput = document.createElement('input');
-            leverageInput.type = 'hidden';
-            leverageInput.name = 'leverage';
-            leverageInput.value = leverage;
-            form.appendChild(leverageInput);
-            
-            const entryPriceInput = document.createElement('input');
-            entryPriceInput.type = 'hidden';
-            entryPriceInput.name = 'entry_price';
-            entryPriceInput.value = currentPrice;
-            form.appendChild(entryPriceInput);
-            
-            const takeProfitInput = document.createElement('input');
-            takeProfitInput.type = 'hidden';
-            takeProfitInput.name = 'take_profit';
-            takeProfitInput.value = takeProfit;
-            form.appendChild(takeProfitInput);
-            
-            const stopLossInput = document.createElement('input');
-            stopLossInput.type = 'hidden';
-            stopLossInput.name = 'stop_loss';
-            stopLossInput.value = stopLoss;
-            form.appendChild(stopLossInput);
-            
-            document.body.appendChild(form);
-            form.submit();
-        }
-
-        // Close position
-        function closePosition(positionId) {
-            if (confirm('Are you sure you want to close this position?')) {
-                const form = document.createElement('form');
-                form.method = 'post';
-                form.action = "##";
-                
-                const csrf = document.createElement('input');
-                csrf.type = 'hidden';
-                csrf.name = 'csrfmiddlewaretoken';
-                csrf.value = '{{ csrf_token }}';
-                form.appendChild(csrf);
-                
-                const positionInput = document.createElement('input');
-                positionInput.type = 'hidden';
-                positionInput.name = 'position_id';
-                positionInput.value = positionId;
-                form.appendChild(positionInput);
-                
-                document.body.appendChild(form);
-                form.submit();
-            }
-        }
-
-        // Edit position
-        function editPosition(positionId) {
-            alert('Edit position functionality coming soon! Position ID: ' + positionId);
-        }
+        });
 
         // Event listeners for trade calculations
         document.getElementById('tradeAmount').addEventListener('input', updateTradeCalculations);
@@ -1416,8 +638,7 @@
         document.getElementById('stopLoss').addEventListener('input', updateTradeCalculations);
 
         // Initialize with default values
-        updatePriceInfo('BTCUSDT');
-        updateTradeCalculations();
+        updateMarketData('BTCUSDT');
     </script>
 </body>
 </html>

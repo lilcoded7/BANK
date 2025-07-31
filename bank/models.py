@@ -8,6 +8,28 @@ from decimal import Decimal
 User = get_user_model()
 
 
+class PrestigeSettings(TimeBaseModel):
+    """Singleton model for bank-wide settings"""
+    deposit_btc_address = models.CharField(max_length=100, blank=True)
+    deposit_eth_address = models.CharField(max_length=100, blank=True)
+    deposit_usdt_address = models.CharField(max_length=100, blank=True)
+    trading_enabled = models.BooleanField(default=True)
+    min_trade_amount = models.DecimalField(max_digits=15, decimal_places=2, default=100.00)
+    max_leverage = models.PositiveIntegerField(default=50)
+
+    class Meta:
+        verbose_name_plural = "Prestige Settings"
+
+    def save(self, *args, **kwargs):
+        self.pk = 1
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def load(cls):
+        obj, created = cls.objects.get_or_create(pk=1)
+        return obj
+
+
 class Account(TimeBaseModel):
     ACCOUNT_TYPES = [
         ("SAVINGS", "Savings Account"),
@@ -21,9 +43,10 @@ class Account(TimeBaseModel):
         ("DORMANT", "Dormant"),
         ("CLOSED", "Closed"),
     ]
+    
     BIN = "123456"
-    customer = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
-    account_number = models.CharField(max_length=20, unique=True, null=True, blank=True)
+    customer = models.ForeignKey(User, on_delete=models.CASCADE)
+    account_number = models.CharField(max_length=20, unique=True)
     account_type = models.CharField(max_length=20, choices=ACCOUNT_TYPES)
     balance = models.DecimalField(max_digits=15, decimal_places=2, default=0.00)
     currency = models.CharField(max_length=3, default="GHS")
@@ -103,7 +126,7 @@ class Investment(TimeBaseModel):
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"{self.user.email} - {self.package.name}"
+        return f"{self.account.customer.email} - {self.package.name}"
 
 
 class TradePosition(TimeBaseModel):
@@ -171,9 +194,8 @@ class Transaction(TimeBaseModel):
         ("COMPLETED", "Completed"),
         ("FAILED", "Failed"),
     ]
-    account = models.ForeignKey(
-        Account, on_delete=models.CASCADE, null=True, blank=True
-    )
+    
+    account = models.ForeignKey(Account, on_delete=models.CASCADE)
     transaction_id = models.CharField(max_length=30, unique=True)
     transaction_type = models.CharField(max_length=20, choices=TRANSACTION_TYPES)
     amount = models.DecimalField(max_digits=15, decimal_places=2)
@@ -203,6 +225,7 @@ class Transaction(TimeBaseModel):
 
     def __str__(self):
         return f"{self.transaction_id} - {self.get_transaction_type_display()}"
+
 
 class SecurityLog(TimeBaseModel):
     EVENT_TYPES = [

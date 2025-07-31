@@ -1,0 +1,1462 @@
+<!-- templates/trade_investment.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prestige Bank | Trade Investment</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- TradingView Widget -->
+    <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+    <style>
+        :root {
+            --primary: #d10000;
+            --primary-dark: #a00000;
+            --primary-light: #ff3333;
+            --secondary: #ffffff;
+            --secondary-dark: #f5f5f5;
+            --accent: #ffd700;
+            --accent-dark: #c5a600;
+            --text-dark: #333333;
+            --text-light: #ffffff;
+            --glass: rgba(255, 255, 255, 0.15);
+            --glass-border: rgba(255, 255, 255, 0.2);
+            --shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            --transition: all 0.3s ease;
+            --success: #4caf50;
+            --warning: #ff9800;
+            --danger: #f44336;
+            --info: #2196F3;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Montserrat', sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #ffffff 0%, #f5f5f5 100%);
+            color: var(--text-dark);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            background: linear-gradient(180deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: var(--text-light);
+            padding: 2rem 1rem;
+            box-shadow: 5px 0 15px rgba(0, 0, 0, 0.1);
+            position: fixed;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            width: 280px;
+        }
+
+        .logo {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 2rem;
+            padding-left: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .logo span {
+            color: var(--accent);
+        }
+
+        .nav-menu {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .nav-item {
+            padding: 0.8rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            font-weight: 500;
+        }
+
+        .nav-item:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .nav-item.active {
+            background-color: var(--secondary);
+            color: var(--primary);
+            font-weight: 600;
+        }
+
+        .nav-item i {
+            font-size: 1.2rem;
+        }
+
+        .main-content {
+            padding: 2rem;
+            overflow-y: auto;
+            grid-column: 2;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+
+        .page-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .user-profile {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            cursor: pointer;
+        }
+
+        .user-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background-color: var(--primary);
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: 600;
+            font-size: 1.2rem;
+        }
+
+        .user-name {
+            font-weight: 600;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .card {
+            background: var(--secondary);
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+            transition: var(--transition);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .card-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .card-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: rgba(209, 0, 0, 0.1);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: var(--primary);
+        }
+
+        .card-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .card-change {
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+            font-size: 0.9rem;
+            color: var(--success);
+        }
+
+        .card-change.negative {
+            color: var(--danger);
+        }
+
+        .section {
+            margin-bottom: 2.5rem;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .section-link {
+            color: var(--primary);
+            font-weight: 500;
+            text-decoration: none;
+            transition: var(--transition);
+        }
+
+        .section-link:hover {
+            text-decoration: underline;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 1.2rem;
+        }
+
+        .feature-card {
+            background: var(--secondary);
+            border-radius: 10px;
+            padding: 1.5rem;
+            text-align: center;
+            cursor: pointer;
+            transition: var(--transition);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03);
+        }
+
+        .feature-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+            background: linear-gradient(135deg, var(--secondary) 0%, var(--secondary-dark) 100%);
+        }
+
+        .feature-icon {
+            width: 60px;
+            height: 60px;
+            margin: 0 auto 1rem;
+            background: linear-gradient(135deg, var(--primary-light) 0%, var(--primary-dark) 100%);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-size: 1.5rem;
+            box-shadow: 0 4px 15px rgba(209, 0, 0, 0.2);
+        }
+
+        .feature-title {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--text-dark);
+        }
+
+        .feature-desc {
+            font-size: 0.85rem;
+            color: #666;
+        }
+
+        .security-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(243, 156, 18, 0.1);
+            color: #f39c12;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-top: 0.5rem;
+        }
+
+        .security-badge i {
+            font-size: 0.9rem;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 5px;
+        }
+
+        .status-active {
+            background-color: var(--success);
+        }
+
+        .status-pending {
+            background-color: var(--warning);
+        }
+
+        .status-inactive {
+            background-color: var(--danger);
+        }
+
+        .assistant {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #8e2de2 0%, #4a00e0 100%);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-size: 1.5rem;
+            box-shadow: 0 5px 20px rgba(142, 45, 226, 0.3);
+            cursor: pointer;
+            z-index: 100;
+            transition: var(--transition);
+        }
+
+        .assistant:hover {
+            transform: scale(1.1);
+            box-shadow: 0 8px 25px rgba(142, 45, 226, 0.4);
+        }
+
+        .message {
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .message-success {
+            background-color: rgba(76, 175, 80, 0.1);
+            color: var(--success);
+            border-left: 4px solid var(--success);
+        }
+
+        .message-error {
+            background-color: rgba(244, 67, 54, 0.1);
+            color: var(--danger);
+            border-left: 4px solid var(--danger);
+        }
+
+        .message-warning {
+            background-color: rgba(255, 152, 0, 0.1);
+            color: var(--warning);
+            border-left: 4px solid var(--warning);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 1rem;
+        }
+
+        th, td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+
+        th {
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        /* Trading View Chart Container */
+        .tradingview-chart {
+            height: 500px;
+            width: 100%;
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        /* Trade Panel Styles */
+        .trade-panel {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+        }
+
+        .trade-form {
+            background: var(--secondary);
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: var(--text-dark);
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 0.8rem;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: var(--transition);
+        }
+
+        .form-control:focus {
+            border-color: var(--primary);
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(209, 0, 0, 0.1);
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 0.8rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            text-align: center;
+        }
+
+        .btn-block {
+            display: block;
+            width: 100%;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #3d8b40;
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #d32f2f;
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--primary);
+            color: var(--primary);
+        }
+
+        .btn-outline:hover {
+            background: rgba(209, 0, 0, 0.1);
+        }
+
+        .investment-packages {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .package-card {
+            background: var(--secondary);
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            transition: var(--transition);
+            text-align: center;
+            cursor: pointer;
+        }
+
+        .package-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+        }
+
+        .package-card.selected {
+            border: 2px solid var(--primary);
+            background: rgba(209, 0, 0, 0.05);
+        }
+
+        .package-name {
+            font-size: 1.2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            color: var(--primary);
+        }
+
+        .package-amount {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            color: var(--text-dark);
+        }
+
+        .package-duration {
+            font-size: 0.9rem;
+            color: #666;
+            margin-bottom: 1rem;
+        }
+
+        .package-features {
+            text-align: left;
+            margin-bottom: 1.5rem;
+        }
+
+        .package-features li {
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+            list-style-type: none;
+            padding-left: 1.5rem;
+            position: relative;
+        }
+
+        .package-features li:before {
+            content: "✓";
+            color: var(--success);
+            position: absolute;
+            left: 0;
+        }
+
+        .package-roi {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--success);
+            margin-bottom: 1rem;
+        }
+
+        /* Trade Info Cards */
+        .trade-info-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .info-card {
+            background: var(--secondary);
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            text-align: center;
+        }
+
+        .info-card-title {
+            font-size: 0.9rem;
+            color: #666;
+            margin-bottom: 0.5rem;
+        }
+
+        .info-card-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-dark);
+        }
+
+        .info-card-change {
+            font-size: 0.9rem;
+            color: var(--success);
+            margin-top: 0.5rem;
+        }
+
+        .info-card-change.negative {
+            color: var(--danger);
+        }
+
+        /* Position Management */
+        .positions-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1.5rem;
+        }
+
+        .positions-table th {
+            background: rgba(209, 0, 0, 0.05);
+            color: var(--primary);
+            font-weight: 600;
+            padding: 0.75rem;
+            text-align: left;
+        }
+
+        .positions-table td {
+            padding: 0.75rem;
+            border-bottom: 1px solid #eee;
+        }
+
+        .positions-table tr:hover {
+            background: rgba(0, 0, 0, 0.02);
+        }
+
+        .profit-positive {
+            color: var(--success);
+            font-weight: 600;
+        }
+
+        .profit-negative {
+            color: var(--danger);
+            font-weight: 600;
+        }
+
+        .action-btn {
+            padding: 0.3rem 0.6rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            margin-right: 0.3rem;
+        }
+
+        /* Modal styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: var(--transition);
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal-container {
+            background: white;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+            transform: translateY(-20px);
+            transition: var(--transition);
+        }
+
+        .modal-overlay.active .modal-container {
+            transform: translateY(0);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.5rem;
+            border-bottom: 1px solid #eee;
+        }
+
+        .modal-header h3 {
+            margin: 0;
+            color: var(--primary);
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #666;
+        }
+
+        .modal-body {
+            padding: 1.5rem;
+        }
+
+        /* Responsive styles */
+        @media (max-width: 992px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+            
+            .sidebar {
+                transform: translateX(-100%);
+                z-index: 1000;
+                transition: var(--transition);
+            }
+            
+            .sidebar.active {
+                transform: translateX(0);
+            }
+            
+            .main-content {
+                grid-column: 1;
+            }
+            
+            .mobile-menu-toggle {
+                display: block;
+                font-size: 1.5rem;
+                cursor: pointer;
+                color: var(--primary);
+                background: none;
+                border: none;
+                padding: 0.5rem;
+            }
+
+            .trade-panel {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .feature-grid {
+                grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            }
+            
+            .header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 1rem;
+            }
+
+            .investment-packages {
+                grid-template-columns: 1fr;
+            }
+
+            .trade-info-cards {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 576px) {
+            .trade-info-cards {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    
+    <div class="dashboard">
+        <!-- Sidebar -->
+        <div class="sidebar" id="sidebar">
+            <div class="logo">
+                <i class="fas fa-university"></i>
+                <span>Prestige</span>Bank
+            </div>
+            <div class="nav-menu">
+                <div class="nav-item" onclick="window.location.href='{% url 'dashboard' %}'">
+                    <i class="fas fa-home"></i>
+                    <span>Dashboard</span>
+                </div>
+                <div class="nav-item" onclick="window.location.href='{% url 'transfer_funds' %}'">
+                    <i class="fas fa-exchange-alt"></i>
+                    <span>Transfer Funds</span>
+                </div>
+                <div class="nav-item" onclick="window.location.href='{% url 'mobile_money' %}'">
+                    <i class="fas fa-mobile-alt"></i>
+                    <span>Mobile Money</span>
+                </div>
+                <div class="nav-item active" onclick="window.location.href='{% url 'trade_investment' %}'">
+                    <i class="fas fa-chart-line"></i>
+                    <span>Trade Investment</span>
+                </div>
+                <div class="nav-item" onclick="window.location.href='{% url 'security_settings' %}'">
+                    <i class="fas fa-shield-alt"></i>
+                    <span>Security</span>
+                </div>
+                <div class="nav-item" onclick="window.location.href='{% url 'logout' %}'">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <div class="header">
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <button class="mobile-menu-toggle" id="menuToggle">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <div class="page-title">Trade Investment</div>
+                </div>
+                <div class="user-profile">
+                    <div class="user-avatar">
+                        {% if user.is_biometric_enabled %}
+                            <i class="fas fa-fingerprint"></i>
+                        {% else %}
+                            {{ user.first_name|first }}{{ user.last_name|first }}
+                        {% endif %}
+                    </div>
+                    <div class="user-name">{{ user.first_name }} {{ user.last_name }}</div>
+                </div>
+            </div>
+
+            <!-- Display messages -->
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="message message-{% if message.tags %}{{ message.tags }}{% endif %}">
+                        <i class="fas 
+                            {% if message.tags == 'success' %}fa-check-circle
+                            {% elif message.tags == 'error' %}fa-exclamation-circle
+                            {% else %}fa-info-circle{% endif %}"></i>
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+
+            <!-- Market Overview -->
+            <div class="dashboard-grid">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">Investment Balance</div>
+                        <div class="card-icon">
+                            <i class="fas fa-wallet"></i>
+                        </div>
+                    </div>
+                    <div class="card-value">₵{{ investment_balance|floatformat:2 }}</div>
+                    <div class="card-change">
+                        <i class="fas fa-arrow-up"></i>
+                        <span>+5.2% this month</span>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">Active Trades</div>
+                        <div class="card-icon">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                    </div>
+                    <div class="card-value">{{ active_trades }}</div>
+                    <div class="card-change">
+                        <i class="fas fa-clock"></i>
+                        <span>{{ pending_trades }} pending</span>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">Total Profit</div>
+                        <div class="card-icon">
+                            <i class="fas fa-coins"></i>
+                        </div>
+                    </div>
+                    <div class="card-value">₵{{ total_profit|floatformat:2 }}</div>
+                    <div class="card-change {% if profit_change < 0 %}negative{% endif %}">
+                        <i class="fas {% if profit_change >= 0 %}fa-arrow-up{% else %}fa-arrow-down{% endif %}"></i>
+                        <span>{{ profit_change|floatformat:2 }}% today</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TradingView Chart -->
+            <div class="section">
+                <div class="section-header">
+                    <div class="section-title">Live Market Chart</div>
+                    <div>
+                        <select id="symbolSelect" class="form-control" style="width: auto; display: inline-block;">
+                            <option value="FX:EURUSD">EUR/USD</option>
+                            <option value="FX:GBPUSD">GBP/USD</option>
+                            <option value="FX:USDJPY">USD/JPY</option>
+                            <option value="FX_IDC:GHSEUR">GHS/EUR</option>
+                            <option value="FX_IDC:GHSUSD">GHS/USD</option>
+                            <option value="BINANCE:BTCUSDT">BTC/USDT</option>
+                            <option value="BINANCE:ETHUSDT">ETH/USDT</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="tradingview-chart" id="tradingview-chart"></div>
+            </div>
+
+            <!-- Investment Packages -->
+            <div class="section">
+                <div class="section-header">
+                    <div class="section-title">Investment Packages</div>
+                    <a href="#" class="section-link" onclick="openModal('Deposit Funds', 'depositForm')">Deposit Funds</a>
+                </div>
+                <div class="investment-packages">
+                    <div class="package-card" onclick="selectPackage(this, 'starter')">
+                        <div class="package-name">Starter</div>
+                        <div class="package-amount">₵500 - ₵5,000</div>
+                        <div class="package-duration">30 Days Investment</div>
+                        <div class="package-roi">Up to 15% ROI</div>
+                        <ul class="package-features">
+                            <li>Basic market analysis</li>
+                            <li>24/7 customer support</li>
+                            <li>Risk management tools</li>
+                            <li>Weekly reports</li>
+                        </ul>
+                        <button class="btn btn-outline">Select Package</button>
+                    </div>
+                    
+                    <div class="package-card" onclick="selectPackage(this, 'premium')">
+                        <div class="package-name">Premium</div>
+                        <div class="package-amount">₵5,000 - ₵20,000</div>
+                        <div class="package-duration">60 Days Investment</div>
+                        <div class="package-roi">Up to 25% ROI</div>
+                        <ul class="package-features">
+                            <li>Advanced market analysis</li>
+                            <li>Dedicated account manager</li>
+                            <li>Priority support</li>
+                            <li>Daily reports</li>
+                            <li>Risk-free trial</li>
+                        </ul>
+                        <button class="btn btn-outline">Select Package</button>
+                    </div>
+                    
+                    <div class="package-card" onclick="selectPackage(this, 'vip')">
+                        <div class="package-name">VIP</div>
+                        <div class="package-amount">₵20,000+</div>
+                        <div class="package-duration">90 Days Investment</div>
+                        <div class="package-roi">Up to 40% ROI</div>
+                        <ul class="package-features">
+                            <li>Premium market signals</li>
+                            <li>Personal trading coach</li>
+                            <li>24/7 VIP support</li>
+                            <li>Real-time alerts</li>
+                            <li>Exclusive webinars</li>
+                            <li>Capital protection</li>
+                        </ul>
+                        <button class="btn btn-outline">Select Package</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Trade Panel -->
+            <div class="section">
+                <div class="section-header">
+                    <div class="section-title">Trade Panel</div>
+                </div>
+                <div class="trade-panel">
+                    <div class="trade-form">
+                        <h3 style="margin-bottom: 1.5rem; color: var(--primary);">Open New Position</h3>
+                        <div class="form-group">
+                            <label for="tradeSymbol">Symbol</label>
+                            <select id="tradeSymbol" class="form-control">
+                                <option value="EURUSD">EUR/USD</option>
+                                <option value="GBPUSD">GBP/USD</option>
+                                <option value="USDJPY">USD/JPY</option>
+                                <option value="GHSEUR">GHS/EUR</option>
+                                <option value="GHSUSD">GHS/USD</option>
+                                <option value="BTCUSDT">BTC/USDT</option>
+                                <option value="ETHUSDT">ETH/USDT</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="tradeType">Trade Type</label>
+                            <select id="tradeType" class="form-control">
+                                <option value="buy">Buy (Long)</option>
+                                <option value="sell">Sell (Short)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="tradeAmount">Amount (GHS)</label>
+                            <input type="number" id="tradeAmount" class="form-control" placeholder="Enter amount" min="100" step="10">
+                        </div>
+                        <div class="form-group">
+                            <label for="leverage">Leverage</label>
+                            <select id="leverage" class="form-control">
+                                <option value="1">1:1 (No leverage)</option>
+                                <option value="5">1:5</option>
+                                <option value="10" selected>1:10</option>
+                                <option value="20">1:20</option>
+                                <option value="50">1:50</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="takeProfit">Take Profit (%)</label>
+                            <input type="number" id="takeProfit" class="form-control" placeholder="e.g. 5" min="0.1" step="0.1" value="5">
+                        </div>
+                        <div class="form-group">
+                            <label for="stopLoss">Stop Loss (%)</label>
+                            <input type="number" id="stopLoss" class="form-control" placeholder="e.g. 2" min="0.1" step="0.1" value="2">
+                        </div>
+                        <button class="btn btn-success btn-block" onclick="executeTrade()">Buy (Long)</button>
+                        <button class="btn btn-danger btn-block" style="margin-top: 0.5rem;" onclick="executeTrade('sell')">Sell (Short)</button>
+                    </div>
+                    
+                    <div class="trade-form">
+                        <h3 style="margin-bottom: 1.5rem; color: var(--primary);">Trade Information</h3>
+                        <div class="trade-info-cards">
+                            <div class="info-card">
+                                <div class="info-card-title">Current Price</div>
+                                <div class="info-card-value" id="currentPrice">₵12.3456</div>
+                                <div class="info-card-change" id="priceChange">+0.25%</div>
+                            </div>
+                            <div class="info-card">
+                                <div class="info-card-title">24h High</div>
+                                <div class="info-card-value" id="dailyHigh">₵12.4567</div>
+                            </div>
+                            <div class="info-card">
+                                <div class="info-card-title">24h Low</div>
+                                <div class="info-card-value" id="dailyLow">₵12.1234</div>
+                            </div>
+                            <div class="info-card">
+                                <div class="info-card-title">24h Volume</div>
+                                <div class="info-card-value" id="dailyVolume">₵1.2M</div>
+                            </div>
+                        </div>
+                        
+                        <h4 style="margin: 1.5rem 0 1rem; color: var(--primary);">Position Summary</h4>
+                        <div class="form-group">
+                            <label>Investment Amount</label>
+                            <div class="form-control" style="background: #f9f9f9;" id="summaryAmount">₵0.00</div>
+                        </div>
+                        <div class="form-group">
+                            <label>Potential Profit</label>
+                            <div class="form-control" style="background: #f9f9f9;" id="summaryProfit">₵0.00</div>
+                        </div>
+                        <div class="form-group">
+                            <label>Potential Loss</label>
+                            <div class="form-control" style="background: #f9f9f9;" id="summaryLoss">₵0.00</div>
+                        </div>
+                        <div class="form-group">
+                            <label>Margin Required</label>
+                            <div class="form-control" style="background: #f9f9f9;" id="summaryMargin">₵0.00</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Active Positions -->
+            <div class="section">
+                <div class="section-header">
+                    <div class="section-title">Active Positions</div>
+                    <a href="#" class="section-link">View All</a>
+                </div>
+                <div class="card">
+                    <table class="positions-table">
+                        <thead>
+                            <tr>
+                                <th>Symbol</th>
+                                <th>Type</th>
+                                <th>Entry Price</th>
+                                <th>Current Price</th>
+                                <th>Amount</th>
+                                <th>Profit/Loss</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>EUR/USD</td>
+                                <td>Buy</td>
+                                <td>1.1850</td>
+                                <td>1.1872</td>
+                                <td>₵1,000.00</td>
+                                <td class="profit-positive">+₵22.00 (+2.2%)</td>
+                                <td>
+                                    <button class="action-btn btn-success">Close</button>
+                                    <button class="action-btn btn-outline">Edit</button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>GHS/USD</td>
+                                <td>Sell</td>
+                                <td>0.1720</td>
+                                <td>0.1715</td>
+                                <td>₵2,500.00</td>
+                                <td class="profit-positive">+₵12.50 (+0.5%)</td>
+                                <td>
+                                    <button class="action-btn btn-success">Close</button>
+                                    <button class="action-btn btn-outline">Edit</button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>BTC/USDT</td>
+                                <td>Buy</td>
+                                <td>42,350.00</td>
+                                <td>41,980.00</td>
+                                <td>₵5,000.00</td>
+                                <td class="profit-negative">-₵43.70 (-0.87%)</td>
+                                <td>
+                                    <button class="action-btn btn-danger">Close</button>
+                                    <button class="action-btn btn-outline">Edit</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI Assistant Floating Button -->
+    <div class="assistant" onclick="alert('AI Trading Assistant coming soon!')">
+        <i class="fas fa-robot"></i>
+    </div>
+
+    <!-- Deposit Modal -->
+    <div class="modal-overlay" id="depositModal">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h3 id="depositModalTitle">Deposit Funds</h3>
+                <button class="modal-close" onclick="closeModal('depositModal')">&times;</button>
+            </div>
+            <div class="modal-body" id="depositModalBody">
+                <!-- Content will be inserted here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden Forms -->
+    <div id="depositForm" style="display: none;">
+        <form id="investmentDepositForm">
+            <div class="form-group">
+                <label>From Account</label>
+                <select class="form-control" name="from_account">
+                    {% for account in accounts %}
+                    <option value="{{ account.id }}">{{ account.account_number }} (₵{{ account.balance|floatformat:2 }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Investment Package</label>
+                <select class="form-control" name="investment_package" id="investmentPackageSelect">
+                    <option value="starter">Starter (₵500 - ₵5,000)</option>
+                    <option value="premium">Premium (₵5,000 - ₵20,000)</option>
+                    <option value="vip">VIP (₵20,000+)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Amount (GHS)</label>
+                <input type="number" class="form-control" name="amount" placeholder="Enter amount" min="500" step="10">
+                <small class="text-muted" id="packageMinMax">Minimum: ₵500, Maximum: ₵5,000</small>
+            </div>
+            <div class="form-group">
+                <label>Duration</label>
+                <select class="form-control" name="duration">
+                    <option value="30">30 Days</option>
+                    <option value="60">60 Days</option>
+                    <option value="90">90 Days</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Expected ROI</label>
+                <input type="text" class="form-control" id="expectedROI" readonly value="Up to 15%">
+            </div>
+            <button type="submit" class="btn btn-primary btn-block">Deposit Funds</button>
+        </form>
+    </div>
+
+    <script>
+        // Mobile Menu Toggle
+        const menuToggle = document.getElementById('menuToggle');
+        const sidebar = document.getElementById('sidebar');
+        
+        menuToggle.addEventListener('click', function(e) {
+            e.stopPropagation();
+            sidebar.classList.toggle('active');
+        });
+        
+        // Close sidebar when clicking outside on mobile
+        document.addEventListener('click', function(e) {
+            if (window.innerWidth <= 992 && !sidebar.contains(e.target)) {
+                sidebar.classList.remove('active');
+            }
+        });
+
+        // Prevent clicks inside sidebar from closing it
+        sidebar.addEventListener('click', function(e) {
+            e.stopPropagation();
+        });
+
+        // TradingView Widget
+        function initTradingView(symbol = 'FX:EURUSD') {
+            new TradingView.widget({
+                "autosize": true,
+                "symbol": symbol,
+                "interval": "15",
+                "timezone": "Etc/UTC",
+                "theme": "light",
+                "style": "1",
+                "locale": "en",
+                "toolbar_bg": "#f1f3f6",
+                "enable_publishing": false,
+                "allow_symbol_change": true,
+                "container_id": "tradingview-chart"
+            });
+        }
+
+        // Initialize with default symbol
+        initTradingView();
+
+        // Symbol selector change
+        document.getElementById('symbolSelect').addEventListener('change', function() {
+            const symbol = this.value;
+            document.getElementById('tradingview-chart').innerHTML = '';
+            initTradingView(symbol);
+            
+            // Update trade panel symbol to match
+            const tradeSymbol = symbol.split(':')[1] || symbol;
+            document.getElementById('tradeSymbol').value = tradeSymbol;
+            
+            // Simulate price update
+            updatePriceInfo(tradeSymbol);
+        });
+
+        // Trade symbol selector change
+        document.getElementById('tradeSymbol').addEventListener('change', function() {
+            const symbol = this.value;
+            updatePriceInfo(symbol);
+        });
+
+        // Simulated price data
+        function updatePriceInfo(symbol) {
+            // These would normally come from an API
+            const priceData = {
+                'EURUSD': { price: 1.1850, change: 0.25, high: 1.1875, low: 1.1820, volume: '1.2M' },
+                'GBPUSD': { price: 1.3900, change: -0.15, high: 1.3925, low: 1.3880, volume: '0.9M' },
+                'USDJPY': { price: 110.25, change: 0.10, high: 110.30, low: 110.10, volume: '0.8M' },
+                'GHSEUR': { price: 0.1500, change: 0.30, high: 0.1510, low: 0.1495, volume: '0.5M' },
+                'GHSUSD': { price: 0.1720, change: -0.20, high: 0.1725, low: 0.1715, volume: '0.7M' },
+                'BTCUSDT': { price: 42350, change: -0.87, high: 42500, low: 41980, volume: '350M' },
+                'ETHUSDT': { price: 2850, change: 1.25, high: 2875, low: 2830, volume: '120M' }
+            };
+            
+            const data = priceData[symbol] || priceData['EURUSD'];
+            const changeColor = data.change >= 0 ? 'var(--success)' : 'var(--danger)';
+            
+            document.getElementById('currentPrice').textContent = symbol.includes('USD') || symbol.includes('EUR') || symbol.includes('JPY') ? 
+                data.price.toFixed(4) : '₵' + data.price.toFixed(2);
+            document.getElementById('priceChange').textContent = (data.change >= 0 ? '+' : '') + data.change.toFixed(2) + '%';
+            document.getElementById('priceChange').style.color = changeColor;
+            document.getElementById('dailyHigh').textContent = symbol.includes('USD') || symbol.includes('EUR') || symbol.includes('JPY') ? 
+                data.high.toFixed(4) : '₵' + data.high.toFixed(2);
+            document.getElementById('dailyLow').textContent = symbol.includes('USD') || symbol.includes('EUR') || symbol.includes('JPY') ? 
+                data.low.toFixed(4) : '₵' + data.low.toFixed(2);
+            document.getElementById('dailyVolume').textContent = '₵' + data.volume;
+            
+            // Update trade calculations
+            updateTradeCalculations();
+        }
+
+        // Package selection
+        function selectPackage(element, packageType) {
+            // Remove selected class from all packages
+            document.querySelectorAll('.package-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+            
+            // Add selected class to clicked package
+            element.classList.add('selected');
+            
+            // Update deposit form package selection
+            document.getElementById('investmentPackageSelect').value = packageType;
+            
+            // Update min/max and ROI based on package
+            let minAmount, maxAmount, roiText;
+            switch(packageType) {
+                case 'starter':
+                    minAmount = 500;
+                    maxAmount = 5000;
+                    roiText = 'Up to 15%';
+                    break;
+                case 'premium':
+                    minAmount = 5000;
+                    maxAmount = 20000;
+                    roiText = 'Up to 25%';
+                    break;
+                case 'vip':
+                    minAmount = 20000;
+                    maxAmount = 1000000;
+                    roiText = 'Up to 40%';
+                    break;
+            }
+            
+            document.querySelector('#depositForm input[name="amount"]').min = minAmount;
+            document.querySelector('#depositForm input[name="amount"]').placeholder = `Enter amount (₵${minAmount} - ₵${maxAmount})`;
+            document.getElementById('packageMinMax').textContent = `Minimum: ₵${minAmount}, Maximum: ₵${maxAmount}`;
+            document.getElementById('expectedROI').value = roiText;
+            
+            // Open deposit modal
+            openModal('Deposit Funds', 'depositForm');
+        }
+
+        // Modal functions
+        function openModal(title, formId) {
+            const modal = document.getElementById('depositModal');
+            const modalTitle = document.getElementById('depositModalTitle');
+            const modalBody = document.getElementById('depositModalBody');
+            const form = document.getElementById(formId).cloneNode(true);
+            
+            form.style.display = 'block';
+            modalTitle.textContent = title;
+            modalBody.innerHTML = '';
+            modalBody.appendChild(form);
+            modal.classList.add('active');
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+        }
+
+        // Trade calculations
+        function updateTradeCalculations() {
+            const amount = parseFloat(document.getElementById('tradeAmount').value) || 0;
+            const leverage = parseInt(document.getElementById('leverage').value) || 1;
+            const takeProfit = parseFloat(document.getElementById('takeProfit').value) || 0;
+            const stopLoss = parseFloat(document.getElementById('stopLoss').value) || 0;
+            
+            const margin = amount / leverage;
+            const potentialProfit = amount * (takeProfit / 100);
+            const potentialLoss = amount * (stopLoss / 100);
+            
+            document.getElementById('summaryAmount').textContent = '₵' + amount.toFixed(2);
+            document.getElementById('summaryMargin').textContent = '₵' + margin.toFixed(2);
+            document.getElementById('summaryProfit').textContent = '₵' + potentialProfit.toFixed(2);
+            document.getElementById('summaryLoss').textContent = '₵' + potentialLoss.toFixed(2);
+        }
+
+        // Execute trade
+        function executeTrade(type = null) {
+            const tradeType = type || document.getElementById('tradeType').value;
+            const symbol = document.getElementById('tradeSymbol').value;
+            const amount = parseFloat(document.getElementById('tradeAmount').value) || 0;
+            
+            if (amount < 100) {
+                alert('Minimum trade amount is ₵100');
+                return;
+            }
+            
+            const leverage = parseInt(document.getElementById('leverage').value) || 1;
+            const takeProfit = parseFloat(document.getElementById('takeProfit').value) || 0;
+            const stopLoss = parseFloat(document.getElementById('stopLoss').value) || 0;
+            
+            // In a real app, this would be an API call
+            alert(`Trade executed: ${tradeType.toUpperCase()} ${symbol} for ₵${amount.toFixed(2)} with ${leverage}x leverage\nTake Profit: ${takeProfit}%, Stop Loss: ${stopLoss}%`);
+            
+            // Add to positions table (simulated)
+            const positionsTable = document.querySelector('.positions-table tbody');
+            const newRow = document.createElement('tr');
+            
+            // Get current price
+            const currentPrice = parseFloat(document.getElementById('currentPrice').textContent.replace('₵', '')) || 1.1850;
+            
+            newRow.innerHTML = `
+                <td>${symbol}</td>
+                <td>${tradeType === 'buy' ? 'Buy' : 'Sell'}</td>
+                <td>${currentPrice.toFixed(4)}</td>
+                <td>${currentPrice.toFixed(4)}</td>
+                <td>₵${amount.toFixed(2)}</td>
+                <td class="profit-positive">+₵0.00 (+0.00%)</td>
+                <td>
+                    <button class="action-btn btn-success">Close</button>
+                    <button class="action-btn btn-outline">Edit</button>
+                </td>
+            `;
+            
+            positionsTable.prepend(newRow);
+        }
+
+        // Event listeners for trade calculations
+        document.getElementById('tradeAmount').addEventListener('input', updateTradeCalculations);
+        document.getElementById('leverage').addEventListener('change', updateTradeCalculations);
+        document.getElementById('takeProfit').addEventListener('input', updateTradeCalculations);
+        document.getElementById('stopLoss').addEventListener('input', updateTradeCalculations);
+
+        // Investment package selection change
+        document.getElementById('investmentPackageSelect').addEventListener('change', function() {
+            const packageType = this.value;
+            let minAmount, maxAmount, roiText;
+            
+            switch(packageType) {
+                case 'starter':
+                    minAmount = 500;
+                    maxAmount = 5000;
+                    roiText = 'Up to 15%';
+                    break;
+                case 'premium':
+                    minAmount = 5000;
+                    maxAmount = 20000;
+                    roiText = 'Up to 25%';
+                    break;
+                case 'vip':
+                    minAmount = 20000;
+                    maxAmount = 1000000;
+                    roiText = 'Up to 40%';
+                    break;
+            }
+            
+            document.querySelector('#depositForm input[name="amount"]').min = minAmount;
+            document.querySelector('#depositForm input[name="amount"]').placeholder = `Enter amount (₵${minAmount} - ₵${maxAmount})`;
+            document.getElementById('packageMinMax').textContent = `Minimum: ₵${minAmount}, Maximum: ₵${maxAmount}`;
+            document.getElementById('expectedROI').value = roiText;
+        });
+
+        // Form submission
+        document.getElementById('investmentDepositForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const amount = parseFloat(this.amount.value);
+            const packageType = this.investment_package.value;
+            const minAmount = packageType === 'starter' ? 500 : packageType === 'premium' ? 5000 : 20000;
+            const maxAmount = packageType === 'starter' ? 5000 : packageType === 'premium' ? 20000 : 1000000;
+            
+            if (amount < minAmount || amount > maxAmount) {
+                alert(`Amount must be between ₵${minAmount} and ₵${maxAmount} for the selected package`);
+                return;
+            }
+            
+            // In a real app, this would be an API call
+            alert(`Deposit of ₵${amount.toFixed(2)} successful for ${packageType} package`);
+            closeModal('depositModal');
+        });
+
+        // Initialize with default values
+        updatePriceInfo('EURUSD');
+        updateTradeCalculations();
+    </script>
+</body>
+</html>

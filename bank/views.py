@@ -5,7 +5,7 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import Q
 from django.contrib import messages
 from django.urls import reverse
-from .models import Account, Transaction, SecurityLog
+from .models import *
 from .forms import LoginForm, TransferForm, MobileMoneyForm, SecuritySettingsForm
 import uuid
 from datetime import datetime
@@ -36,6 +36,7 @@ def login_view(request):
     else:
         form = LoginForm()
     return render(request, 'auth/login.html', {'form': form})
+
 
 @login_required
 def logout_view(request):
@@ -84,10 +85,9 @@ def transfer_funds(request):
                     sender_account=form.cleaned_data['from_account'],
                     recipient_account=form.cleaned_data['to_account'],
                     description=form.cleaned_data['description'],
-                    status='PENDING'  # Initial status
+                    status='PENDING'  
                 )
                 
-                # Update balances (in a real app, this would be in a transaction)
                 sender_account = form.cleaned_data['from_account']
                 recipient_account = form.cleaned_data['to_account']
                 
@@ -97,7 +97,6 @@ def transfer_funds(request):
                 recipient_account.balance += form.cleaned_data['amount']
                 recipient_account.save()
                 
-                # Update transaction status
                 transaction.status = 'COMPLETED'
                 transaction.save()
                 
@@ -155,11 +154,9 @@ def mobile_money(request):
                 }
             )
             
-            # Update balance
             form.cleaned_data['from_account'].balance -= form.cleaned_data['amount']
             form.cleaned_data['from_account'].save()
             
-            # Log security event
             SecurityLog.objects.create(
                 user=request.user,
                 event_type='TRANSACTION',
@@ -234,3 +231,9 @@ def get_client_ip(request):
     else:
         ip = request.META.get('REMOTE_ADDR')
     return ip
+
+
+def trading_investment(request):
+
+    
+    return render(request, 'main/trade.html')

@@ -8,4 +8,5 @@ urlpatterns = [
     path('transfer/', views.transfer_funds, name='transfer_funds'),
     path('mobile-money/', views.mobile_money, name='mobile_money'),
     path('security/', views.security_settings, name='security_settings'),
+    path('trading/investment/', views.trading_investment, name='trade_investment')
 ]

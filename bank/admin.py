@@ -10,7 +10,12 @@ from .models import (
     SecurityLog,
     FingerPrint,
     PrestigeSettings,
+    SupportTicket,
+    SupportMessage
 )
+
+admin.site.register(SupportTicket)
+admin.site.register(SupportMessage)
 
 
 class PrestigeSettingsForm(forms.ModelForm):

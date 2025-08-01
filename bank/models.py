@@ -4,17 +4,21 @@ from django.utils import timezone
 from django.contrib.auth import get_user_model
 from setup.basemodel import TimeBaseModel
 from decimal import Decimal
+import uuid
 
 User = get_user_model()
 
 
 class PrestigeSettings(TimeBaseModel):
     """Singleton model for bank-wide settings"""
+
     deposit_btc_address = models.CharField(max_length=100, blank=True)
     deposit_eth_address = models.CharField(max_length=100, blank=True)
     deposit_usdt_address = models.CharField(max_length=100, blank=True)
     trading_enabled = models.BooleanField(default=True)
-    min_trade_amount = models.DecimalField(max_digits=15, decimal_places=2, default=100.00)
+    min_trade_amount = models.DecimalField(
+        max_digits=15, decimal_places=2, default=100.00
+    )
     max_leverage = models.PositiveIntegerField(default=50)
 
     class Meta:
@@ -35,7 +39,7 @@ class Account(TimeBaseModel):
         ("SAVINGS", "Savings Account"),
         ("CHECKING", "Checking Account"),
         ("FIXED", "Fixed Deposit"),
-        ("INVESTMENT", "Investment Account"),  
+        ("INVESTMENT", "Investment Account"),
     ]
 
     STATUS_CHOICES = [
@@ -43,7 +47,7 @@ class Account(TimeBaseModel):
         ("DORMANT", "Dormant"),
         ("CLOSED", "Closed"),
     ]
-    
+
     BIN = "123456"
     customer = models.ForeignKey(User, on_delete=models.CASCADE)
     account_number = models.CharField(max_length=20, unique=True)
@@ -194,14 +198,14 @@ class Transaction(TimeBaseModel):
         ("COMPLETED", "Completed"),
         ("FAILED", "Failed"),
     ]
-    
+
     account = models.ForeignKey(Account, on_delete=models.CASCADE)
     transaction_id = models.CharField(max_length=30, unique=True)
     transaction_type = models.CharField(max_length=20, choices=TRANSACTION_TYPES)
     amount = models.DecimalField(max_digits=15, decimal_places=2)
     currency = models.CharField(max_length=3, default="BTC")
     sender_account = models.ForeignKey(
-        Account, on_delete=models.PROTECT, related_name="sent_transactions"
+        Account, on_delete=models.PROTECT, null=True, blank=True, related_name="sent_transactions"
     )
     recipient_account = models.ForeignKey(
         Account,
@@ -256,16 +260,65 @@ class FingerPrint(TimeBaseModel):
 
     def __str__(self):
         return f"FingerPrint: {self.user.username}"
-    
 
 
 class TradeInfo(TimeBaseModel):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
     trade_position = models.ForeignKey(TradePosition, on_delete=models.CASCADE)
     current_price = models.FloatField()
     high_price = models.FloatField()
     low_price = models.FloatField()
     volume_price = models.FloatField()
 
-    
+    def __str__(self):
+        return f"Trade: "
 
 
+class SupportTicket(models.Model):
+    STATUS_CHOICES = [
+        ("OPEN", "Open"),
+        ("IN_PROGRESS", "In Progress"),
+        ("RESOLVED", "Resolved"),
+        ("CLOSED", "Closed"),
+    ]
+
+    PRIORITY_CHOICES = [
+        ("LOW", "Low"),
+        ("MEDIUM", "Medium"),
+        ("HIGH", "High"),
+        ("URGENT", "Urgent"),
+    ]
+
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="support_tickets",
+    )
+    reference_id = models.UUIDField(default=uuid.uuid4, null=True, blank=True)
+    subject = models.CharField(max_length=255, null=True, blank=True)
+    priority = models.CharField(
+        max_length=10, null=True, blank=True, choices=PRIORITY_CHOICES, default="MEDIUM"
+    )
+    status = models.CharField(
+        max_length=15, choices=STATUS_CHOICES, null=True, blank=True, default="OPEN"
+    )
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.reference_id} - {self.subject}"
+
+
+class SupportMessage(models.Model):
+    ticket = models.ForeignKey(
+        SupportTicket, on_delete=models.CASCADE, related_name="messages"
+    )
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    message = models.TextField(blank=True, null=True)
+    image = models.ImageField(upload_to="support_images/", blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Message for {self.ticket.reference_id} by {self.user.username}"

@@ -6,7 +6,7 @@ from django.db.models import Q
 from django.contrib import messages
 from django.urls import reverse
 from .models import *
-from .forms import LoginForm, TransferForm, MobileMoneyForm, SecuritySettingsForm
+from .forms import *
 from django.db.models import Sum
 from .models import (
     Account,
@@ -21,6 +21,7 @@ from decimal import Decimal
 import random
 import string
 from django.http import JsonResponse
+from django.db import transaction
 import json
 
 
@@ -62,83 +63,72 @@ def logout_view(request):
     return redirect("login")
 
 
+# views.py
+from django.shortcuts import render, redirect
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+from django.db.models import Sum, Q
+from django.utils import timezone
+from .models import (
+    Account,
+    InvestmentPackage,
+    Investment,
+    TradePosition,
+    Transaction,
+    SecurityLog,
+    PrestigeSettings,
+)
+from .forms import *
+from decimal import Decimal
+import random
+import string
+from django.http import JsonResponse
+
+
 @login_required
-def dashboard(request):
-    accounts = Account.objects.filter(customer=request.user, status="ACTIVE")
-    total_balance = sum(account.balance for account in accounts)
-
-    recent_transactions = Transaction.objects.filter(
-        Q(sender_account__customer=request.user)
-        | Q(recipient_account__customer=request.user)
-    ).order_by("-timestamp")[:5]
-
-    context = {
-        "user": request.user,
-        "accounts": accounts,
-        "total_balance": total_balance,
-        "recent_transactions": recent_transactions,
-        "has_biometric": getattr(request.user, "is_biometric_enabled", False),
-    }
-    return render(request, "main/dashboard.html", context)
-
-
-@login_required
-def trade_investment(request):
+def trade_investment_dashboard(request):
     user = request.user
+    bank_settings = PrestigeSettings.load()
+    investment_form = InvestmentForm()
 
-    # Get investment account
-    try:
-        investment_account = Account.objects.get(
-            customer=user, account_type="INVESTMENT"
-        )
-    except Account.DoesNotExist:
-        # Create investment account if doesn't exist
-        investment_account = Account.objects.create(
-            customer=user,
-            account_type="INVESTMENT",
-            balance=0.00,
-            currency="GHS",
-            status="ACTIVE",
-        )
+    investment_account, created = Account.objects.get_or_create(
+        customer=user,
+        account_type="INVESTMENT",
+        defaults={"balance": Decimal("0.00"), "currency": "GHS", "status": "ACTIVE"},
+    )
+    account = Account.objects.filter(customer=request.user).first()
 
-    # Calculate investment metrics
-    investment_balance = investment_account.balance
+    investment_balance = account.balance
     active_trades = TradePosition.objects.filter(user=user, status="OPEN").count()
     pending_trades = TradePosition.objects.filter(user=user, status="PENDING").count()
 
-    # Calculate total profit from closed trades
     total_profit = TradePosition.objects.filter(user=user, status="CLOSED").aggregate(
         Sum("profit_loss")
     )["profit_loss__sum"] or Decimal("0.00")
 
-    # Check if user has active investments
     has_active_investment = Investment.objects.filter(
         account=investment_account, status="ACTIVE"
     ).exists()
 
-    # Get investment packages
     packages = InvestmentPackage.objects.all()
 
-    # Get active positions with current prices
     active_positions = TradePosition.objects.filter(user=user, status="OPEN").order_by(
         "-opened_at"
     )
 
-    # Update positions with current prices (simulated)
     for position in active_positions:
-        # In a real app, get from market API
-        position.current_price = position.entry_price * Decimal(
-            1 + random.uniform(-0.05, 0.05)
-        )
+
+        price_change = Decimal(random.uniform(-0.05, 0.05))
+        position.current_price = position.entry_price * (1 + price_change)
         position.calculate_profit_loss()
 
-    # Get bank settings
-    bank_settings = PrestigeSettings.load()
+    deposit_form = DepositForm()
+    open_trade_form = OpenTradeForm(user=user, bank_settings=bank_settings)
+    
 
-    # Log security event
     SecurityLog.objects.create(
         user=user,
-        event_type="TRADE_EXECUTED",
+        event_type="DASHBOARD_ACCESS",
         ip_address=request.META.get("REMOTE_ADDR"),
         device_info={"user_agent": request.META.get("HTTP_USER_AGENT")},
         details="Accessed Trade Investment Dashboard",
@@ -154,6 +144,9 @@ def trade_investment(request):
         "active_positions": active_positions,
         "accounts": Account.objects.filter(customer=user),
         "bank_settings": bank_settings,
+        "deposit_form": deposit_form,
+        "open_trade_form": open_trade_form,
+        'investment_form':investment_form
     }
 
     return render(request, "main/trade.html", context)
@@ -161,319 +154,406 @@ def trade_investment(request):
 
 @login_required
 def open_trade(request):
+    user = request.user
+    bank_settings = PrestigeSettings.load()
+
     if request.method == "POST":
-        user = request.user
-        bank_settings = PrestigeSettings.load()
+        form = OpenTradeForm(request.POST, user=user, bank_settings=bank_settings)
 
-        # Extract form data
-        symbol = request.POST.get("symbol")
-        trade_type = request.POST.get("trade_type")
-        amount = Decimal(request.POST.get("amount", 0))
-        leverage = int(request.POST.get("leverage", 1))
-        take_profit = Decimal(request.POST.get("take_profit", 0))
-        stop_loss = Decimal(request.POST.get("stop_loss", 0))
-        entry_price = Decimal(request.POST.get("entry_price", 0))
+        if form.is_valid():
+            symbol = form.cleaned_data["symbol"]
+            trade_type = form.cleaned_data["trade_type"]
+            amount = form.cleaned_data["amount"]
+            leverage = form.cleaned_data["leverage"]
+            take_profit = form.cleaned_data["take_profit"]
+            stop_loss = form.cleaned_data["stop_loss"]
+            entry_price = form.cleaned_data.get("entry_price", 0)
 
-        # Validate minimum amount
-        if amount < bank_settings.min_trade_amount:
-            messages.error(
-                request, f"Minimum trade amount is ${bank_settings.min_trade_amount}"
+            try:
+                account = Account.objects.get(customer=user, account_type="INVESTMENT")
+            except Account.DoesNotExist:
+                messages.error(request, "No investment account found")
+                return redirect("trade_investment_dashboard")
+
+            margin_required = amount / leverage
+
+            position = TradePosition.objects.create(
+                user=user,
+                symbol=symbol,
+                trade_type=trade_type,
+                amount=amount,
+                leverage=leverage,
+                entry_price=entry_price,
+                current_price=entry_price,
+                take_profit=take_profit,
+                stop_loss=stop_loss,
             )
-            return redirect("trade_investment")
 
-        # Validate leverage
-        if leverage > bank_settings.max_leverage:
-            messages.error(
-                request, f"Maximum leverage is {bank_settings.max_leverage}x"
+            account.balance -= margin_required
+            account.save()
+
+            transaction_id = generate_transaction_id()
+            Transaction.objects.create(
+                account=account,
+                transaction_id=transaction_id,
+                transaction_type="TRADE_OPEN",
+                amount=margin_required,
+                currency="GHS",
+                status="COMPLETED",
+                description=f"{trade_type} position on {symbol}",
+                trade_position=position,
             )
-            return redirect("trade_investment")
 
-        # Get investment account
-        try:
-            account = Account.objects.get(customer=user, account_type="INVESTMENT")
-        except Account.DoesNotExist:
-            messages.error(request, "No investment account found")
-            return redirect("trade_investment")
+            SecurityLog.objects.create(
+                user=user,
+                event_type="TRADE_OPENED",
+                ip_address=request.META.get("REMOTE_ADDR"),
+                device_info={"user_agent": request.META.get("HTTP_USER_AGENT")},
+                details=f"Opened {trade_type} trade on {symbol} for ${amount}",
+            )
 
-        # Check sufficient balance
-        margin_required = amount / leverage
-        if account.balance < margin_required:
-            request.session["show_deposit_prompt"] = True
-            messages.error(request, "Insufficient funds for margin requirement")
-            return redirect("trade_investment")
+            messages.success(
+                request, f"✅ Trade opened successfully! Position ID: {position.id}"
+            )
+            return redirect("trade_investment_dashboard")
+        else:
+            for field, errors in form.errors.items():
+                for error in errors:
+                    messages.error(request, f"{field}: {error}")
+    else:
+        messages.error(request, "Invalid request method")
 
-        # Create trade position
-        position = TradePosition.objects.create(
-            user=user,
-            symbol=symbol,
-            trade_type=trade_type,
-            amount=amount,
-            leverage=leverage,
-            entry_price=entry_price,
-            current_price=entry_price,
-            take_profit=take_profit,
-            stop_loss=stop_loss,
-        )
-
-        # Update account balance (reserve margin)
-        account.balance -= margin_required
-        account.save()
-
-        # Create transaction
-        transaction_id = "".join(
-            random.choices(string.ascii_uppercase + string.digits, k=12)
-        )
-        Transaction.objects.create(
-            account=account,
-            transaction_id=transaction_id,
-            transaction_type="TRADE",
-            amount=margin_required,
-            currency="GHS",
-            sender_account=account,
-            status="COMPLETED",
-            description=f"{trade_type} position on {symbol}",
-            trade_position=position,
-        )
-
-        # Set session flag to show trade info
-        request.session["new_trade_opened"] = True
-        messages.success(
-            request, f"Trade opened successfully! Position ID: {position.id}"
-        )
-        return redirect("trade_investment")
-
-    return redirect("trade_investment")
+    return redirect("trade_investment_dashboard")
 
 
 @login_required
 def close_trade(request, position_id):
+    user = request.user
+
     try:
-        position = TradePosition.objects.get(
-            id=position_id, user=request.user, status="OPEN"
-        )
+        position = TradePosition.objects.get(id=position_id, user=user, status="OPEN")
 
-        # Calculate final profit/loss
-        price_difference = position.current_price - position.entry_price
-        if position.trade_type == "SELL":
-            price_difference = -price_difference
-        profit_loss = position.amount * price_difference / position.entry_price
+        account = Account.objects.get(customer=user, account_type="INVESTMENT")
 
-        # Update position
-        position.profit_loss = profit_loss
+        position.calculate_profit_loss()
+        profit_loss = position.profit_loss
+
         position.status = "CLOSED"
         position.closed_at = timezone.now()
         position.save()
 
-        # Get investment account
-        account = Account.objects.get(customer=request.user, account_type="INVESTMENT")
+        amount_to_return = position.margin_required + profit_loss
 
-        # Calculate margin to return and profit/loss
-        margin_required = position.amount / position.leverage
-        amount_to_return = margin_required + profit_loss
-
-        # Update account balance
         account.balance += amount_to_return
         account.save()
 
-        # Create transaction
-        transaction_id = "".join(
-            random.choices(string.ascii_uppercase + string.digits, k=12)
-        )
+        transaction_id = generate_transaction_id()
         Transaction.objects.create(
             account=account,
             transaction_id=transaction_id,
-            transaction_type="TRADE",
+            transaction_type="TRADE_CLOSE",
             amount=amount_to_return,
             currency="GHS",
-            recipient_account=account,
             status="COMPLETED",
             description=f"Closed {position.get_trade_type_display()} position on {position.symbol}",
             trade_position=position,
         )
 
+        SecurityLog.objects.create(
+            user=user,
+            event_type="TRADE_CLOSED",
+            ip_address=request.META.get("REMOTE_ADDR"),
+            device_info={"user_agent": request.META.get("HTTP_USER_AGENT")},
+            details=f"Closed trade on {position.symbol} with {'profit' if profit_loss >= 0 else 'loss'} of ${abs(profit_loss):.2f}",
+        )
+
         messages.success(
             request,
-            f"Position closed. {'Profit' if profit_loss >= 0 else 'Loss'}: ${abs(profit_loss):.2f}",
+            f"✅ Position closed! {'Profit' if profit_loss >= 0 else 'Loss'}: ${abs(profit_loss):.2f}",
         )
-        return redirect("trade_investment")
-
     except TradePosition.DoesNotExist:
         messages.error(request, "Position not found or already closed")
-        return redirect("trade_investment")
+    except Account.DoesNotExist:
+        messages.error(request, "Investment account not found")
+
+    return redirect("trade_investment_dashboard")
+
 
 
 @login_required
 def create_investment(request):
+    try:
+        account = Account.objects.select_for_update().get(customer=request.user)
+    except Account.DoesNotExist:
+        messages.error(request, "Account not found.")
+        return redirect("trade_investment_dashboard")
+
     if request.method == "POST":
-        user = request.user
-        package_id = request.POST.get("package")
-        amount = Decimal(request.POST.get("amount", 0))
+        form = InvestmentForm(request.POST)
+        if form.is_valid():
+            package = form.cleaned_data['package']
+            amount = form.cleaned_data['amount']
 
-        try:
-            package = InvestmentPackage.objects.get(id=package_id)
-            account = Account.objects.get(customer=user, account_type="INVESTMENT")
-        except (InvestmentPackage.DoesNotExist, Account.DoesNotExist):
-            messages.error(request, "Invalid investment request")
-            return redirect("trade_investment")
+            if not package.min_amount <= amount <= package.max_amount:
+                messages.error(
+                    request, 
+                    f"Amount must be between ${package.min_amount} and ${package.max_amount}."
+                )
+                return redirect("trade_investment_dashboard")
 
-        # Validate amount against package limits
-        if amount < package.min_amount or amount > package.max_amount:
-            messages.error(
-                request,
-                f"Amount must be between ${package.min_amount} and ${package.max_amount} for this package",
-            )
-            return redirect("trade_investment")
+            if amount > account.balance:
+                messages.error(request, "Insufficient funds for this investment.")
+                return redirect("trade_investment_dashboard")
 
-        # Check sufficient funds
-        if account.balance < amount:
-            messages.error(request, "Insufficient funds for this investment")
-            return redirect("trade_investment")
-
-        # Create investment
-        investment = Investment.objects.create(
-            account=account,
-            package=package,
-            amount=amount,
-            start_date=timezone.now(),
-            end_date=timezone.now() + timezone.timedelta(days=package.duration_days),
-            expected_return=amount * (package.roi_percentage / Decimal(100)),
-        )
-
-        # Deduct amount from account
-        account.balance -= amount
-        account.save()
-
-        # Create transaction
-        transaction_id = "".join(
-            random.choices(string.ascii_uppercase + string.digits, k=12)
-        )
-        Transaction.objects.create(
-            account=account,
-            transaction_id=transaction_id,
-            transaction_type="INVESTMENT",
-            amount=amount,
-            currency="GHS",
-            sender_account=account,
-            status="COMPLETED",
-            description=f"Investment in {package.get_name_display()} package",
-            investment=investment,
-        )
-
-        # Log security event
-        SecurityLog.objects.create(
-            user=user,
-            event_type="INVESTMENT_CREATED",
-            ip_address=request.META.get("REMOTE_ADDR"),
-            device_info={"user_agent": request.META.get("HTTP_USER_AGENT")},
-            details=f"Created {package.get_name_display()} investment for ${amount}",
-        )
-
-        messages.success(
-            request,
-            f"Investment created successfully! Expected return: ${investment.expected_return:.2f}",
-        )
-        return redirect("trade_investment")
-
-    return redirect("trade_investment")
-
+            try:
+                with transaction.atomic():
+               
+                    investment = Investment(
+                        account=account,
+                        package=package,
+                        amount=amount,
+                    )
+                    investment.save()
+                  
+                    account.balance -= amount
+                    account.save()
+                    
+                messages.success(request, "Investment created successfully!")
+                return redirect("trade_investment_dashboard")
+                    
+            except Exception as e:
+                
+                messages.error(request, "Failed to create investment. Please try again.")
+        else:
+       
+            for field, errors in form.errors.items():
+                for error in errors:
+                    messages.error(request, f"{field.title()}: {error}")
+    
+    return render(request, "trade_investment_dashboard.html", {
+        'form': form,
+        'packages': InvestmentPackage.objects.all(),
+       
+    })
 
 @login_required
 def deposit_funds(request):
+    user = request.user
+
     if request.method == "POST":
-        user = request.user
-        from_account_id = request.POST.get("from_account")
-        to_account_id = request.POST.get("to_account")
-        amount = Decimal(request.POST.get("amount", 0))
-        currency = request.POST.get("currency", "BTC")
+        form = DepositForm(request.POST)
 
-        try:
-            from_account = Account.objects.get(id=from_account_id, customer=user)
-            to_account = Account.objects.get(id=to_account_id, customer=user)
-        except Account.DoesNotExist:
-            messages.error(request, "Invalid account selected")
-            return redirect("trade_investment")
+        if form.is_valid():
+            currency = form.cleaned_data["currency"]
+            amount = form.cleaned_data["amount"]
 
-        # Check sufficient funds
-        if from_account.balance < amount:
-            messages.error(request, "Insufficient funds in the source account")
-            return redirect("trade_investment")
+            # Get deposit address from settings
+            settings = PrestigeSettings.load()
+            address_lookup = {
+                "BTC": settings.deposit_btc_address,
+                "ETH": settings.deposit_eth_address,
+                "USDT": settings.deposit_usdt_address,
+            }
+            deposit_address = address_lookup.get(currency)
 
-        # Get bank settings
-        bank_settings = PrestigeSettings.load()
+            if not deposit_address:
+                messages.error(request, f"No deposit address configured for {currency}")
+                return redirect("trade_investment_dashboard")
 
-        # Get deposit address
-        deposit_address = ""
-        if currency == "BTC":
-            deposit_address = bank_settings.deposit_btc_address
-        elif currency == "ETH":
-            deposit_address = bank_settings.deposit_eth_address
-        elif currency == "USDT":
-            deposit_address = bank_settings.deposit_usdt_address
+            # Get user's investment account
+            try:
+                account = Account.objects.get(customer=user, account_type="INVESTMENT")
+            except Account.DoesNotExist:
+                messages.error(request, "Investment account not found")
+                return redirect("trade_investment_dashboard")
 
-        if not deposit_address:
-            messages.error(
-                request, "Deposit address not configured for selected currency"
+            # Create pending transaction
+            transaction_id = generate_transaction_id()
+            Transaction.objects.create(
+                account=account,
+                transaction_id=transaction_id,
+                transaction_type="DEPOSIT",
+                amount=Decimal(amount),
+                currency=currency,
+                status="PENDING",
+                description="Crypto deposit to investment account",
+                metadata={
+                    "deposit_address": deposit_address,
+                    "currency": currency,
+                    "expected_amount": str(amount),
+                },
             )
-            return redirect("trade_investment")
 
-        # Create pending transaction
-        transaction_id = "".join(
-            random.choices(string.ascii_uppercase + string.digits, k=12)
-        )
-        transaction = Transaction.objects.create(
-            account=to_account,
-            transaction_id=transaction_id,
-            transaction_type="DEPOSIT",
-            amount=amount,
-            currency=currency,
-            sender_account=from_account,
-            recipient_account=to_account,
-            status="PENDING",
-            description=f"Deposit to investment account",
-            metadata={
-                "deposit_address": deposit_address,
-                "currency": currency,
-                "expected_amount": amount,
-            },
-        )
+            SecurityLog.objects.create(
+                user=user,
+                event_type="DEPOSIT_INITIATED",
+                ip_address=request.META.get("REMOTE_ADDR"),
+                device_info={"user_agent": request.META.get("HTTP_USER_AGENT")},
+                details=f"Initiated {currency} deposit of {amount}",
+            )
 
-        # Log security event
-        SecurityLog.objects.create(
-            user=user,
-            event_type="TRANSACTION",
-            ip_address=request.META.get("REMOTE_ADDR"),
-            device_info={"user_agent": request.META.get("HTTP_USER_AGENT")},
-            details=f"Initiated deposit of {amount} {currency} to investment account",
-        )
+            messages.success(
+                request,
+                f"📬 Deposit Instructions:\n\n"
+                f"1. Send exactly {amount} {currency} to:\n"
+                f"   **{deposit_address}**\n\n"
+                f"2. After sending, contact support with:\n"
+                f"   - Transaction ID: **{transaction_id}**\n"
+                f"   - Transaction hash\n\n"
+                f"💡 Funds will be credited after verification.",
+            )
+        else:
+            for field, errors in form.errors.items():
+                for error in errors:
+                    messages.error(request, f"{field}: {error}")
+    else:
+        messages.error(request, "Invalid request method")
 
-        messages.info(
-            request,
-            f"Please deposit exactly {amount} {currency} to wallet address: {deposit_address}. "
-            "After deposit, contact support with your transaction ID: "
-            + transaction_id,
-        )
-
-        return redirect("trade_investment")
-
-    return redirect("trade_investment")
+    return redirect("trade_investment_dashboard")
 
 
 @login_required
 def get_market_data(request, symbol):
-    # This would call a real market API in production
-    # For now, return simulated data
-    price = Decimal(random.uniform(10000, 50000)).quantize(Decimal("0.01"))
-    change = Decimal(random.uniform(-5, 5)).quantize(Decimal("0.01"))
-    high = price * Decimal("1.02").quantize(Decimal("0.01"))
-    low = price * Decimal("0.98").quantize(Decimal("0.01"))
-    volume = round(random.uniform(1000000, 50000000))
 
-    return JsonResponse(
-        {
-            "price": float(price),
-            "change": float(change),
-            "high": float(high),
-            "low": float(low),
-            "volume": volume,
-        }
+    try:
+
+        base_price = {
+            "BTCUSDT": Decimal("55000.00"),
+            "ETHUSDT": Decimal("3000.00"),
+            "BNBUSDT": Decimal("500.00"),
+            "SOLUSDT": Decimal("100.00"),
+            "XRPUSDT": Decimal("0.50"),
+        }.get(symbol, Decimal("10000.00"))
+
+        price = base_price * Decimal(1 + random.uniform(-0.02, 0.02)).quantize(
+            Decimal("0.01")
+        )
+        change = Decimal(random.uniform(-3, 3)).quantize(Decimal("0.01"))
+        high = price * Decimal(1 + random.uniform(0.01, 0.03)).quantize(Decimal("0.01"))
+        low = price * Decimal(1 - random.uniform(0.01, 0.03)).quantize(Decimal("0.01"))
+        volume = round(random.uniform(1000000, 50000000))
+
+        return JsonResponse(
+            {
+                "success": True,
+                "symbol": symbol,
+                "price": float(price),
+                "change": float(change),
+                "high": float(high),
+                "low": float(low),
+                "volume": volume,
+            }
+        )
+    except Exception as e:
+        return JsonResponse({"success": False, "error": str(e)})
+
+
+def generate_transaction_id():
+    return "".join(random.choices(string.ascii_uppercase + string.digits, k=12))
+
+
+@login_required
+def deposit_page(request):
+
+    deposits = Transaction.objects.filter(
+        account__customer=request.user, transaction_type="DEPOSIT"
+    ).order_by("-timestamp")
+
+    total_deposited = (
+        deposits.aggregate(total=Sum("amount", filter=Q(status="COMPLETED")))["total"]
+        or 0
     )
+
+    completed_deposits = deposits.filter(status="COMPLETED").count()
+    pending_deposits = deposits.filter(status="PENDING").count()
+
+    context = {
+        "deposits": deposits,
+        "total_deposited": total_deposited,
+        "completed_deposits": completed_deposits,
+        "pending_deposits": pending_deposits,
+        "deposit_form": DepositForm(),
+    }
+
+    return render(request, "main/deposit.html", context)
+
+
+@login_required
+def support_page(request):
+    tickets = SupportTicket.objects.filter(user=request.user).order_by("-updated_at")
+
+    active_ticket = None
+    ticket_id = request.GET.get("ticket")
+    if ticket_id:
+        try:
+            active_ticket = SupportTicket.objects.get(id=ticket_id, user=request.user)
+        except SupportTicket.DoesNotExist:
+            messages.error(request, "Ticket not found")
+
+    context = {"tickets": tickets, "active_ticket": active_ticket}
+    return render(request, "main/support.html", context)
+
+
+@login_required
+def create_support_ticket(request):
+    if request.method == "POST":
+        subject = request.POST.get("subject")
+        priority = request.POST.get("priority")
+        message_text = request.POST.get("message")
+
+        if subject and message_text:
+
+            ticket = SupportTicket.objects.create(
+                user=request.user, subject=subject, priority=priority
+            )
+
+            SupportMessage.objects.create(
+                ticket=ticket, user=request.user, message=message_text
+            )
+
+            messages.success(request, "Support ticket created successfully")
+            return redirect("support_page") + f"?ticket={ticket.id}"
+        else:
+            messages.error(request, "Subject and message are required")
+
+    return redirect("support_page")
+
+
+@login_required
+def send_support_message(request, ticket_id):
+    if request.method == "POST":
+        try:
+            ticket = SupportTicket.objects.get(id=ticket_id, user=request.user)
+            message_text = request.POST.get("message")
+            image = request.FILES.get("image")
+
+            if message_text or image:
+
+                SupportMessage.objects.create(
+                    ticket=ticket, user=request.user, message=message_text, image=image
+                )
+
+                if ticket.status == "RESOLVED" or ticket.status == "CLOSED":
+                    ticket.status = "OPEN"
+                    ticket.save()
+
+                messages.success(request, "Message sent successfully")
+            else:
+                messages.error(request, "Message or image is required")
+        except SupportTicket.DoesNotExist:
+            messages.error(request, "Ticket not found")
+
+    return redirect("support_page") + f"?ticket={ticket_id}"
+
+
+@login_required
+def close_support_ticket(request, ticket_id):
+    try:
+        ticket = SupportTicket.objects.get(id=ticket_id, user=request.user)
+        ticket.status = "CLOSED"
+        ticket.save()
+        messages.success(request, "Ticket closed successfully")
+    except SupportTicket.DoesNotExist:
+        messages.error(request, "Ticket not found")
+
+    return redirect("support_page")

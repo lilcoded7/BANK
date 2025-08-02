@@ -149,6 +149,7 @@ class TradePosition(TimeBaseModel):
     def __str__(self):
         return f"{self.user.email} - {self.symbol} {self.get_trade_type_display()}"
 
+
 class Transaction(TimeBaseModel):
     TRANSACTION_TYPES = [
         ("TRANSFER", "Bank Transfer"),
@@ -248,25 +249,48 @@ class SupportTicket(TimeBaseModel):
     class Meta:
         ordering = ['-updated_at']
 
+    def get_conversation_with_admin(self):
+        """Get all messages between user and admin for this ticket"""
+        return self.messages.all().order_by('created_at') 
+
     def __str__(self):
         return f"{self.subject} ({self.get_status_display()})"
 
+
 class SupportChat(TimeBaseModel):
     ticket = models.ForeignKey(SupportTicket, on_delete=models.CASCADE, related_name="messages", null=True, blank=True)
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="chats")
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="support_chats")  # Changed from 'chats' to 'support_chats'
     message = models.TextField(blank=True, null=True)
     image = models.ImageField(upload_to="support_images/", blank=True, null=True)
     file = models.FileField(upload_to="support_files/", blank=True, null=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+
+    is_read = models.BooleanField(default=False)  
 
     class Meta:
         ordering = ['created_at']
+        verbose_name = 'Support Chat Message'
+        verbose_name_plural = 'Support Chat Messages'
+
 
     def __str__(self):
         return f"Message by {self.user.username}"
+    
+    def save(self, *args, **kwargs):
+        """Ensure ticket is created if doesn't exist"""
+        if not self.ticket and self.user:
+            self.ticket = SupportTicket.objects.create(
+                user=self.user,
+                subject='General Support',
+                status='IN_PROGRESS'
+            )
+        super().save(*args, **kwargs)
 
-    def file_extension(self):
-        if self.file:
-            return self.file.name.split(".")[-1].upper()
-        return None
+
+
+
+class ReferalCode(TimeBaseModel):
+    code  = models.CharField(max_length=100, null=True, blank=True)
+    is_expired = models.BooleanField(default=False)
+
+
+

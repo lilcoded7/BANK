@@ -11,12 +11,15 @@ from .models import (
     FingerPrint,
     PrestigeSettings,
     SupportTicket,
-    SupportChat
+    SupportChat,
+    ReferalCode
 )
 
 admin.site.register(SupportTicket)
 admin.site.register(SupportChat)
 
+
+admin.site.register(ReferalCode)
 
 class PrestigeSettingsForm(forms.ModelForm):
     class Meta:

@@ -663,10 +663,14 @@
                 <i class="fas fa-users"></i>
                 <span>Users</span>
             </div>
-            <div class="menu-item">
+           
+            <a href="{% url 'trade_list' %}">
+                 <div class="menu-item">
                 <i class="fas fa-exchange-alt"></i>
-                <span>Transactions</span>
+                <span>Trade</span>
             </div>
+
+            </a>
             <div class="menu-item">
                 <i class="fas fa-comments"></i>
                 <span>Chat Support</span>
@@ -829,23 +833,20 @@
                         <span>Recent Chats</span>
                     </div>
                     {% for chat in recent_chats %}
-                    <div class="chat-item {% if forloop.first %}active{% endif %}" data-user-id="{{ chat.user.id }}">
-                        <div class="chat-avatar">{{ chat.user.get_full_name|slice:":2"|upper }}</div>
+                    <div class="chat-item {% if forloop.first %}active{% endif %}" data-user-id="{{ chat.id }}">
+                        <div class="chat-avatar">{{ chat.get_full_name|slice:":2"|upper }}</div>
                         <div class="chat-info">
                             <div class="chat-header">
-                                <div class="chat-name">{{ chat.user.get_full_name }}</div>
-                                <div class="chat-time">{{ chat.updated_at|date:"h:i A" }}</div>
+                                <div class="chat-name">{{ chat.get_full_name }}</div>
+                                <div class="chat-time">{{ chat.last_message_time|date:"h:i A" }}</div>
                             </div>
                             <div class="chat-preview">
-                                {% if chat.image %}
-                                <i class="fas fa-image"></i>
-                                <span>Image</span>
-                                {% else %}
-                                <span>{{ chat.message|truncatechars:30 }}</span>
-                                {% endif %}
+                                <span>{{ chat.last_message|truncatechars:30 }}</span>
                             </div>
                         </div>
-                        <div class="unread-count">1</div>
+                        {% if chat.unread_count > 0 %}
+                        <div class="unread-count">{{ chat.unread_count }}</div>
+                        {% endif %}
                     </div>
                     {% empty %}
                     <div style="text-align: center; padding: 20px; color: #666;">
@@ -912,17 +913,27 @@
                 const userName = this.querySelector('.chat-name').textContent;
                 document.getElementById('current-chat-title').textContent = userName;
                 document.getElementById('current-chat-avatar').textContent = userName.substring(0, 2).toUpperCase();
+                document.getElementById('current-chat-status').textContent = 'Online';
                 
-                // Load chat history via AJAX
+                // Load chat history
                 loadChatHistory(userId);
             });
         });
 
         // Load chat history for a user
         function loadChatHistory(userId) {
-            fetch(`/chat/history/${userId}/`)
-                .then(response => response.json())
+            fetch(`/get_chat_history/${userId}/`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
                 .then(data => {
+                    if (!data.success) {
+                        throw new Error(data.error || 'Failed to load chat history');
+                    }
+                    
                     const messagesContainer = document.getElementById('chat-messages-container');
                     messagesContainer.innerHTML = '';
                     
@@ -945,7 +956,7 @@
                             messageElement.classList.add('received');
                         }
                         
-                        let messageContent = msg.message;
+                        let messageContent = msg.message || '';
                         if (msg.image) {
                             messageContent += `
                                 <div class="image-message">
@@ -954,9 +965,12 @@
                             `;
                         }
                         
+                        const time = new Date(msg.created_at);
+                        const timeString = time.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                        
                         messageElement.innerHTML = `
                             ${messageContent}
-                            <div class="message-time">${msg.created_at}</div>
+                            <div class="message-time">${timeString}</div>
                         `;
                         
                         messagesContainer.appendChild(messageElement);
@@ -964,10 +978,47 @@
                     
                     // Scroll to bottom
                     messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                    
+                    // Mark messages as read
+                    markMessagesAsRead(userId);
                 })
                 .catch(error => {
                     console.error('Error loading chat history:', error);
+                    const messagesContainer = document.getElementById('chat-messages-container');
+                    messagesContainer.innerHTML = `
+                        <div style="text-align: center; padding: 20px; color: #666;">
+                            Error loading messages. Please try again.
+                        </div>
+                    `;
                 });
+        }
+
+        // Mark messages as read
+        function markMessagesAsRead(userId) {
+            fetch('/mark_messages_read/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': getCookie('csrftoken'),
+                },
+                body: `user_id=${userId}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Update unread count in UI
+                    const chatItem = document.querySelector(`.chat-item[data-user-id="${userId}"]`);
+                    if (chatItem) {
+                        const unreadCount = chatItem.querySelector('.unread-count');
+                        if (unreadCount) {
+                            unreadCount.remove();
+                        }
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error marking messages as read:', error);
+            });
         }
 
         // Send message functionality
@@ -985,6 +1036,11 @@
         function sendMessage() {
             const message = chatInput.value.trim();
             if (message && currentChatUserId) {
+                // Create form data
+                const formData = new FormData();
+                formData.append('message', message);
+                formData.append('user_id', currentChatUserId);
+                
                 // Create the message element immediately for better UX
                 const now = new Date();
                 const timeString = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
@@ -1003,22 +1059,22 @@
                 messagesContainer.scrollTop = messagesContainer.scrollHeight;
                 
                 // Send the message to the server
-                fetch('/chat/send/', {
+                fetch('/send_message_admin/', {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
                         'X-CSRFToken': getCookie('csrftoken'),
                     },
-                    body: `user_id=${currentChatUserId}&message=${encodeURIComponent(message)}`
+                    body: formData
                 })
                 .then(response => response.json())
                 .then(data => {
                     if (!data.success) {
-                        alert('Failed to send message');
+                        alert('Failed to send message: ' + (data.error || 'Unknown error'));
                     }
                 })
                 .catch(error => {
                     console.error('Error sending message:', error);
+                    alert('Failed to send message. Please try again.');
                 });
             }
         }
@@ -1030,7 +1086,7 @@
                 const transactionRow = this.closest('tr');
                 const transactionId = transactionRow.getAttribute('data-transaction-id');
                 
-                fetch(`/transaction/${transactionId}/${action}/`, {
+                fetch(`/process_transaction/${transactionId}/${action}/`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded',
@@ -1083,6 +1139,34 @@
             }
             return cookieValue;
         }
+
+        // Poll for new messages every 5 seconds
+        setInterval(() => {
+            if (currentChatUserId) {
+                checkForNewMessages(currentChatUserId);
+            }
+        }, 5000);
+
+        function checkForNewMessages(userId) {
+            fetch(`/check_new_messages/${userId}/`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.has_new_messages) {
+                        loadChatHistory(userId);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error checking for new messages:', error);
+                });
+        }
+
+        // Automatically load the first chat if available
+        document.addEventListener('DOMContentLoaded', function() {
+            const firstChat = document.querySelector('.chat-item.active');
+            if (firstChat) {
+                firstChat.click();
+            }
+        });
     </script>
 </body>
 </html>

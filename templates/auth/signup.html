@@ -226,49 +226,68 @@
                 </div>
                 {% endif %}
 
-                <form method="POST">
-                    {% csrf_token %}
-                    <div class="form-group name-fields">
-                        <div>
-                            <label for="first_name">First Name</label>
-                            <input type="text" id="first_name" name="first_name" class="form-control" placeholder="John" required>
-                        </div>
-                        <div>
-                            <label for="last_name">Last Name</label>
-                            <input type="text" id="last_name" name="last_name" class="form-control" placeholder="Doe" required>
-                        </div>
-                    </div>
-                    
-                    <div class="form-group input-icon">
-                        <i class="fas fa-envelope"></i>
-                        <input type="email" id="email" name="email" class="form-control" placeholder="Email Address" required>
-                    </div>
-                    
-                    <div class="form-group input-icon">
-                        <i class="fas fa-phone"></i>
-                        <input type="tel" id="phone" name="phone" class="form-control" placeholder="Phone Number" required>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="password1">Password</label>
-                        <input type="password" id="password1" name="password1" class="form-control" placeholder="Create password" required>
-                        <div class="password-strength">
-                            <div class="strength-meter" id="strengthMeter"></div>
-                        </div>
-                        <div class="password-hint">
-                            Use 8+ characters with a mix of letters, numbers & symbols
-                        </div>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="password2">Confirm Password</label>
-                        <input type="password" id="password2" name="password2" class="form-control" placeholder="Confirm password" required>
-                    </div>
-                    
-                    <div class="form-group">
-                        <button type="submit" class="btn">Create Account</button>
-                    </div>
-                </form>
+                <form method="POST" novalidate>
+    {% csrf_token %}
+
+    {% if form.non_field_errors %}
+    <div class="message message-error">
+        <i class="fas fa-exclamation-circle"></i>
+        {{ form.non_field_errors }}
+    </div>
+    {% endif %}
+
+    <div class="form-group">
+        <label for="{{ form.username.id_for_label }}">Username</label>
+        <div class="input-icon">
+            <i class="fas fa-user"></i>
+            {{ form.username }}
+            {% if form.username.errors %}
+                <div class="message message-error">{{ form.username.errors.0 }}</div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label for="{{ form.referal_code.id_for_label }}">Referral Code</label>
+        <div class="input-icon">
+            <i class="fas fa-code"></i>
+            {{ form.referal_code }}
+            {% if form.referal_code.errors %}
+                <div class="message message-error">{{ form.referal_code.errors.0 }}</div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label for="{{ form.email.id_for_label }}">Email</label>
+        <div class="input-icon">
+            <i class="fas fa-envelope"></i>
+            {{ form.email }}
+            {% if form.email.errors %}
+                <div class="message message-error">{{ form.email.errors.0 }}</div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label for="{{ form.password.id_for_label }}">Password</label>
+        {{ form.password }}
+        <div class="password-strength">
+            <div class="strength-meter" id="strengthMeter"></div>
+        </div>
+        <div class="password-hint">
+            Use 8+ characters with a mix of letters, numbers & symbols
+        </div>
+        {% if form.password.errors %}
+            <div class="message message-error">{{ form.password.errors.0 }}</div>
+        {% endif %}
+    </div>
+
+    <div class="form-group">
+        <button type="submit" class="btn">Create Account</button>
+    </div>
+</form>
+
 
                 <div class="auth-footer">
                     <p>Already have an account? <a href="{% url 'login' %}">Sign in</a></p>

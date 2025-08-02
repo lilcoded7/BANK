@@ -286,11 +286,22 @@ class SupportChat(TimeBaseModel):
         super().save(*args, **kwargs)
 
 
-
-
 class ReferalCode(TimeBaseModel):
+    name=models.CharField(max_length=100, null=True, blank=True)
     code  = models.CharField(max_length=100, null=True, blank=True)
     is_expired = models.BooleanField(default=False)
 
 
+    def __str__(self):
+        return f"Name: {self.name} Code: {self.code}"
+    
+    def save(self, *args, **kwargs):
+        if not self.code:
+            unique_code = uuid.uuid4().hex[:8].upper()
+            
+            while ReferalCode.objects.filter(code=unique_code).exists():
+                unique_code = uuid.uuid4().hex[:8].upper()
+            
+            self.code = unique_code
 
+        super().save(*args, **kwargs)

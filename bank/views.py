@@ -1,13 +1,15 @@
-# views.py
-from django.shortcuts import render, redirect
-from django.contrib.auth import authenticate, login, logout
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
-from django.db.models import Q
+from django.http import JsonResponse
+from django.views.decorators.http import require_POST
+from django.contrib.auth import authenticate, login, logout, get_user_model
 from django.contrib import messages
-from django.urls import reverse
-from .models import *
-from .forms import *
-from django.db.models import Sum
+from django.db import transaction
+from django.utils import timezone
+from django.db.models import Q, Sum
+from decimal import Decimal
+import random
+import string
 from .models import (
     Account,
     InvestmentPackage,
@@ -16,23 +18,26 @@ from .models import (
     Transaction,
     SecurityLog,
     PrestigeSettings,
+    SupportTicket,
+    SupportChat
 )
-from decimal import Decimal
-import random
-import string
-from django.http import JsonResponse
-from django.db import transaction
-import json
+from .forms import (
+    LoginForm,
+    DepositForm,
+    InvestmentForm,
+    OpenTradeForm,
+    SupportTicketForm,
+    SupportChatForm
+)
 
+User = get_user_model()
 
 def login_view(request):
     if request.method == "POST":
         form = LoginForm(request.POST)
         if form.is_valid():
-            user = authenticate(
-                email=form.cleaned_data["email"], password=form.cleaned_data["password"]
-            )
-            if user is not None:
+            user = authenticate(email=form.cleaned_data["email"], password=form.cleaned_data["password"])
+            if user:
                 login(request, user)
                 SecurityLog.objects.create(
                     user=user,
@@ -41,15 +46,13 @@ def login_view(request):
                     device_info={"user_agent": request.META.get("HTTP_USER_AGENT")},
                     details="Standard password authentication",
                 )
-                return redirect("dashboard")
-            else:
-                messages.error(request, "Invalid email or password")
+                return redirect("trade_investment_dashboard")
+            messages.error(request, "Invalid email or password")
         else:
             messages.error(request, "Please correct the errors below")
     else:
         form = LoginForm()
     return render(request, "auth/login.html", {"form": form})
-
 
 @login_required
 def logout_view(request):
@@ -62,215 +65,116 @@ def logout_view(request):
     logout(request)
     return redirect("login")
 
-
-# views.py
-from django.shortcuts import render, redirect
-from django.contrib.auth.decorators import login_required
-from django.contrib import messages
-from django.db.models import Sum, Q
-from django.utils import timezone
-from .models import (
-    Account,
-    InvestmentPackage,
-    Investment,
-    TradePosition,
-    Transaction,
-    SecurityLog,
-    PrestigeSettings,
-)
-from .forms import *
-from decimal import Decimal
-import random
-import string
-from django.http import JsonResponse
-
-
 @login_required
 def trade_investment_dashboard(request):
     user = request.user
     bank_settings = PrestigeSettings.load()
-    investment_form = InvestmentForm()
+    account = Account.objects.filter(customer=user).first()
 
-    investment_account, created = Account.objects.get_or_create(
-        customer=user,
-        account_type="INVESTMENT",
-        defaults={"balance": Decimal("0.00"), "currency": "GHS", "status": "ACTIVE"},
-    )
-    account = Account.objects.filter(customer=request.user).first()
-
-    investment_balance = account.balance
-    active_trades = TradePosition.objects.filter(user=user, status="OPEN").count()
-    pending_trades = TradePosition.objects.filter(user=user, status="PENDING").count()
-
-    total_profit = TradePosition.objects.filter(user=user, status="CLOSED").aggregate(
-        Sum("profit_loss")
-    )["profit_loss__sum"] or Decimal("0.00")
-
-    has_active_investment = Investment.objects.filter(
-        account=investment_account, status="ACTIVE"
-    ).exists()
-
-    packages = InvestmentPackage.objects.all()
-
-    active_positions = TradePosition.objects.filter(user=user, status="OPEN").order_by(
-        "-opened_at"
-    )
-
-    for position in active_positions:
-
-        price_change = Decimal(random.uniform(-0.05, 0.05))
-        position.current_price = position.entry_price * (1 + price_change)
-        position.calculate_profit_loss()
-
-    deposit_form = DepositForm()
-    open_trade_form = OpenTradeForm(user=user, bank_settings=bank_settings)
-    
-
+    context = {
+        "investment_balance": account.balance if account else 0,
+        "active_trades": TradePosition.objects.filter(user=user, status="OPEN").count(),
+        "pending_trades": TradePosition.objects.filter(user=user, status="PENDING").count(),
+        "total_profit": TradePosition.objects.filter(user=user, status="CLOSED").aggregate(
+            Sum("profit_loss"))["profit_loss__sum"] or Decimal("0.00"),
+        "has_active_investment": Investment.objects.filter(
+            account__customer=user, status="ACTIVE").exists(),
+        "packages": InvestmentPackage.objects.all(),
+        "active_positions": TradePosition.objects.filter(user=user, status="OPEN").order_by("-opened_at"),
+        "accounts": Account.objects.filter(customer=user),
+        "bank_settings": bank_settings,
+        "deposit_form": DepositForm(),
+        "open_trade_form": OpenTradeForm(user=user, bank_settings=bank_settings),
+        "investment_form": InvestmentForm(),
+    }
     SecurityLog.objects.create(
         user=user,
         event_type="DASHBOARD_ACCESS",
         ip_address=request.META.get("REMOTE_ADDR"),
-        device_info={"user_agent": request.META.get("HTTP_USER_AGENT")},
         details="Accessed Trade Investment Dashboard",
     )
-
-    context = {
-        "investment_balance": investment_balance,
-        "active_trades": active_trades,
-        "pending_trades": pending_trades,
-        "total_profit": total_profit,
-        "has_active_investment": has_active_investment,
-        "packages": packages,
-        "active_positions": active_positions,
-        "accounts": Account.objects.filter(customer=user),
-        "bank_settings": bank_settings,
-        "deposit_form": deposit_form,
-        "open_trade_form": open_trade_form,
-        'investment_form':investment_form
-    }
-
     return render(request, "main/trade.html", context)
-
 
 @login_required
 def open_trade(request):
     user = request.user
     bank_settings = PrestigeSettings.load()
+    form = OpenTradeForm(request.POST, user=user, bank_settings=bank_settings)
 
-    if request.method == "POST":
-        form = OpenTradeForm(request.POST, user=user, bank_settings=bank_settings)
-
-        if form.is_valid():
-            symbol = form.cleaned_data["symbol"]
-            trade_type = form.cleaned_data["trade_type"]
-            amount = form.cleaned_data["amount"]
-            leverage = form.cleaned_data["leverage"]
-            take_profit = form.cleaned_data["take_profit"]
-            stop_loss = form.cleaned_data["stop_loss"]
-            entry_price = form.cleaned_data.get("entry_price", 0)
-
-            try:
+    if form.is_valid():
+        try:
+            with transaction.atomic():
                 account = Account.objects.get(customer=user, account_type="INVESTMENT")
-            except Account.DoesNotExist:
-                messages.error(request, "No investment account found")
+                data = form.cleaned_data
+                margin_required = data["amount"] / data["leverage"]
+
+                position = TradePosition.objects.create(
+                    user=user,
+                    symbol=data["symbol"],
+                    trade_type=data["trade_type"],
+                    amount=data["amount"],
+                    leverage=data["leverage"],
+                    entry_price=data.get("entry_price", 0),
+                    current_price=data.get("entry_price", 0),
+                    take_profit=data["take_profit"],
+                    stop_loss=data["stop_loss"],
+                )
+
+                account.balance -= margin_required
+                account.save()
+
+                Transaction.objects.create(
+                    account=account,
+                    transaction_id=''.join(random.choices(string.ascii_uppercase + string.digits, k=12)),
+                    transaction_type="TRADE",
+                    amount=margin_required,
+                    description=f"{data['trade_type']} position on {data['symbol']}",
+                    trade_position=position,
+                )
+
+               
+                messages.success(request, f"✅ Trade opened successfully! Position ID: {position.id}")
                 return redirect("trade_investment_dashboard")
 
-            margin_required = amount / leverage
+        except Account.DoesNotExist:
+            messages.error(request, "Investment account not found")
+    else:
+        for error in form.errors.values():
+            messages.error(request, error[0])
+    return redirect("trade_investment_dashboard")
 
-            position = TradePosition.objects.create(
-                user=user,
-                symbol=symbol,
-                trade_type=trade_type,
-                amount=amount,
-                leverage=leverage,
-                entry_price=entry_price,
-                current_price=entry_price,
-                take_profit=take_profit,
-                stop_loss=stop_loss,
-            )
+@login_required
+def close_trade(request, position_id):
+    try:
+        position = TradePosition.objects.get(id=position_id, user=request.user, status="OPEN")
+        account = Account.objects.get(customer=request.user, account_type="INVESTMENT")
 
-            account.balance -= margin_required
+        with transaction.atomic():
+            position.calculate_profit_loss()
+            position.status = "CLOSED"
+            position.closed_at = timezone.now()
+            position.save()
+
+            amount_to_return = position.margin_required + position.profit_loss
+            account.balance += amount_to_return
             account.save()
 
-            transaction_id = generate_transaction_id()
             Transaction.objects.create(
                 account=account,
-                transaction_id=transaction_id,
-                transaction_type="TRADE_OPEN",
-                amount=margin_required,
-                currency="GHS",
-                status="COMPLETED",
-                description=f"{trade_type} position on {symbol}",
+                transaction_id=''.join(random.choices(string.ascii_uppercase + string.digits, k=12)),
+                transaction_type="TRADE_CLOSE",
+                amount=amount_to_return,
+                description=f"Closed {position.get_trade_type_display()} position",
                 trade_position=position,
             )
 
             SecurityLog.objects.create(
-                user=user,
-                event_type="TRADE_OPENED",
-                ip_address=request.META.get("REMOTE_ADDR"),
-                device_info={"user_agent": request.META.get("HTTP_USER_AGENT")},
-                details=f"Opened {trade_type} trade on {symbol} for ${amount}",
+                user=request.user,
+                event_type="TRADE_CLOSED",
+                details=f"Closed trade on {position.symbol}",
             )
+            messages.success(request, f"✅ Position closed! Profit/Loss: ${position.profit_loss:.2f}")
 
-            messages.success(
-                request, f"✅ Trade opened successfully! Position ID: {position.id}"
-            )
-            return redirect("trade_investment_dashboard")
-        else:
-            for field, errors in form.errors.items():
-                for error in errors:
-                    messages.error(request, f"{field}: {error}")
-    else:
-        messages.error(request, "Invalid request method")
-
-    return redirect("trade_investment_dashboard")
-
-
-@login_required
-def close_trade(request, position_id):
-    user = request.user
-
-    try:
-        position = TradePosition.objects.get(id=position_id, user=user, status="OPEN")
-
-        account = Account.objects.get(customer=user, account_type="INVESTMENT")
-
-        position.calculate_profit_loss()
-        profit_loss = position.profit_loss
-
-        position.status = "CLOSED"
-        position.closed_at = timezone.now()
-        position.save()
-
-        amount_to_return = position.margin_required + profit_loss
-
-        account.balance += amount_to_return
-        account.save()
-
-        transaction_id = generate_transaction_id()
-        Transaction.objects.create(
-            account=account,
-            transaction_id=transaction_id,
-            transaction_type="TRADE_CLOSE",
-            amount=amount_to_return,
-            currency="GHS",
-            status="COMPLETED",
-            description=f"Closed {position.get_trade_type_display()} position on {position.symbol}",
-            trade_position=position,
-        )
-
-        SecurityLog.objects.create(
-            user=user,
-            event_type="TRADE_CLOSED",
-            ip_address=request.META.get("REMOTE_ADDR"),
-            device_info={"user_agent": request.META.get("HTTP_USER_AGENT")},
-            details=f"Closed trade on {position.symbol} with {'profit' if profit_loss >= 0 else 'loss'} of ${abs(profit_loss):.2f}",
-        )
-
-        messages.success(
-            request,
-            f"✅ Position closed! {'Profit' if profit_loss >= 0 else 'Loss'}: ${abs(profit_loss):.2f}",
-        )
     except TradePosition.DoesNotExist:
         messages.error(request, "Position not found or already closed")
     except Account.DoesNotExist:
@@ -278,77 +182,288 @@ def close_trade(request, position_id):
 
     return redirect("trade_investment_dashboard")
 
+@login_required
+def create_investment(request):
+    form = InvestmentForm(request.POST)
+    if form.is_valid():
+        try:
+            with transaction.atomic():
+                account = Account.objects.get(customer=request.user, account_type="INVESTMENT")
+                package = form.cleaned_data["package"]
+                amount = form.cleaned_data["amount"]
+
+                if not package.min_amount <= amount <= package.max_amount:
+                    messages.error(request, f"Amount must be between ${package.min_amount} and ${package.max_amount}")
+                    return redirect("trade_investment_dashboard")
+
+                if amount > account.balance:
+                    messages.error(request, "Insufficient funds for this investment")
+                    return redirect("trade_investment_dashboard")
+
+                investment = Investment.objects.create(
+                    account=account,
+                    package=package,
+                    amount=amount,
+                )
+                account.balance -= amount
+                account.save()
+
+                messages.success(request, "Investment created successfully!")
+        except Account.DoesNotExist:
+            messages.error(request, "Account not found")
+    else:
+        for error in form.errors.values():
+            messages.error(request, error[0])
+    return redirect("trade_investment_dashboard")
+
+@login_required
+def deposit_page(request):
+    account = Account.objects.filter(customer=request.user).first()
+    deposits = Transaction.objects.filter(
+        account__customer=request.user, transaction_type="DEPOSIT"
+    ).order_by("-timestamp")
+
+    context = {
+        "deposits": deposits,
+        "total_deposited": deposits.filter(status="COMPLETED").aggregate(Sum("amount"))["amount__sum"] or 0,
+        "completed_deposits": deposits.filter(status="COMPLETED").count(),
+        "pending_deposits": deposits.filter(status="PENDING").count(),
+        "deposit_form": DepositForm(),
+        "account": account,
+    }
+    return render(request, "main/deposit.html", context)
+
+@login_required
+def support_page(request):
+    tickets = SupportTicket.objects.filter(user=request.user).order_by("-created_at")
+    active_ticket_id = request.GET.get("ticket")
+    active_ticket = None
+
+    if active_ticket_id:
+        try:
+            active_ticket = SupportTicket.objects.get(id=active_ticket_id, user=request.user)
+        except SupportTicket.DoesNotExist:
+            messages.error(request, "Ticket not found")
+
+    if not active_ticket and tickets.exists():
+        active_ticket = tickets.first()
+
+    return render(request, "main/support.html", {
+        "tickets": tickets,
+        "active_ticket": active_ticket,
+    })
+
+@login_required
+@require_POST
+def create_ticket(request):
+    form = SupportTicketForm(request.POST, user=request.user)
+    if form.is_valid():
+        ticket = form.save()
+        SupportChat.objects.create(
+            ticket=ticket,
+            user=request.user,
+            message=form.cleaned_data['message']
+        )
+        return JsonResponse({'success': True, 'ticket_id': ticket.id})
+    return JsonResponse({'success': False, 'errors': form.errors}, status=400)
+
+@login_required
+def send_message(request, ticket_id):
+    ticket = get_object_or_404(SupportTicket, id=ticket_id, user=request.user)
+    form = SupportChatForm(request.POST, request.FILES)
+    
+    if form.is_valid():
+        chat = form.save(commit=False)
+        chat.ticket = ticket
+        chat.user = request.user
+        chat.save()
+
+        if ticket.status == "OPEN":
+            ticket.status = "IN_PROGRESS"
+            ticket.save()
+
+        return JsonResponse({
+            "success": True,
+            "message": {
+                "id": chat.id,
+                "text": chat.message,
+                "image_url": chat.image.url if chat.image else None,
+                "file_url": chat.file.url if chat.file else None,
+                "created_at": chat.created_at.strftime("%H:%M"),
+                "sender": "You",
+            },
+        })
+    return JsonResponse({"success": False, "errors": form.errors}, status=400)
+
+@login_required
+def get_new_messages(request, ticket_id):
+    ticket = get_object_or_404(SupportTicket, id=ticket_id, user=request.user)
+    last_message_id = request.GET.get("last_message_id", 0)
+
+    messages = (
+        SupportChat.objects.filter(ticket=ticket, id__gt=last_message_id)
+        .exclude(user=request.user)
+        .order_by("created_at")
+    )
+
+    messages_data = [{
+        "id": msg.id,
+        "text": msg.message,
+        "image_url": msg.image.url if msg.image else None,
+        "file_url": msg.file.url if msg.file else None,
+        "created_at": msg.created_at.strftime("%H:%M"),
+        "sender": "Support Agent",
+    } for msg in messages]
+
+    last_id = messages.last().id if messages else last_message_id
+    return JsonResponse({"messages": messages_data, "last_message_id": last_id})
+
+@login_required
+def close_ticket(request, ticket_id):
+    ticket = get_object_or_404(SupportTicket, id=ticket_id, user=request.user)
+    ticket.status = "CLOSED"
+    ticket.save()
+    return redirect("support_page")
+
+@login_required
+def withdraw_fund(request):
+
+    account = Account.objects.filter(customer=request.user).first()
+
+    if request.method == 'POST':
+        currency = request.POST.get('currency')
+        amount = request.POST.get('amount')
+        user_address = request.POST.get('userAddress')
+
+        if amount <0:
+            messages.error(request, 'Enter a valid amount')
+            return redirect('withdraw_fund')
+        
+        transaction = Transaction.objects.create(
+            account=account, transaction_type='WITHDRAWAL',
+            amount=amount, currency=currency, wallet_address=user_address, status='status'
+        )
+        account.balance-=transaction.amount
+        account.save()
+        messages.success(request, 'Your account would be credited with in 24 hours')
+
+
+    withdrawals = Transaction.objects.filter(
+        account__customer=request.user, transaction_type="WITHDRAWAL"
+    ).order_by("-timestamp")
+
+    context = {
+        "account": account,
+        "withdrawals": withdrawals,
+        "completed_withdrawals": withdrawals.filter(status="COMPLETED").count(),
+        "pending_withdrawals": withdrawals.filter(status="PENDING").count(),
+        "total_withdrawals": withdrawals.filter(status="COMPLETED").aggregate(Sum("amount"))["amount__sum"] or 0,
+    }
+    return render(request, "main/withdraw_fund.html", context)
+
+@login_required
+def admin_dashboard(request):
+    context = {
+        'total_transactions': Transaction.objects.filter(status='COMPLETED').aggregate(Sum('amount'))['amount__sum'] or 0,
+        'total_withdrawals': Transaction.objects.filter(transaction_type='WITHDRAWAL', status='COMPLETED').aggregate(Sum('amount'))['amount__sum'] or 0,
+        'total_users': User.objects.count(),
+        'pending_transactions': Transaction.objects.filter(status='PENDING').count(),
+        'pending_transactions_list': Transaction.objects.filter(status='PENDING').select_related('account__customer').order_by('-created_at')[:10],
+        'recent_chats': SupportChat.objects.order_by().values_list('user_id', flat=True).distinct()[:10],
+    }
+    return render(request, 'main/dashboard_admin.html', context)
+
+@login_required
+def get_chat_history(request, user_id):
+    try:
+        messages = SupportChat.objects.filter(user_id=user_id).order_by('created_at')
+        messages_data = [{
+            'id': msg.id,
+            'user_id': msg.user.id,
+            'user_name': msg.user.username,
+            'message': msg.message,
+            'image': msg.image.url if msg.image else None,
+            'file': msg.file.url if msg.file else None,
+            'created_at': msg.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+            'is_admin': msg.user.is_staff,
+        } for msg in messages]
+        return JsonResponse({'messages': messages_data})
+    except User.DoesNotExist:
+        return JsonResponse({'error': 'User not found'}, status=404)
+
+@login_required
+@require_POST
+def send_general_message(request):
+    form = SupportChatForm(request.POST, request.FILES)
+    if form.is_valid():
+        chat = form.save(commit=False)
+        chat.user = request.user
+        chat.save()
+        return JsonResponse({'success': True, 'message_id': chat.id})
+    return JsonResponse({'success': False, 'errors': form.errors}, status=400)
+
+@login_required
+def get_new_general_messages(request):
+    last_message_id = request.GET.get('last_message_id', 0)
+    messages = SupportChat.objects.filter(
+        id__gt=last_message_id,
+        ticket__isnull=True
+    ).exclude(user=request.user).order_by('created_at')
+
+    messages_data = [{
+        "id": msg.id,
+        "text": msg.message,
+        "image_url": msg.image.url if msg.image else None,
+        "file_url": msg.file.url if msg.file else None,
+        "created_at": msg.created_at.strftime("%H:%M"),
+    } for msg in messages]
+
+    last_id = messages.last().id if messages else last_message_id
+    return JsonResponse({"messages": messages_data, "last_message_id": last_id})
 
 
 @login_required
-def create_investment(request):
+def get_market_data(request, symbol):
     try:
-        account = Account.objects.select_for_update().get(customer=request.user)
-    except Account.DoesNotExist:
-        messages.error(request, "Account not found.")
-        return redirect("trade_investment_dashboard")
+        # Mock market data - replace with actual market data implementation
+        base_price = {
+            "BTCUSDT": Decimal("55000.00"),
+            "ETHUSDT": Decimal("3000.00"),
+            "BNBUSDT": Decimal("500.00"),
+            "SOLUSDT": Decimal("100.00"),
+            "XRPUSDT": Decimal("0.50"),
+        }.get(symbol, Decimal("10000.00"))
 
-    if request.method == "POST":
-        form = InvestmentForm(request.POST)
-        if form.is_valid():
-            package = form.cleaned_data['package']
-            amount = form.cleaned_data['amount']
+        price = base_price * Decimal(1 + random.uniform(-0.02, 0.02)).quantize(Decimal("0.01"))
+        change = Decimal(random.uniform(-3, 3)).quantize(Decimal("0.01"))
+        high = price * Decimal(1 + random.uniform(0.01, 0.03)).quantize(Decimal("0.01"))
+        low = price * Decimal(1 - random.uniform(0.01, 0.03)).quantize(Decimal("0.01"))
+        volume = round(random.uniform(1000000, 50000000))
 
-            if not package.min_amount <= amount <= package.max_amount:
-                messages.error(
-                    request, 
-                    f"Amount must be between ${package.min_amount} and ${package.max_amount}."
-                )
-                return redirect("trade_investment_dashboard")
-
-            if amount > account.balance:
-                messages.error(request, "Insufficient funds for this investment.")
-                return redirect("trade_investment_dashboard")
-
-            try:
-                with transaction.atomic():
-               
-                    investment = Investment(
-                        account=account,
-                        package=package,
-                        amount=amount,
-                    )
-                    investment.save()
-                  
-                    account.balance -= amount
-                    account.save()
-                    
-                messages.success(request, "Investment created successfully!")
-                return redirect("trade_investment_dashboard")
-                    
-            except Exception as e:
-                
-                messages.error(request, "Failed to create investment. Please try again.")
-        else:
-       
-            for field, errors in form.errors.items():
-                for error in errors:
-                    messages.error(request, f"{field.title()}: {error}")
+        return JsonResponse({
+            "success": True,
+            "symbol": symbol,
+            "price": float(price),
+            "change": float(change),
+            "high": float(high),
+            "low": float(low),
+            "volume": volume,
+        })
+    except Exception as e:
+        return JsonResponse({"success": False, "error": str(e)})
     
-    return render(request, "trade_investment_dashboard.html", {
-        'form': form,
-        'packages': InvestmentPackage.objects.all(),
-       
-    })
+
 
 @login_required
 def deposit_funds(request):
     user = request.user
-
     if request.method == "POST":
         form = DepositForm(request.POST)
-
         if form.is_valid():
             currency = form.cleaned_data["currency"]
             amount = form.cleaned_data["amount"]
-
-            # Get deposit address from settings
             settings = PrestigeSettings.load()
+            
             address_lookup = {
                 "BTC": settings.deposit_btc_address,
                 "ETH": settings.deposit_eth_address,
@@ -358,17 +473,15 @@ def deposit_funds(request):
 
             if not deposit_address:
                 messages.error(request, f"No deposit address configured for {currency}")
-                return redirect("trade_investment_dashboard")
+                return redirect("deposit_page")
 
-            # Get user's investment account
             try:
                 account = Account.objects.get(customer=user, account_type="INVESTMENT")
             except Account.DoesNotExist:
                 messages.error(request, "Investment account not found")
-                return redirect("trade_investment_dashboard")
+                return redirect("deposit_page")
 
-            # Create pending transaction
-            transaction_id = generate_transaction_id()
+            transaction_id = ''.join(random.choices(string.ascii_uppercase + string.digits, k=12))
             Transaction.objects.create(
                 account=account,
                 transaction_id=transaction_id,
@@ -388,7 +501,6 @@ def deposit_funds(request):
                 user=user,
                 event_type="DEPOSIT_INITIATED",
                 ip_address=request.META.get("REMOTE_ADDR"),
-                device_info={"user_agent": request.META.get("HTTP_USER_AGENT")},
                 details=f"Initiated {currency} deposit of {amount}",
             )
 
@@ -409,151 +521,70 @@ def deposit_funds(request):
     else:
         messages.error(request, "Invalid request method")
 
-    return redirect("trade_investment_dashboard")
+    return redirect("deposit_page")
 
 
 @login_required
-def get_market_data(request, symbol):
+def process_transaction(request, transaction_id, action):
 
+    user_transction = get_object_or_404(Transaction, id=transaction_id)
     try:
-
-        base_price = {
-            "BTCUSDT": Decimal("55000.00"),
-            "ETHUSDT": Decimal("3000.00"),
-            "BNBUSDT": Decimal("500.00"),
-            "SOLUSDT": Decimal("100.00"),
-            "XRPUSDT": Decimal("0.50"),
-        }.get(symbol, Decimal("10000.00"))
-
-        price = base_price * Decimal(1 + random.uniform(-0.02, 0.02)).quantize(
-            Decimal("0.01")
-        )
-        change = Decimal(random.uniform(-3, 3)).quantize(Decimal("0.01"))
-        high = price * Decimal(1 + random.uniform(0.01, 0.03)).quantize(Decimal("0.01"))
-        low = price * Decimal(1 - random.uniform(0.01, 0.03)).quantize(Decimal("0.01"))
-        volume = round(random.uniform(1000000, 50000000))
-
-        return JsonResponse(
-            {
-                "success": True,
-                "symbol": symbol,
-                "price": float(price),
-                "change": float(change),
-                "high": float(high),
-                "low": float(low),
-                "volume": volume,
-            }
-        )
-    except Exception as e:
-        return JsonResponse({"success": False, "error": str(e)})
-
-
-def generate_transaction_id():
-    return "".join(random.choices(string.ascii_uppercase + string.digits, k=12))
-
-
-@login_required
-def deposit_page(request):
-
-    deposits = Transaction.objects.filter(
-        account__customer=request.user, transaction_type="DEPOSIT"
-    ).order_by("-timestamp")
-
-    total_deposited = (
-        deposits.aggregate(total=Sum("amount", filter=Q(status="COMPLETED")))["total"]
-        or 0
-    )
-
-    completed_deposits = deposits.filter(status="COMPLETED").count()
-    pending_deposits = deposits.filter(status="PENDING").count()
-
-    context = {
-        "deposits": deposits,
-        "total_deposited": total_deposited,
-        "completed_deposits": completed_deposits,
-        "pending_deposits": pending_deposits,
-        "deposit_form": DepositForm(),
-    }
-
-    return render(request, "main/deposit.html", context)
-
-
-@login_required
-def support_page(request):
-    tickets = SupportTicket.objects.filter(user=request.user).order_by("-updated_at")
-
-    active_ticket = None
-    ticket_id = request.GET.get("ticket")
-    if ticket_id:
-        try:
-            active_ticket = SupportTicket.objects.get(id=ticket_id, user=request.user)
-        except SupportTicket.DoesNotExist:
-            messages.error(request, "Ticket not found")
-
-    context = {"tickets": tickets, "active_ticket": active_ticket}
-    return render(request, "main/support.html", context)
-
-
-@login_required
-def create_support_ticket(request):
-    if request.method == "POST":
-        subject = request.POST.get("subject")
-        priority = request.POST.get("priority")
-        message_text = request.POST.get("message")
-
-        if subject and message_text:
-
-            ticket = SupportTicket.objects.create(
-                user=request.user, subject=subject, priority=priority
-            )
-
-            SupportMessage.objects.create(
-                ticket=ticket, user=request.user, message=message_text
-            )
-
-            messages.success(request, "Support ticket created successfully")
-            return redirect("support_page") + f"?ticket={ticket.id}"
-        else:
-            messages.error(request, "Subject and message are required")
-
-    return redirect("support_page")
-
-
-@login_required
-def send_support_message(request, ticket_id):
-    if request.method == "POST":
-        try:
-            ticket = SupportTicket.objects.get(id=ticket_id, user=request.user)
-            message_text = request.POST.get("message")
-            image = request.FILES.get("image")
-
-            if message_text or image:
-
-                SupportMessage.objects.create(
-                    ticket=ticket, user=request.user, message=message_text, image=image
+   
+        
+        if action == 'credit':
+       
+            with transaction.atomic():
+                user_transction.status = 'COMPLETED'
+                user_transction.save()
+                
+            
+                user_transction.account.balance += user_transction.amount
+                user_transction.account.save()
+                
+               
+                
+                return JsonResponse({
+                    'success': True,
+                    'message': 'Transaction credited successfully'
+                })
+                
+        elif action == 'delete':
+            with transaction.atomic():
+                transaction.delete()
+                SecurityLog.objects.create(
+                    user=request.user,
+                    event_type="TRANSACTION_DELETED",
+                    details=f"Deleted transaction {transaction_id}",
                 )
+                return JsonResponse({
+                    'success': True,
+                    'message': 'Transaction deleted successfully'
+                })
+                
+        else:
+            return JsonResponse({
+                'error': 'Invalid action'
+            }, status=400)
+            
+    except Transaction.DoesNotExist:
+        return JsonResponse({
+            'error': 'Transaction not found'
+        }, status=404)
+    except Exception as e:
+        return JsonResponse({
+            'error': str(e)
+        }, status=500)
 
-                if ticket.status == "RESOLVED" or ticket.status == "CLOSED":
-                    ticket.status = "OPEN"
-                    ticket.save()
-
-                messages.success(request, "Message sent successfully")
-            else:
-                messages.error(request, "Message or image is required")
-        except SupportTicket.DoesNotExist:
-            messages.error(request, "Ticket not found")
-
-    return redirect("support_page") + f"?ticket={ticket_id}"
 
 
-@login_required
-def close_support_ticket(request, ticket_id):
-    try:
-        ticket = SupportTicket.objects.get(id=ticket_id, user=request.user)
-        ticket.status = "CLOSED"
-        ticket.save()
-        messages.success(request, "Ticket closed successfully")
-    except SupportTicket.DoesNotExist:
-        messages.error(request, "Ticket not found")
 
-    return redirect("support_page")
+
+
+
+
+
+
+
+
+
+

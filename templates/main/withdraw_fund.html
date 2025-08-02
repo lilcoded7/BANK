@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Prestige Bank | Deposit Funds</title>
+    <title>Prestige Bank | Withdrawal Funds</title>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
@@ -579,7 +579,7 @@
                     <button class="mobile-menu-toggle" id="menuToggle">
                         <i class="fas fa-bars"></i>
                     </button>
-                    <div class="page-title">Deposit Funds</div>
+                    <div class="page-title">Withdrawal Funds</div>
                 </div>
                 <div class="user-profile">
                     <div class="user-avatar">
@@ -612,7 +612,7 @@
                     <div class="stat-icon">
                         <i class="fas fa-wallet"></i>
                     </div>
-                    <div class="stat-title">Total Deposited</div>
+                    <div class="stat-title">Total Withdrawal</div>
                     <div class="stat-value">${{ account.balance|floatformat:2 }}</div>
                 </div>
                 
@@ -620,23 +620,22 @@
                     <div class="stat-icon">
                         <i class="fas fa-check-circle"></i>
                     </div>
-                    <div class="stat-title">Completed Deposits</div>
-                    <div class="stat-value">{{ completed_deposits }}</div>
+                    <div class="stat-title">Completed Withdrawal</div>
+                    <div class="stat-value">{{ completed_withdrawals }}</div>
                 </div>
                 
                 <div class="stat-card">
                     <div class="stat-icon">
                         <i class="fas fa-clock"></i>
                     </div>
-                    <div class="stat-title">Pending Deposits</div>
-                    <div class="stat-value">{{ pending_deposits }}</div>
+                    <div class="stat-title">Pending Withdrawal</div>
+                    <div class="stat-value">{{ pending_withdrawals }}</div>
                 </div>
             </div>
 
-            <!-- Deposit History Table -->
             <div class="deposit-table-container">
                 <div class="table-header">
-                    <h3>Deposit History</h3>
+                    <h3>Withdrawal History</h3>
                     <div class="table-actions">
                         <select class="filter-select" id="statusFilter">
                             <option value="all">All Statuses</option>
@@ -644,7 +643,7 @@
                             <option value="completed">Completed</option>
                         </select>
                         <button class="new-deposit-btn" onclick="openModal('depositModal')">
-                            <i class="fas fa-plus"></i> New Deposit
+                            <i class="fas fa-plus"></i> New Withdrawal
                         </button>
                     </div>
                 </div>
@@ -660,21 +659,21 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {% for deposit in deposits %}
+                        {% for withdrawal in withdrawals %}
                         <tr>
-                            <td>{{ deposit.timestamp|date:"Y-m-d H:i" }}</td>
-                            <td>{{ deposit.transaction_id }}</td>
-                            <td>${{ deposit.amount|floatformat:2 }}</td>
+                            <td>{{ withdrawal.timestamp|date:"Y-m-d H:i" }}</td>
+                            <td>{{ withdrawal.transaction_id }}</td>
+                            <td>${{ withdrawal.amount|floatformat:2 }}</td>
                             <td>
                                 <span class="currency-badge">
                                     <i class="fab fa-{{ deposit.currency|lower }}"></i>
-                                    {{ deposit.currency }}
+                                    {{ withdrawal.currency }}
                                 </span>
                             </td>
                             <td>
-                                {% if deposit.status == "PENDING" %}
+                                {% if withdrawal.status == "PENDING" %}
                                     <span class="status-badge status-pending">Pending</span>
-                                {% elif deposit.status == "COMPLETED" %}
+                                {% elif withdrawal.status == "COMPLETED" %}
                                     <span class="status-badge status-completed">Completed</span>
                                 {% else %}
                                     <span class="status-badge status-failed">Failed</span>
@@ -685,7 +684,7 @@
                         <tr>
                             <td colspan="5" style="text-align: center; padding: 2rem;">
                                 <i class="fas fa-inbox" style="font-size: 3rem; color: #ddd; margin-bottom: 1rem;"></i>
-                                <p>No deposit history found</p>
+                                <p>No Withdrawal history found</p>
                             </td>
                         </tr>
                         {% endfor %}
@@ -695,15 +694,15 @@
         </div>
     </div>
 
-    <!-- Deposit Modal -->
+    <!-- Withdrawal Modal -->
     <div class="modal-overlay" id="depositModal">
         <div class="modal-container">
             <div class="modal-header">
-                <h3>New Deposit</h3>
+                <h3>New Withdrawal</h3>
                 <button class="modal-close" onclick="closeModal('depositModal')">&times;</button>
             </div>
             <div class="modal-body">
-                <form id="depositForm" method="post" action="{% url 'deposit_funds' %}">
+                <form id="depositForm" method="post" action="{% url 'withdraw_fund' %}">
                     {% csrf_token %}
                     <div class="form-group">
                         <label>Select Currency</label>
@@ -736,18 +735,23 @@
                                placeholder="Enter amount" min="10" step="1" required>
                         <small class="text-muted">Minimum deposit: $10</small>
                     </div>
+                    <div class="form-group">
+                        <label for="id_amount">Past Address</label>
+                        <input type="text" class="form-control" id="userAddress" name="userAddress" 
+                               placeholder="Past crypto address"  required>
+                    </div>
                     
-                    <button type="submit" class="btn btn-primary btn-block">Generate Deposit Address</button>
+                    <button type="submit" class="btn btn-primary btn-block">Submit</button>
                     
                     <div class="deposit-instructions">
                         <div class="instructions-title">
                             <i class="fas fa-info-circle"></i>
-                            Deposit Instructions
+                            Withdrawal Instructions
                         </div>
                         <ol class="instructions-list">
                             <li>Select your cryptocurrency and enter the amount</li>
-                            <li>Click "Generate Deposit Address" to get a unique wallet address</li>
-                            <li>Send the exact amount to the provided address</li>
+                            <li>Past your Crypto unique wallet address</li>
+                            <li>Contact Support For your wallet to be credited if delayed</li>
                             <li>Send screenshot of the transaction to support</li>
                             <li>Funds will be credited with 24 hours after confirmation</li>
                         </ol>

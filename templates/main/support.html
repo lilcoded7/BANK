@@ -1,10 +1,9 @@
-<!-- templates/main/support.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Prestige Bank | Customer Support</title>
+    <title>Prestige Bank | Support Chat</title>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
@@ -145,37 +144,55 @@
             font-weight: 600;
         }
 
-        /* Support Page Specific Styles */
+        /* Support Page Layout */
         .support-container {
-            display: grid;
-            grid-template-columns: 1fr 2fr;
-            gap: 2rem;
-            height: calc(100vh - 200px);
+            display: flex;
+            gap: 1.5rem;
+            height: calc(100vh - 180px);
         }
 
-        .ticket-list {
-            background: var(--secondary);
-            border-radius: 12px;
-            padding: 1.5rem;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
-            overflow-y: auto;
+        .ticket-sidebar {
+            flex: 0 0 350px;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
         }
 
-        .ticket-list-header {
+        .chat-container {
+            flex: 1;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Ticket Sidebar Styles */
+        .ticket-header {
+            padding: 1.2rem 1.5rem;
+            background: linear-gradient(to right, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 1.5rem;
+        }
+
+        .ticket-header h3 {
+            font-weight: 600;
+            font-size: 1.2rem;
         }
 
         .new-ticket-btn {
-            background: var(--primary);
+            background: rgba(255, 255, 255, 0.2);
             color: white;
             border: none;
             border-radius: 8px;
-            padding: 0.6rem 1.2rem;
+            padding: 0.5rem 1rem;
             font-size: 0.9rem;
-            font-weight: 600;
             cursor: pointer;
             transition: var(--transition);
             display: flex;
@@ -184,52 +201,53 @@
         }
 
         .new-ticket-btn:hover {
-            background: var(--primary-dark);
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .ticket-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1rem;
         }
 
         .ticket-item {
             padding: 1rem;
             border-radius: 8px;
-            margin-bottom: 0.8rem;
+            border: 1px solid #eee;
             cursor: pointer;
             transition: var(--transition);
-            border-left: 4px solid var(--primary);
-            background: rgba(209, 0, 0, 0.03);
+            margin-bottom: 0.5rem;
         }
 
         .ticket-item:hover {
-            background: rgba(209, 0, 0, 0.08);
+            background: var(--secondary-dark);
         }
 
         .ticket-item.active {
-            background: rgba(209, 0, 0, 0.1);
-            border-left: 4px solid var(--accent);
-        }
-
-        .ticket-ref {
-            font-weight: 600;
-            color: var(--primary);
-            margin-bottom: 0.3rem;
+            border-left: 4px solid var(--primary);
+            background: rgba(209, 0, 0, 0.05);
         }
 
         .ticket-subject {
-            font-size: 1rem;
-            margin-bottom: 0.5rem;
+            font-weight: 600;
+            margin-bottom: 0.3rem;
         }
 
         .ticket-meta {
             display: flex;
-            justify-content: space-between;
-            font-size: 0.85rem;
+            gap: 1rem;
+            font-size: 0.8rem;
             color: #666;
         }
 
         .ticket-status {
-            display: inline-block;
-            padding: 0.3rem 0.6rem;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            padding: 0.2rem 0.5rem;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            font-weight: 600;
         }
 
         .status-open {
@@ -249,61 +267,146 @@
 
         .status-closed {
             background: rgba(158, 158, 158, 0.1);
-            color: #666;
+            color: #777;
         }
 
         .priority-high {
+            background: rgba(244, 67, 54, 0.1);
             color: var(--danger);
-            font-weight: 600;
         }
 
-        .priority-urgent {
-            color: var(--danger);
-            font-weight: 700;
-            animation: pulse 1.5s infinite;
+        .priority-medium {
+            background: rgba(255, 152, 0, 0.1);
+            color: var(--warning);
         }
 
-        @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.7; }
-            100% { opacity: 1; }
+        .priority-low {
+            background: rgba(76, 175, 80, 0.1);
+            color: var(--success);
         }
 
-        .chat-container {
+        .ticket-date {
+            color: #999;
+        }
+
+        /* Ticket Form Styles */
+        .ticket-form-container {
+            padding: 1.5rem;
+            display: none;
+        }
+
+        .ticket-form {
             display: flex;
             flex-direction: column;
-            background: var(--secondary);
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
-            overflow: hidden;
+            gap: 1rem;
         }
 
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .form-label {
+            font-weight: 600;
+            color: var(--text-dark);
+        }
+
+        .form-control {
+            padding: 0.8rem;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: var(--transition);
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(209, 0, 0, 0.1);
+        }
+
+        .form-select {
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 0.8rem center;
+            background-size: 1em;
+        }
+
+        .btn {
+            padding: 0.8rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            border: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(to right, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(209, 0, 0, 0.2);
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--primary);
+            color: var(--primary);
+        }
+
+        .btn-outline:hover {
+            background: rgba(209, 0, 0, 0.05);
+        }
+
+        /* Chat Container Styles */
         .chat-header {
             padding: 1.2rem 1.5rem;
-            background: var(--primary);
+            background: linear-gradient(to right, var(--primary) 0%, var(--primary-dark) 100%);
             color: white;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            position: relative;
         }
 
         .chat-title {
             font-weight: 600;
-            font-size: 1.2rem;
+            font-size: 1.3rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
 
-        .chat-actions button {
-            background: rgba(255, 255, 255, 0.2);
-            border: none;
-            border-radius: 6px;
-            color: white;
-            padding: 0.4rem 0.8rem;
-            cursor: pointer;
-            transition: var(--transition);
+        .chat-title i {
+            color: var(--accent);
         }
 
-        .chat-actions button:hover {
-            background: rgba(255, 255, 255, 0.3);
+        .chat-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+            margin-top: 5px;
+        }
+
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: var(--success);
+        }
+
+        .status-text {
+            font-weight: 500;
         }
 
         .chat-messages {
@@ -313,14 +416,17 @@
             display: flex;
             flex-direction: column;
             gap: 1.2rem;
+            background: linear-gradient(rgba(245, 245, 245, 0.8), rgba(245, 245, 245, 0.8)), 
+                        url('https://www.transparenttextures.com/patterns/cubes.png');
         }
 
         .message {
             max-width: 80%;
-            padding: 0.8rem 1.2rem;
-            border-radius: 12px;
+            padding: 1rem;
+            border-radius: 14px;
             position: relative;
             animation: fadeIn 0.3s ease;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
         }
 
         @keyframes fadeIn {
@@ -330,14 +436,28 @@
 
         .user-message {
             align-self: flex-end;
-            background: rgba(209, 0, 0, 0.1);
+            background: linear-gradient(to right, #e6f7ff 0%, #ffffff 100%);
+            border: 1px solid #e1f0ff;
             border-bottom-right-radius: 0;
         }
 
         .admin-message {
             align-self: flex-start;
-            background: rgba(33, 150, 243, 0.1);
+            background: linear-gradient(to right, #f9f9f9 0%, #ffffff 100%);
+            border: 1px solid #f0f0f0;
             border-bottom-left-radius: 0;
+        }
+
+        .admin-badge {
+            position: absolute;
+            top: -10px;
+            left: 10px;
+            background: var(--primary);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            font-weight: 600;
         }
 
         .message-meta {
@@ -350,94 +470,154 @@
 
         .message-sender {
             font-weight: 600;
+            color: var(--primary);
+        }
+
+        .admin-message .message-sender {
+            color: var(--info);
         }
 
         .message-image {
             max-width: 100%;
+            max-height: 300px;
             border-radius: 8px;
-            margin-top: 0.5rem;
+            margin-top: 0.8rem;
+            cursor: pointer;
+            transition: var(--transition);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .message-image:hover {
+            transform: scale(1.02);
+        }
+
+        .message-attachment {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 0.8rem;
+            padding: 0.8rem;
+            background: rgba(0, 0, 0, 0.03);
+            border-radius: 8px;
+            border-left: 3px solid var(--primary);
+        }
+
+        .attachment-icon {
+            font-size: 1.5rem;
+            color: var(--primary);
+        }
+
+        .attachment-info {
+            flex: 1;
+        }
+
+        .attachment-name {
+            font-weight: 500;
+            margin-bottom: 3px;
+        }
+
+        .attachment-size {
+            font-size: 0.8rem;
+            color: #777;
+        }
+
+        .download-btn {
+            background: rgba(209, 0, 0, 0.1);
+            color: var(--primary);
+            border: none;
+            border-radius: 6px;
+            padding: 0.4rem;
             cursor: pointer;
             transition: var(--transition);
         }
 
-        .message-image:hover {
-            transform: scale(1.03);
+        .download-btn:hover {
+            background: rgba(209, 0, 0, 0.2);
         }
 
         .chat-input-container {
             padding: 1.2rem;
             border-top: 1px solid #eee;
             display: flex;
+            flex-direction: column;
+            gap: 0.8rem;
+            background: white;
+        }
+
+        .input-tools {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .file-tools {
+            display: flex;
+            gap: 8px;
+        }
+
+        .file-tool-btn {
+            background: rgba(209, 0, 0, 0.05);
+            color: var(--primary);
+            border: none;
+            border-radius: 8px;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: var(--transition);
+            font-size: 1.1rem;
+        }
+
+        .file-tool-btn:hover {
+            background: rgba(209, 0, 0, 0.1);
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .input-area {
+            display: flex;
             gap: 0.8rem;
         }
 
         .chat-input {
             flex: 1;
-            padding: 0.8rem 1.2rem;
+            padding: 1rem 1.2rem;
             border: 1px solid #ddd;
-            border-radius: 8px;
+            border-radius: 12px;
             resize: none;
             font-size: 1rem;
+            min-height: 60px;
+            max-height: 150px;
+            transition: var(--transition);
         }
 
         .chat-input:focus {
             outline: none;
             border-color: var(--primary);
-        }
-
-        .file-upload-btn {
-            background: rgba(209, 0, 0, 0.1);
-            color: var(--primary);
-            border: none;
-            border-radius: 8px;
-            width: 50px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            cursor: pointer;
-            transition: var(--transition);
-        }
-
-        .file-upload-btn:hover {
-            background: rgba(209, 0, 0, 0.2);
+            box-shadow: 0 0 0 2px rgba(209, 0, 0, 0.1);
         }
 
         .send-btn {
-            background: var(--primary);
+            background: linear-gradient(to right, var(--primary) 0%, var(--primary-dark) 100%);
             color: white;
             border: none;
-            border-radius: 8px;
-            width: 50px;
+            border-radius: 12px;
+            width: 60px;
             display: flex;
             justify-content: center;
             align-items: center;
             cursor: pointer;
             transition: var(--transition);
+            font-size: 1.2rem;
         }
 
         .send-btn:hover {
-            background: var(--primary-dark);
-        }
-
-        .no-ticket-selected {
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            height: 100%;
-            padding: 2rem;
-            text-align: center;
-            color: #666;
-        }
-
-        .no-ticket-icon {
-            font-size: 4rem;
-            color: #ddd;
-            margin-bottom: 1.5rem;
-        }
-
-        .file-input {
-            display: none;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(209, 0, 0, 0.2);
         }
 
         .file-preview {
@@ -445,19 +625,42 @@
             gap: 0.8rem;
             padding: 0.8rem;
             background: rgba(209, 0, 0, 0.05);
-            border-radius: 8px;
-            margin-bottom: 0.8rem;
+            border-radius: 12px;
         }
 
         .preview-item {
             position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
 
         .preview-image {
             width: 80px;
             height: 80px;
             object-fit: cover;
+            border-radius: 8px;
+            border: 1px solid #eee;
+        }
+
+        .preview-document {
+            width: 60px;
+            height: 80px;
+            background: #f1f5ff;
             border-radius: 6px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: var(--primary);
+            font-size: 1.5rem;
+            border: 1px dashed #ccc;
+        }
+
+        .preview-document span {
+            font-size: 0.7rem;
+            margin-top: 5px;
+            color: #666;
         }
 
         .remove-preview {
@@ -474,6 +677,98 @@
             align-items: center;
             cursor: pointer;
             font-size: 0.8rem;
+            border: 2px solid white;
+        }
+
+        .file-name {
+            font-size: 0.75rem;
+            margin-top: 5px;
+            max-width: 80px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .typing-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 0.8rem 1rem;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            align-self: flex-start;
+            margin-bottom: 10px;
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        .typing-dots {
+            display: flex;
+            gap: 4px;
+        }
+
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            background: #999;
+            border-radius: 50%;
+            animation: typing 1.4s infinite ease-in-out;
+        }
+
+        .typing-dot:nth-child(1) { animation-delay: 0s; }
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes typing {
+            0%, 60%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-5px); }
+        }
+
+        /* General Chat Mode */
+        .general-chat-header {
+            padding: 1.2rem 1.5rem;
+            background: linear-gradient(to right, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .general-chat-header h3 {
+            font-weight: 600;
+            font-size: 1.2rem;
+        }
+
+        .create-ticket-btn {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 0.5rem 1rem;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .create-ticket-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        /* Welcome Message */
+        .welcome-message {
+            text-align: center;
+            padding: 2rem;
+            color: #666;
+        }
+
+        .welcome-message i {
+            font-size: 3rem;
+            color: var(--primary);
+            margin-bottom: 1rem;
         }
 
         /* Responsive styles */
@@ -507,8 +802,17 @@
             }
 
             .support-container {
-                grid-template-columns: 1fr;
+                flex-direction: column;
                 height: auto;
+            }
+
+            .ticket-sidebar {
+                flex: 0 0 auto;
+                height: 300px;
+            }
+
+            .chat-container {
+                height: 500px;
             }
         }
 
@@ -520,45 +824,28 @@
             }
             
             .chat-input-container {
-                flex-wrap: wrap;
+                padding: 1rem;
             }
             
             .chat-input {
-                min-height: 80px;
+                min-height: 50px;
+            }
+            
+            .message {
+                max-width: 90%;
+            }
+
+            .ticket-sidebar {
+                width: 100%;
             }
         }
     </style>
 </head>
+
 <body>
-    
     <div class="dashboard">
         <!-- Sidebar -->
-        <div class="sidebar" id="sidebar">
-            <div class="logo">
-                <i class="fas fa-university"></i>
-                <span>Prestige</span>Bank
-            </div>
-            <div class="nav-menu">
-                <div class="nav-item" onclick="window.location.href='{% url 'trade_investment_dashboard' %}'">
-                    <i class="fas fa-chart-line"></i>
-                    <span>Dashboard</span>
-                </div>
-                
-                <div class="nav-item" onclick="window.location.href='{% url 'deposit_page' %}'">
-                    <i class="fas fa-money-check-alt"></i>
-                    <span>Deposits</span>
-                </div>
-                
-                <div class="nav-item active" onclick="window.location.href='{% url 'support_page' %}'">
-                    <i class="fas fa-headset"></i>
-                    <span>Support</span>
-                </div>
-                <div class="nav-item" onclick="window.location.href='{% url 'logout' %}'">
-                    <i class="fas fa-sign-out-alt"></i>
-                    <span>Logout</span>
-                </div>
-            </div>
-        </div>
+        {% include 'main/side_bar.html' %}
 
         <!-- Main Content -->
         <div class="main-content">
@@ -567,7 +854,7 @@
                     <button class="mobile-menu-toggle" id="menuToggle">
                         <i class="fas fa-bars"></i>
                     </button>
-                    <div class="page-title">Customer Support</div>
+                    <div class="page-title">Support Chat</div>
                 </div>
                 <div class="user-profile">
                     <div class="user-avatar">
@@ -594,230 +881,656 @@
                 {% endfor %}
             {% endif %}
 
-            <!-- Support Container -->
+            <!-- Support Page Layout -->
             <div class="support-container">
-                <!-- Ticket List -->
-                <div class="ticket-list">
-                    <div class="ticket-list-header">
-                        <h3>My Support Tickets</h3>
-                        <button class="new-ticket-btn" onclick="openTicketModal()">
+                <!-- Ticket Sidebar -->
+                <div class="ticket-sidebar">
+                    <div class="ticket-header">
+                        <h3>Your Support Tickets</h3>
+                        <button class="new-ticket-btn" id="newTicketBtn">
                             <i class="fas fa-plus"></i> New Ticket
                         </button>
                     </div>
                     
-                    {% for ticket in tickets %}
-                    <div class="ticket-item {% if ticket.id == active_ticket.id %}active{% endif %}" 
-                         onclick="selectTicket({{ ticket.id }})">
-                        <div class="ticket-ref">{{ ticket.reference_id }}</div>
-                        <div class="ticket-subject">{{ ticket.subject }}</div>
-                        <div class="ticket-meta">
-                            <div>
-                                <span class="ticket-status status-{{ ticket.status|lower|slugify }}">
-                                    {{ ticket.get_status_display }}
-                                </span>
-                                {% if ticket.priority == 'HIGH' or ticket.priority == 'URGENT' %}
-                                    <span class="priority-{{ ticket.priority|lower }}">• {{ ticket.get_priority_display }}</span>
-                                {% endif %}
+                    <!-- Ticket Form (Hidden by default) -->
+                    <div class="ticket-form-container" id="ticketFormContainer" style="display: none;">
+                        <form class="ticket-form" id="ticketForm">
+                            {% csrf_token %}
+                            <div class="form-group">
+                                <label for="subject" class="form-label">Subject</label>
+                                <input type="text" id="subject" name="subject" class="form-control" placeholder="What's this about?" required>
                             </div>
-                            <div>{{ ticket.updated_at|date:"M d, Y" }}</div>
-                        </div>
+                            <div class="form-group">
+                                <label for="priority" class="form-label">Priority</label>
+                                <select id="priority" name="priority" class="form-control form-select">
+                                    <option value="LOW">Low</option>
+                                    <option value="MEDIUM" selected>Medium</option>
+                                    <option value="HIGH">High</option>
+                                    <option value="URGENT">Urgent</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="initialMessage" class="form-label">Message</label>
+                                <textarea id="initialMessage" name="message" class="form-control" rows="3" placeholder="Describe your issue..." required></textarea>
+                            </div>
+                            <div class="form-group">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-ticket-alt"></i> Create Ticket
+                                </button>
+                                <button type="button" class="btn btn-outline" id="cancelTicketBtn" style="margin-top: 0.5rem;">
+                                    Cancel
+                                </button>
+                            </div>
+                        </form>
                     </div>
-                    {% empty %}
-                    <div class="no-tickets">
-                        <i class="fas fa-inbox" style="font-size: 3rem; color: #ddd; margin: 2rem 0;"></i>
-                        <p>You have no support tickets yet</p>
+                    
+                    <!-- Ticket List -->
+                    <div class="ticket-list" id="ticketList">
+                        {% for ticket in tickets %}
+                            <div class="ticket-item {% if active_ticket and ticket.id == active_ticket.id %}active{% endif %}" 
+                                 data-ticket-id="{{ ticket.id }}" 
+                                 onclick="loadTicket('{{ ticket.id }}')">
+                                <div class="ticket-subject">{{ ticket.subject }}</div>
+                                <div class="ticket-meta">
+                                    <span class="ticket-status status-{{ ticket.status|lower }}">
+                                        <i class="fas fa-circle"></i> {{ ticket.get_status_display }}
+                                    </span>
+                                    <span class="ticket-priority priority-{{ ticket.priority|lower }}">
+                                        <i class="fas fa-exclamation-circle"></i> {{ ticket.get_priority_display }}
+                                    </span>
+                                    <span class="ticket-date">
+                                        <i class="far fa-clock"></i> {{ ticket.created_at|date:"M d, Y" }}
+                                    </span>
+                                </div>
+                            </div>
+                        {% empty %}
+                            <div class="welcome-message">
+                                <i class="fas fa-headset"></i>
+                                <h3>Welcome to Support</h3>
+                                <p>You don't have any support tickets yet. Start a new ticket or chat directly with our support team.</p>
+                            </div>
+                        {% endfor %}
                     </div>
-                    {% endfor %}
                 </div>
                 
-                <!-- Chat Interface -->
-                <div class="chat-container">
+                <!-- Chat Container -->
+                <div class="chat-container" id="chatContainer">
                     {% if active_ticket %}
-                    <div class="chat-header">
-                        <div class="chat-title">
-                            {{ active_ticket.subject }} <span class="ticket-ref">({{ active_ticket.reference_id }})</span>
-                        </div>
-                        <div class="chat-actions">
-                            <button onclick="closeTicket({{ active_ticket.id }})">
+                        <!-- Ticket Chat Mode -->
+                        <div class="chat-header">
+                            <div>
+                                <div class="chat-title">
+                                    <i class="fas fa-headset"></i>
+                                    <span id="ticketSubject">{{ active_ticket.subject }}</span>
+                                    <span class="ticket-status status-{{ active_ticket.status|lower }}" style="margin-left: 10px; font-size: 0.8rem;">
+                                        {{ active_ticket.get_status_display }}
+                                    </span>
+                                </div>
+                                <div class="chat-status">
+                                    <div class="status-indicator"></div>
+                                    <div class="status-text">Online - Usually replies in 5 minutes</div>
+                                </div>
+                            </div>
+                            <button class="create-ticket-btn" onclick="closeTicket()">
                                 <i class="fas fa-times"></i> Close Ticket
                             </button>
                         </div>
-                    </div>
-                    
-                    <div class="chat-messages" id="chatMessages">
-                        {% for message in active_ticket.messages.all %}
-                        <div class="message {% if message.user == request.user %}user-message{% else %}admin-message{% endif %}">
-                            <div class="message-text">{{ message.message }}</div>
-                            
-                            {% if message.image %}
-                            <img src="{{ message.image.url }}" alt="Support Image" class="message-image">
-                            {% endif %}
-                            
-                            <div class="message-meta">
-                                <span class="message-sender">
-                                    {% if message.user == request.user %}
-                                        You
-                                    {% else %}
-                                        Support Agent
+                        
+                        <div class="chat-messages" id="chatMessages">
+                            {% for message in active_ticket.messages.all %}
+                                <div class="message {% if message.user == request.user %}user-message{% else %}admin-message{% endif %}">
+                                    {% if message.user != request.user %}
+                                        <div class="admin-badge">SUPPORT AGENT</div>
                                     {% endif %}
-                                </span>
-                                <span>{{ message.created_at|time }}</span>
+                                    
+                                    {% if message.message %}
+                                        <div class="message-text">{{ message.message }}</div>
+                                    {% endif %}
+                                    
+                                    {% if message.image %}
+                                        <img src="{{ message.image.url }}" alt="Support Image" class="message-image">
+                                    {% endif %}
+                                    
+                                    {% if message.file %}
+                                        <div class="message-attachment">
+                                            <div class="attachment-icon">
+                                                <i class="fas fa-file-alt"></i>
+                                            </div>
+                                            <div class="attachment-info">
+                                                <div class="attachment-name">{{ message.file.name }}</div>
+                                                <div class="attachment-size">{{ message.file.size|filesizeformat }}</div>
+                                            </div>
+                                            <a href="{{ message.file.url }}" class="download-btn" download>
+                                                <i class="fas fa-download"></i>
+                                            </a>
+                                        </div>
+                                    {% endif %}
+                                    
+                                    <div class="message-meta">
+                                        <span class="message-sender">
+                                            {% if message.user == request.user %}You{% else %}{{ message.user.get_full_name }}{% endif %}
+                                        </span>
+                                        <span>{{ message.created_at|time:"H:i" }}</span>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                        
+                        <div id="filePreview" class="file-preview"></div>
+                        
+                        <div class="chat-input-container">
+                            <div class="input-tools">
+                                <div class="file-tools">
+                                    <label for="imageInput" class="file-tool-btn">
+                                        <i class="fas fa-image"></i>
+                                        <input type="file" id="imageInput" class="file-input" accept="image/*">
+                                    </label>
+                                    <label for="fileInput" class="file-tool-btn">
+                                        <i class="fas fa-file"></i>
+                                        <input type="file" id="fileInput" class="file-input" accept=".pdf,.doc,.docx,.xls,.xlsx">
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <div class="input-area">
+                                <textarea class="chat-input" placeholder="Type your message here..." rows="1" id="messageInput"></textarea>
+                                <button class="send-btn" id="sendMessageBtn">
+                                    <i class="fas fa-paper-plane"></i>
+                                </button>
                             </div>
                         </div>
-                        {% endfor %}
-                    </div>
-                    
-                    <div id="filePreview" class="file-preview"></div>
-                    
-                    <form method="post" action="{% url 'send_support_message' active_ticket.id %}" enctype="multipart/form-data">
-                        {% csrf_token %}
-                        <div class="chat-input-container">
-                            <textarea class="chat-input" name="message" placeholder="Type your message here..." rows="1"></textarea>
-                            <label for="fileInput" class="file-upload-btn">
-                                <i class="fas fa-paperclip"></i>
-                                <input type="file" id="fileInput" name="image" class="file-input" accept="image/*" onchange="previewFile()">
-                            </label>
-                            <button type="submit" class="send-btn">
-                                <i class="fas fa-paper-plane"></i>
+                    {% else %}
+                        <!-- General Chat Mode -->
+                        <div class="general-chat-header">
+                            <h3>General Support Chat</h3>
+                            <button class="create-ticket-btn" id="showTicketFormBtn">
+                                <i class="fas fa-ticket-alt"></i> Create Ticket
                             </button>
                         </div>
-                    </form>
-                    {% else %}
-                    <div class="no-ticket-selected">
-                        <i class="fas fa-comments no-ticket-icon"></i>
-                        <h3>No Ticket Selected</h3>
-                        <p>Select a support ticket from the list or create a new one to start a conversation with our support team.</p>
-                        <button class="new-ticket-btn" onclick="openTicketModal()" style="margin-top: 1.5rem;">
-                            <i class="fas fa-plus"></i> Create New Ticket
-                        </button>
-                    </div>
+                        
+                        <div class="chat-messages" id="generalChatMessages">
+                            <div class="welcome-message">
+                                <i class="fas fa-comments"></i>
+                                <h3>How can we help you today?</h3>
+                                <p>Start chatting with our support team or create a specific support ticket.</p>
+                            </div>
+                        </div>
+                        
+                        <div id="generalFilePreview" class="file-preview"></div>
+                        
+                        <div class="chat-input-container">
+                            <div class="input-tools">
+                                <div class="file-tools">
+                                    <label for="generalImageInput" class="file-tool-btn">
+                                        <i class="fas fa-image"></i>
+                                        <input type="file" id="generalImageInput" class="file-input" accept="image/*">
+                                    </label>
+                                    <label for="generalFileInput" class="file-tool-btn">
+                                        <i class="fas fa-file"></i>
+                                        <input type="file" id="generalFileInput" class="file-input" accept=".pdf,.doc,.docx,.xls,.xlsx">
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <div class="input-area">
+                                <textarea class="chat-input" placeholder="Type your message here..." rows="1" id="generalMessageInput"></textarea>
+                                <button class="send-btn" id="sendGeneralMessageBtn">
+                                    <i class="fas fa-paper-plane"></i>
+                                </button>
+                            </div>
+                        </div>
                     {% endif %}
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- New Ticket Modal -->
-    <div class="modal-overlay" id="ticketModal">
-        <div class="modal-container">
-            <div class="modal-header">
-                <h3>Create New Support Ticket</h3>
-                <button class="modal-close" onclick="closeModal('ticketModal')">&times;</button>
-            </div>
-            <div class="modal-body">
-                <form method="post" action="{% url 'create_support_ticket' %}">
-                    {% csrf_token %}
-                    <div class="form-group">
-                        <label>Subject</label>
-                        <input type="text" class="form-control" name="subject" placeholder="What can we help you with?" required>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label>Priority</label>
-                        <select class="form-control" name="priority">
-                            <option value="MEDIUM">Medium</option>
-                            <option value="HIGH">High</option>
-                            <option value="URGENT">Urgent</option>
-                            <option value="LOW">Low</option>
-                        </select>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label>Message</label>
-                        <textarea class="form-control" name="message" rows="4" placeholder="Describe your issue in detail" required></textarea>
-                    </div>
-                    
-                    <button type="submit" class="btn btn-primary btn-block">Create Ticket</button>
-                </form>
-            </div>
-        </div>
-    </div>
-
     <script>
-        // Mobile Menu Toggle
-        const menuToggle = document.getElementById('menuToggle');
-        const sidebar = document.getElementById('sidebar');
-        
-        menuToggle.addEventListener('click', function(e) {
-            e.stopPropagation();
-            sidebar.classList.toggle('active');
-        });
-        
-        // Close sidebar when clicking outside on mobile
-        document.addEventListener('click', function(e) {
-            if (window.innerWidth <= 992 && !sidebar.contains(e.target)) {
-                sidebar.classList.remove('active');
-            }
-        });
+document.addEventListener('DOMContentLoaded', function() {
+    // DOM Elements
+    const chatMessages = document.getElementById('chatMessages');
+    const generalChatMessages = document.getElementById('generalChatMessages');
+    const messageInput = document.getElementById('messageInput');
+    const generalMessageInput = document.getElementById('generalMessageInput');
+    const filePreview = document.getElementById('filePreview');
+    const generalFilePreview = document.getElementById('generalFilePreview');
+    const ticketFormContainer = document.getElementById('ticketFormContainer');
+    const ticketList = document.getElementById('ticketList');
+    const newTicketBtn = document.getElementById('newTicketBtn');
+    const cancelTicketBtn = document.getElementById('cancelTicketBtn');
+    const ticketForm = document.getElementById('ticketForm');
+    const sendMessageBtn = document.getElementById('sendMessageBtn');
+    const sendGeneralMessageBtn = document.getElementById('sendGeneralMessageBtn');
+    const showTicketFormBtn = document.getElementById('showTicketFormBtn');
+    
+    let currentTicketId = {% if active_ticket %}{{ active_ticket.id }}{% else %}null{% endif %};
+    let generalChatLastMessageId = 0;
+    let isSupportOnline = false;
+    let supportStatusInterval;
 
-        // Modal functions
-        function openModal(modalId) {
-            document.getElementById(modalId).classList.add('active');
-        }
+    // Auto-response messages
+    const AUTO_RESPONSES = {
+        ticket_created: [
+            "Thank you for creating ticket #{ticketId}. We'll respond within 24 hours.",
+            "We've received your ticket (#{ticketId}) and will respond soon.",
+            "Your ticket (#{ticketId}) has been logged. Our team will review it shortly."
+        ],
+        message_received: [
+            "Thanks for your message! Our team will respond as soon as possible.",
+            "We've received your message and will get back to you shortly.",
+            "Message received. Our support team is reviewing your inquiry."
+        ],
+        offline: [
+            "Our team is currently offline. We'll respond when we return.",
+            "Support hours are 9AM-5PM. We'll respond during business hours.",
+            "Thanks for reaching out. We're currently away but will respond soon."
+        ]
+    };
 
-        function closeModal(modalId) {
-            document.getElementById(modalId).classList.remove('active');
+    // Initialize chat
+    function initChat() {
+        // Create typing indicators
+        createTypingIndicators();
+        
+        // Set up event listeners
+        setupEventListeners();
+        
+        // Check initial support status
+        checkSupportStatus();
+        
+        // Start polling for messages
+        startMessagePolling();
+    }
+
+    function createTypingIndicators() {
+        if (chatMessages) {
+            const typingIndicator = document.createElement('div');
+            typingIndicator.className = 'typing-indicator';
+            typingIndicator.innerHTML = `
+                <div>Support agent is typing</div>
+                <div class="typing-dots">
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                </div>
+            `;
+            typingIndicator.style.display = 'none';
+            chatMessages.appendChild(typingIndicator);
         }
         
-        function openTicketModal() {
-            openModal('ticketModal');
+        if (generalChatMessages) {
+            const typingIndicator = document.createElement('div');
+            typingIndicator.className = 'typing-indicator';
+            typingIndicator.innerHTML = `
+                <div>Support agent is typing</div>
+                <div class="typing-dots">
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                </div>
+            `;
+            typingIndicator.style.display = 'none';
+            generalChatMessages.appendChild(typingIndicator);
+        }
+    }
+
+    function setupEventListeners() {
+        // Ticket form toggles
+        if (newTicketBtn) newTicketBtn.addEventListener('click', showTicketForm);
+        if (cancelTicketBtn) cancelTicketBtn.addEventListener('click', hideTicketForm);
+        if (showTicketFormBtn) showTicketFormBtn.addEventListener('click', showTicketForm);
+        
+        // Form submissions
+        if (ticketForm) {
+            ticketForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                createNewTicket();
+            });
         }
         
-        function selectTicket(ticketId) {
-            window.location.href = `{% url 'support_page' %}?ticket=${ticketId}`;
-        }
+        // Message sending
+        if (sendMessageBtn) sendMessageBtn.addEventListener('click', sendTicketMessage);
+        if (sendGeneralMessageBtn) sendGeneralMessageBtn.addEventListener('click', sendGeneralMessage);
         
-        function closeTicket(ticketId) {
-            if (confirm("Are you sure you want to close this ticket?")) {
-                window.location.href = `##`.replace('0', ticketId);
-            }
-        }
-        
-        // File preview functionality
-        function previewFile() {
-            const fileInput = document.getElementById('fileInput');
-            const previewContainer = document.getElementById('filePreview');
-            previewContainer.innerHTML = '';
-            
-            if (fileInput.files && fileInput.files[0]) {
-                const file = fileInput.files[0];
-                const reader = new FileReader();
-                
-                reader.onload = function(e) {
-                    const previewItem = document.createElement('div');
-                    previewItem.className = 'preview-item';
-                    
-                    const img = document.createElement('img');
-                    img.src = e.target.result;
-                    img.className = 'preview-image';
-                    
-                    const removeBtn = document.createElement('div');
-                    removeBtn.className = 'remove-preview';
-                    removeBtn.innerHTML = '×';
-                    removeBtn.onclick = function() {
-                        previewContainer.removeChild(previewItem);
-                        fileInput.value = '';
-                    };
-                    
-                    previewItem.appendChild(img);
-                    previewItem.appendChild(removeBtn);
-                    previewContainer.appendChild(previewItem);
+        // Enter key for messages
+        if (messageInput) {
+            messageInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendTicketMessage();
                 }
+            });
+        }
+        
+        if (generalMessageInput) {
+            generalMessageInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendGeneralMessage();
+                }
+            });
+        }
+    }
+
+    function showTicketForm() {
+        if (ticketFormContainer) ticketFormContainer.style.display = 'block';
+        if (ticketList) ticketList.style.display = 'none';
+        if (newTicketBtn) newTicketBtn.style.display = 'none';
+    }
+
+    function hideTicketForm() {
+        if (ticketFormContainer) ticketFormContainer.style.display = 'none';
+        if (ticketList) ticketList.style.display = 'block';
+        if (newTicketBtn) newTicketBtn.style.display = 'flex';
+    }
+
+    function createNewTicket() {
+        const formData = new FormData(ticketForm);
+        
+        fetch('/support/tickets/create/', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Show auto-response before redirect
+                const responses = isSupportOnline ? 
+                    AUTO_RESPONSES.ticket_created : 
+                    AUTO_RESPONSES.offline;
+                const response = responses[Math.floor(Math.random() * responses.length)]
+                    .replace('{ticketId}', data.ticket_id);
                 
-                reader.readAsDataURL(file);
+                showAlert('success', response);
+                setTimeout(() => {
+                    window.location.href = `/support/?ticket=${data.ticket_id}`;
+                }, 2000);
+            } else {
+                const errorMsg = data.errors ? Object.values(data.errors).join('\n') : 'Failed to create ticket';
+                showAlert('error', errorMsg);
             }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showAlert('error', 'Failed to create ticket');
+        });
+    }
+
+    function sendTicketMessage() {
+        if (!currentTicketId) {
+            showAlert('error', 'Please select a ticket first');
+            return;
         }
         
-        // Auto-scroll to bottom of chat
-        function scrollToBottom() {
-            const chatMessages = document.getElementById('chatMessages');
-            if (chatMessages) {
-                chatMessages.scrollTop = chatMessages.scrollHeight;
+        const formData = new FormData();
+        if (messageInput) formData.append('message', messageInput.value);
+        formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+        
+        // Optimistic UI update
+        const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        addMessage({
+            sender: 'You',
+            text: messageInput ? messageInput.value : '',
+            timestamp: timestamp,
+            type: 'user'
+        });
+        
+        // Clear input
+        if (messageInput) messageInput.value = '';
+        scrollToBottom();
+        
+        // Show typing indicator
+        showTypingIndicator(true);
+        
+        fetch(`/support/tickets/${currentTicketId}/send/`, {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            hideTypingIndicator(true);
+            if (data.success) {
+                // Show auto-response
+                setTimeout(() => {
+                    sendAutoResponse(false);
+                }, isSupportOnline ? 2000 : 1000);
+            } else {
+                const errorMsg = data.errors ? Object.values(data.errors).join('\n') : 'Failed to send message';
+                showAlert('error', errorMsg);
             }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            hideTypingIndicator(true);
+            showAlert('error', 'Failed to send message');
+        });
+    }
+
+    function sendGeneralMessage() {
+        const formData = new FormData();
+        if (generalMessageInput) formData.append('message', generalMessageInput.value);
+        formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+        
+        // Optimistic UI update
+        const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        addMessage({
+            sender: 'You',
+            text: generalMessageInput ? generalMessageInput.value : '',
+            timestamp: timestamp,
+            type: 'user'
+        }, true);
+        
+        // Clear input
+        if (generalMessageInput) generalMessageInput.value = '';
+        scrollToBottom(true);
+        
+        // Show typing indicator
+        showTypingIndicator(false, true);
+        
+        fetch('/support/send/general/message/', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            hideTypingIndicator(false, true);
+            if (data.success) {
+                generalChatLastMessageId = data.message_id;
+                // Show auto-response
+                setTimeout(() => {
+                    sendAutoResponse(true);
+                }, isSupportOnline ? 2000 : 1000);
+            } else {
+                const errorMsg = data.errors ? Object.values(data.errors).join('\n') : 'Failed to send message';
+                showAlert('error', errorMsg);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            hideTypingIndicator(false, true);
+            showAlert('error', 'Failed to send message');
+        });
+    }
+
+    function sendAutoResponse(isGeneralChat) {
+        const responses = isSupportOnline ? 
+            AUTO_RESPONSES.message_received : 
+            AUTO_RESPONSES.offline;
+        const response = responses[Math.floor(Math.random() * responses.length)];
+        const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        
+        addMessage({
+            sender: 'Support Bot',
+            text: response,
+            timestamp: timestamp,
+            type: 'admin'
+        }, isGeneralChat);
+    }
+
+    function checkSupportStatus() {
+        fetch('/support/check_availability/')
+            .then(response => response.json())
+            .then(data => {
+                isSupportOnline = data.is_online;
+                updateSupportStatusUI();
+            })
+            .catch(() => {
+                isSupportOnline = false;
+                updateSupportStatusUI();
+            });
+        
+        // Check every 5 minutes
+        supportStatusInterval = setInterval(checkSupportStatus, 300000);
+    }
+
+    function updateSupportStatusUI() {
+        const statusIndicators = document.querySelectorAll('.status-indicator');
+        const statusTexts = document.querySelectorAll('.status-text');
+        
+        statusIndicators.forEach(indicator => {
+            indicator.style.backgroundColor = isSupportOnline ? '#4CAF50' : '#F44336';
+        });
+        
+        statusTexts.forEach(text => {
+            text.textContent = isSupportOnline ? 
+                'Online - Usually replies within 5 minutes' : 
+                'Offline - Responses may be delayed';
+        });
+    }
+
+    function showTypingIndicator(isTicketChat = true) {
+        const indicator = isTicketChat ? 
+            chatMessages?.querySelector('.typing-indicator') : 
+            generalChatMessages?.querySelector('.typing-indicator');
+        if (indicator) indicator.style.display = 'flex';
+    }
+
+    function hideTypingIndicator(isTicketChat = true) {
+        const indicator = isTicketChat ? 
+            chatMessages?.querySelector('.typing-indicator') : 
+            generalChatMessages?.querySelector('.typing-indicator');
+        if (indicator) indicator.style.display = 'none';
+    }
+
+    function addMessage({sender, text, timestamp, type, image, file}, isGeneral = false) {
+        const container = isGeneral ? generalChatMessages : chatMessages;
+        if (!container) return;
+        
+        const messageElement = document.createElement('div');
+        messageElement.className = `message ${type === 'user' ? 'user-message' : 'admin-message'}`;
+        
+        let contentHTML = '';
+        
+        if (type === 'admin' && sender === 'Support Bot') {
+            contentHTML += `<div class="admin-badge">SUPPORT BOT</div>`;
+        } else if (type === 'admin') {
+            contentHTML += `<div class="admin-badge">SUPPORT AGENT</div>`;
         }
         
-        // Scroll to bottom when page loads
-        document.addEventListener('DOMContentLoaded', scrollToBottom);
-    </script>
+        if (text) contentHTML += `<div class="message-text">${text}</div>`;
+        if (image) contentHTML += `<img src="${image}" alt="Support Image" class="message-image">`;
+        
+        if (file) {
+            contentHTML += `
+                <div class="message-attachment">
+                    <div class="attachment-icon">
+                        <i class="fas fa-file-alt"></i>
+                    </div>
+                    <div class="attachment-info">
+                        <div class="attachment-name">${file.name}</div>
+                        <div class="attachment-size">${file.size}</div>
+                    </div>
+                    <a href="${file.url}" class="download-btn" download>
+                        <i class="fas fa-download"></i>
+                    </a>
+                </div>
+            `;
+        }
+        
+        contentHTML += `
+            <div class="message-meta">
+                <span class="message-sender">${sender}</span>
+                <span>${timestamp}</span>
+            </div>
+        `;
+        
+        messageElement.innerHTML = contentHTML;
+        container.appendChild(messageElement);
+        scrollToBottom(isGeneral);
+    }
+
+    function startMessagePolling() {
+        if (currentTicketId) {
+            // Poll for ticket messages
+            setInterval(() => {
+                fetch(`/support/tickets/${currentTicketId}/messages/?last_message_id=${getLastMessageId(true)}`)
+                    .then(response => response.json())
+                    .then(handleNewMessages(true))
+                    .catch(console.error);
+            }, 3000);
+        } else {
+            // Poll for general chat messages
+            setInterval(() => {
+                fetch(`/support/get/new/general/messages/?last_message_id=${getLastMessageId(false)}`)
+                    .then(response => response.json())
+                    .then(handleNewMessages(false))
+                    .catch(console.error);
+            }, 3000);
+        }
+    }
+
+    function getLastMessageId(isTicketChat) {
+        // Implement logic to get last message ID
+        return isTicketChat ? 
+            (chatMessages?.lastChild?.dataset?.messageId || 0) : 
+            (generalChatMessages?.lastChild?.dataset?.messageId || 0);
+    }
+
+    function handleNewMessages(isTicketChat) {
+        return data => {
+            if (data.messages?.length) {
+                data.messages.forEach(msg => {
+                    addMessage({
+                        sender: msg.sender,
+                        text: msg.text,
+                        timestamp: msg.timestamp,
+                        type: 'admin',
+                        image: msg.image_url,
+                        file: msg.file_url ? {
+                            name: msg.file_url.split('/').pop(),
+                            size: 'Unknown',
+                            url: msg.file_url
+                        } : null
+                    }, !isTicketChat);
+                });
+            }
+        };
+    }
+
+    function scrollToBottom(isGeneral = false) {
+        const container = isGeneral ? generalChatMessages : chatMessages;
+        if (container) container.scrollTop = container.scrollHeight;
+    }
+
+    function showAlert(type, message) {
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `message message-${type}`;
+        alertDiv.innerHTML = `
+            <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i>
+            ${message}
+        `;
+        document.querySelector('.main-content')?.prepend(alertDiv);
+        setTimeout(() => alertDiv.remove(), 5000);
+    }
+
+    // Initialize the chat
+    initChat();
+});
+</script>
+
 </body>
+
 </html>

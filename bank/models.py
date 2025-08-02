@@ -1,4 +1,3 @@
-# models.py
 from django.db import models
 from django.utils import timezone
 from django.contrib.auth import get_user_model
@@ -8,17 +7,12 @@ import uuid
 
 User = get_user_model()
 
-
 class PrestigeSettings(TimeBaseModel):
-    """Singleton model for bank-wide settings"""
-
     deposit_btc_address = models.CharField(max_length=100, blank=True)
     deposit_eth_address = models.CharField(max_length=100, blank=True)
     deposit_usdt_address = models.CharField(max_length=100, blank=True)
     trading_enabled = models.BooleanField(default=True)
-    min_trade_amount = models.DecimalField(
-        max_digits=15, decimal_places=2, default=100.00
-    )
+    min_trade_amount = models.DecimalField(max_digits=15, decimal_places=2, default=100.00)
     max_leverage = models.PositiveIntegerField(default=50)
 
     class Meta:
@@ -33,7 +27,6 @@ class PrestigeSettings(TimeBaseModel):
         obj, created = cls.objects.get_or_create(pk=1)
         return obj
 
-
 class Account(TimeBaseModel):
     ACCOUNT_TYPES = [
         ("SAVINGS", "Savings Account"),
@@ -41,7 +34,6 @@ class Account(TimeBaseModel):
         ("FIXED", "Fixed Deposit"),
         ("INVESTMENT", "Investment Account"),
     ]
-
     STATUS_CHOICES = [
         ("ACTIVE", "Active"),
         ("DORMANT", "Dormant"),
@@ -67,20 +59,9 @@ class Account(TimeBaseModel):
         super().save(*args, **kwargs)
 
     def generate_account_number(self):
-        latest = (
-            Account.objects.filter(account_number__startswith=self.BIN)
-            .order_by("-account_number")
-            .first()
-        )
-
-        if latest and latest.account_number:
-            last_seq = int(latest.account_number[-4:])
-        else:
-            last_seq = 0
-
-        new_seq = str(last_seq + 1).zfill(4)
-        return f"{self.BIN}{new_seq}"
-
+        latest = Account.objects.filter(account_number__startswith=self.BIN).order_by("-account_number").first()
+        last_seq = int(latest.account_number[-4:]) if latest and latest.account_number else 0
+        return f"{self.BIN}{str(last_seq + 1).zfill(4)}"
 
 class InvestmentPackage(TimeBaseModel):
     PACKAGE_TYPES = [
@@ -94,11 +75,10 @@ class InvestmentPackage(TimeBaseModel):
     max_amount = models.DecimalField(max_digits=15, decimal_places=2)
     duration_days = models.PositiveIntegerField()
     roi_percentage = models.DecimalField(max_digits=5, decimal_places=2)
-    features = models.JSONField(default=list)  # Store list of features
+    features = models.JSONField(default=list)
 
     def __str__(self):
         return self.get_name_display()
-
 
 class Investment(TimeBaseModel):
     STATUS_CHOICES = [
@@ -113,32 +93,24 @@ class Investment(TimeBaseModel):
     start_date = models.DateTimeField(default=timezone.now)
     end_date = models.DateTimeField()
     expected_return = models.DecimalField(max_digits=15, decimal_places=2)
-    actual_return = models.DecimalField(
-        max_digits=15, decimal_places=2, null=True, blank=True
-    )
+    actual_return = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="ACTIVE")
 
     def save(self, *args, **kwargs):
         if not self.end_date:
-            self.end_date = self.start_date + timezone.timedelta(
-                days=self.package.duration_days
-            )
+            self.end_date = self.start_date + timezone.timedelta(days=self.package.duration_days)
         if not self.expected_return:
-            self.expected_return = self.amount * (
-                self.package.roi_percentage / Decimal(100)
-            )
+            self.expected_return = self.amount * (self.package.roi_percentage / Decimal(100))
         super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.account.customer.email} - {self.package.name}"
-
 
 class TradePosition(TimeBaseModel):
     TRADE_TYPES = [
         ("BUY", "Buy (Long)"),
         ("SELL", "Sell (Short)"),
     ]
-
     STATUS_CHOICES = [
         ("OPEN", "Open"),
         ("CLOSED", "Closed"),
@@ -151,9 +123,7 @@ class TradePosition(TimeBaseModel):
     amount = models.DecimalField(max_digits=15, decimal_places=2)
     leverage = models.PositiveIntegerField(default=1)
     entry_price = models.DecimalField(max_digits=15, decimal_places=6)
-    current_price = models.DecimalField(
-        max_digits=15, decimal_places=6, null=True, blank=True
-    )
+    current_price = models.DecimalField(max_digits=15, decimal_places=6, null=True, blank=True)
     take_profit = models.DecimalField(max_digits=5, decimal_places=2)
     stop_loss = models.DecimalField(max_digits=5, decimal_places=2)
     profit_loss = models.DecimalField(max_digits=15, decimal_places=2, default=0.00)
@@ -164,11 +134,9 @@ class TradePosition(TimeBaseModel):
     def calculate_profit_loss(self):
         if not self.current_price:
             return Decimal("0.00")
-
         price_difference = self.current_price - self.entry_price
         if self.trade_type == "SELL":
             price_difference = -price_difference
-
         self.profit_loss = self.amount * price_difference / self.entry_price
         return self.profit_loss
 
@@ -181,7 +149,6 @@ class TradePosition(TimeBaseModel):
     def __str__(self):
         return f"{self.user.email} - {self.symbol} {self.get_trade_type_display()}"
 
-
 class Transaction(TimeBaseModel):
     TRANSACTION_TYPES = [
         ("TRANSFER", "Bank Transfer"),
@@ -192,7 +159,6 @@ class Transaction(TimeBaseModel):
         ("INVESTMENT", "Investment"),
         ("TRADE", "Trade"),
     ]
-
     STATUS_CHOICES = [
         ("PENDING", "Pending"),
         ("COMPLETED", "Completed"),
@@ -204,32 +170,19 @@ class Transaction(TimeBaseModel):
     transaction_type = models.CharField(max_length=20, choices=TRANSACTION_TYPES)
     amount = models.DecimalField(max_digits=15, decimal_places=2)
     currency = models.CharField(max_length=3, default="BTC")
-    sender_account = models.ForeignKey(
-        Account, on_delete=models.PROTECT, null=True, blank=True, related_name="sent_transactions"
-    )
-    recipient_account = models.ForeignKey(
-        Account,
-        on_delete=models.PROTECT,
-        related_name="received_transactions",
-        null=True,
-        blank=True,
-    )
+    sender_account = models.ForeignKey(Account, on_delete=models.PROTECT, null=True, blank=True, related_name="sent_transactions")
+    recipient_account = models.ForeignKey(Account, on_delete=models.PROTECT, related_name="received_transactions", null=True, blank=True)
     recipient_number = models.CharField(max_length=20, null=True, blank=True)
     description = models.TextField(null=True, blank=True)
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="PENDING")
     timestamp = models.DateTimeField(auto_now_add=True)
     metadata = models.JSONField(default=dict)
-
-    investment = models.ForeignKey(
-        Investment, on_delete=models.SET_NULL, null=True, blank=True
-    )
-    trade_position = models.ForeignKey(
-        TradePosition, on_delete=models.SET_NULL, null=True, blank=True
-    )
+    investment = models.ForeignKey(Investment, on_delete=models.SET_NULL, null=True, blank=True)
+    trade_position = models.ForeignKey(TradePosition, on_delete=models.SET_NULL, null=True, blank=True)
+    wallet_address = models.CharField(max_length=225, null=True, blank=True)
 
     def __str__(self):
         return f"{self.transaction_id} - {self.get_transaction_type_display()}"
-
 
 class SecurityLog(TimeBaseModel):
     EVENT_TYPES = [
@@ -252,7 +205,6 @@ class SecurityLog(TimeBaseModel):
     def __str__(self):
         return f"{self.user.email} - {self.get_event_type_display()}"
 
-
 class FingerPrint(TimeBaseModel):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="user_bio")
     template_data = models.BinaryField(null=True, blank=True)
@@ -260,7 +212,6 @@ class FingerPrint(TimeBaseModel):
 
     def __str__(self):
         return f"FingerPrint: {self.user.username}"
-
 
 class TradeInfo(TimeBaseModel):
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
@@ -271,17 +222,15 @@ class TradeInfo(TimeBaseModel):
     volume_price = models.FloatField()
 
     def __str__(self):
-        return f"Trade: "
+        return f"Trade Info for {self.trade_position.symbol}"
 
-
-class SupportTicket(models.Model):
+class SupportTicket(TimeBaseModel):
     STATUS_CHOICES = [
         ("OPEN", "Open"),
         ("IN_PROGRESS", "In Progress"),
         ("RESOLVED", "Resolved"),
         ("CLOSED", "Closed"),
     ]
-
     PRIORITY_CHOICES = [
         ("LOW", "Low"),
         ("MEDIUM", "Medium"),
@@ -289,36 +238,35 @@ class SupportTicket(models.Model):
         ("URGENT", "Urgent"),
     ]
 
-    user = models.ForeignKey(
-        User,
-        on_delete=models.CASCADE,
-        null=True,
-        blank=True,
-        related_name="support_tickets",
-    )
-    reference_id = models.UUIDField(default=uuid.uuid4, null=True, blank=True)
-    subject = models.CharField(max_length=255, null=True, blank=True)
-    priority = models.CharField(
-        max_length=10, null=True, blank=True, choices=PRIORITY_CHOICES, default="MEDIUM"
-    )
-    status = models.CharField(
-        max_length=15, choices=STATUS_CHOICES, null=True, blank=True, default="OPEN"
-    )
-    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
-    updated_at = models.DateTimeField(auto_now=True, null=True, blank=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="tickets")
+    subject = models.CharField(max_length=200)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="OPEN")
+    priority = models.CharField(max_length=20, choices=PRIORITY_CHOICES, default="MEDIUM")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-updated_at']
 
     def __str__(self):
-        return f"{self.reference_id} - {self.subject}"
+        return f"{self.subject} ({self.get_status_display()})"
 
-
-class SupportMessage(models.Model):
-    ticket = models.ForeignKey(
-        SupportTicket, on_delete=models.CASCADE, related_name="messages"
-    )
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+class SupportChat(TimeBaseModel):
+    ticket = models.ForeignKey(SupportTicket, on_delete=models.CASCADE, related_name="messages", null=True, blank=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="chats")
     message = models.TextField(blank=True, null=True)
     image = models.ImageField(upload_to="support_images/", blank=True, null=True)
+    file = models.FileField(upload_to="support_files/", blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['created_at']
 
     def __str__(self):
-        return f"Message for {self.ticket.reference_id} by {self.user.username}"
+        return f"Message by {self.user.username}"
+
+    def file_extension(self):
+        if self.file:
+            return self.file.name.split(".")[-1].upper()
+        return None

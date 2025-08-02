@@ -11,11 +11,11 @@ from .models import (
     FingerPrint,
     PrestigeSettings,
     SupportTicket,
-    SupportMessage
+    SupportChat
 )
 
 admin.site.register(SupportTicket)
-admin.site.register(SupportMessage)
+admin.site.register(SupportChat)
 
 
 class PrestigeSettingsForm(forms.ModelForm):

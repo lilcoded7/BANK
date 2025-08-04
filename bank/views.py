@@ -6,31 +6,23 @@ from django.db.models import Max, Count, Q, Sum, F
 from django.utils import timezone
 from datetime import timedelta
 from django.contrib.auth import authenticate, login, logout, get_user_model
+from django.views.decorators.csrf import csrf_exempt
 from django.core.paginator import Paginator
 from django.contrib import messages
 from django.db import transaction
 from decimal import Decimal
+from django.utils.timezone import now
+from datetime import timedelta
 import random
 import string
-from .models import (
-    Account,
-    InvestmentPackage,
-    Investment,
-    TradePosition,
-    Transaction,
-    SecurityLog,
-    PrestigeSettings,
-    SupportTicket,
-    SupportChat,
-)
+from bank.models import *
 from .forms import (
     LoginForm,
     DepositForm,
     InvestmentForm,
     OpenTradeForm,
-    SupportTicketForm,
-    SupportChatForm,
 )
+import json
 
 User = get_user_model()
 
@@ -38,6 +30,8 @@ User = get_user_model()
 def is_staff_user(user):
     return user.is_staff
 
+def admin_required(user):
+    return user.is_staff or user.is_superuser
 
 def login_view(request):
     if request.user.is_authenticated:
@@ -58,6 +52,9 @@ def login_view(request):
                     device_info={"user_agent": request.META.get("HTTP_USER_AGENT")},
                     details="Standard password authentication",
                 )
+                if user.is_admin:
+                    return redirect('admin_dashboard')
+
                 return redirect("trade_investment_dashboard")
             messages.error(request, "Invalid email or password")
         else:
@@ -192,7 +189,7 @@ def close_trade(request, position_id):
             position.closed_at = timezone.now()
             position.save()
 
-            amount_to_return =position.profit_loss
+            amount_to_return = position.profit_loss
             account.balance += amount_to_return
             account.save()
 
@@ -207,7 +204,6 @@ def close_trade(request, position_id):
                 trade_position=position,
             )
 
-           
             messages.success(
                 request, f"Position closed! Profit/Loss: ${position.profit_loss:.2f}"
             )
@@ -446,272 +442,240 @@ def withdraw_fund(request):
 
 
 @login_required
-def support_page(request):
-    tickets = SupportTicket.objects.filter(user=request.user).order_by("-created_at")
+def support_chat(request):
+    # Get all tickets for the current user
+    tickets = SupportTicket.objects.filter(user=request.user).order_by("-updated_at")
 
-    active_ticket_id = request.GET.get("ticket")
+    active_ticket_id = request.GET.get("ticket_id")
     active_ticket = None
 
     if active_ticket_id:
         try:
-            active_ticket = SupportTicket.objects.get(
-                id=active_ticket_id, user=request.user
-            )
+            active_ticket = tickets.get(id=active_ticket_id)
         except SupportTicket.DoesNotExist:
-            messages.error(request, "Ticket not found")
+            pass
 
-    if not active_ticket and tickets.exists():
-        active_ticket = tickets.first()
+    # Check if any admin is online
+    admin_online = UserStatus.objects.filter(
+        user__is_staff=True, status="ONLINE"
+    ).exists()
 
-    return render(
-        request,
-        "main/support.html",
-        {
-            "tickets": tickets,
-            "active_ticket": active_ticket,
-        },
-    )
+    context = {
+        "tickets": tickets,
+        "active_ticket": active_ticket,
+        "admin_online": admin_online,
+    }
+
+    return render(request, "main/support.html", context)
 
 
-@login_required
+@csrf_exempt
 def create_ticket(request):
-    form = SupportTicketForm(request.POST, user=request.user)
-    if not form.is_valid():
-        return JsonResponse({"success": False, "errors": form.errors}, status=400)
+    prestige_settings = PrestigeSettings.load()
+    if request.method == "POST":
+        try:
+            subject = request.POST.get("subject", "General Support")
+            priority = request.POST.get("priority", "MEDIUM")
+            message = request.POST.get("message", "")
 
-    try:
-        ticket = form.save()
-        SupportChat.objects.create(
-            ticket=ticket, user=request.user, message=form.cleaned_data["message"]
-        )
-        return JsonResponse({"success": True, "ticket_id": ticket.id})
-    except Exception as e:
-        return JsonResponse({"success": False, "error": str(e)}, status=500)
+            ticket = SupportTicket.objects.create(
+                user=request.user, subject=subject, priority=priority
+            )
+
+            support_message = SupportMessage.objects.create(
+                ticket=ticket,
+                sender=request.user,
+                receiver=prestige_settings,
+                message=message,
+            )
+
+            # Handle file uploads if needed
+
+            return JsonResponse(
+                {
+                    "success": True,
+                    "ticket_id": ticket.id,
+                    "redirect_url": f"/support/?ticket_id={ticket.id}",
+                }
+            )
+        except Exception as e:
+            return JsonResponse({"success": False, "error": str(e)})
+
+    return JsonResponse({"success": False, "error": "Invalid request method"})
 
 
 @login_required
-def send_message(request, ticket_id):
-    ticket = get_object_or_404(SupportTicket, id=ticket_id, user=request.user)
-    form = SupportChatForm(request.POST, request.FILES)
-
-    if not form.is_valid():
-        return JsonResponse({"success": False, "errors": form.errors}, status=400)
-
+def get_ticket_messages(request, ticket_id):
     try:
-        chat = form.save(commit=False)
-        chat.ticket = ticket
-        chat.user = request.user
-        chat.save()
+        ticket = SupportTicket.objects.get(id=ticket_id, user=request.user)
+        messages = ticket.messages.all().order_by("created_at")
 
-        if ticket.status == "OPEN":
-            ticket.status = "IN_PROGRESS"
-            ticket.save()
+        messages_data = []
+        print(messages_data, 'Message data')
+        for message in messages:
+            messages_data.append(
+                {
+                    "id": message.id,
+                    "message": message.message,
+                    "image": message.image.url if message.image else None,
+                    "file": {
+                        "url": message.file.url if message.file else None,
+                        "name": message.file.name if message.file else None,
+                    },
+                    "sender": {
+                        "id": message.sender.id,
+                        "name": message.sender.get_full_name(),
+                        "is_me": message.sender == request.user,
+                        "is_staff": message.sender.is_staff,
+                    },
+                    "created_at": message.created_at.strftime("%H:%M"),
+                    "is_read": message.is_read,
+                }
+            )
 
         return JsonResponse(
             {
                 "success": True,
-                "message": {
-                    "id": chat.id,
-                    "text": chat.message,
-                    "image_url": chat.image.url if chat.image else None,
-                    "file_url": chat.file.url if chat.file else None,
-                    "created_at": chat.created_at.strftime("%H:%M"),
-                    "sender": "You",
+                "messages": messages_data,
+                "ticket": {
+                    "id": ticket.id,
+                    "subject": ticket.subject,
+                    "status": ticket.get_status_display(),
                 },
+                "admin_online": UserStatus.objects.filter(
+                    user__is_staff=True, status="ONLINE"
+                ).exists(),
             }
         )
-    except Exception as e:
-        return JsonResponse({"success": False, "error": str(e)}, status=500)
+    except SupportTicket.DoesNotExist:
+        return JsonResponse({"success": False, "error": "Ticket not found"})
 
 
 @login_required
-def get_new_messages(request, ticket_id):
-    try:
-        ticket = get_object_or_404(SupportTicket, id=ticket_id, user=request.user)
-        last_message_id = request.GET.get("last_message_id", 0)
+@csrf_exempt
+def send_message(request, ticket_id):
+    prestige_setting = PrestigeSettings.load()
+    if request.method == "POST":
+        try:
+            ticket = SupportTicket.objects.get(id=ticket_id, user=request.user)
+            message_text = request.POST.get("message")
+            image = request.FILES.get("image")
+            file = request.FILES.get("file")
 
-        messages = (
-            SupportChat.objects.filter(ticket=ticket, id__gt=last_message_id)
-            .exclude(user=request.user)
-            .order_by("created_at")
-        )
+            message = SupportMessage.objects.create(
+                ticket=ticket,
+                sender=request.user,
+                receiver=prestige_setting,
+                message=message_text,
+                image=image,
+                file=file,
+            )
+            print(message, 'Messages here ')
 
-        messages_data = [
-            {
-                "id": msg.id,
-                "text": msg.message,
-                "image_url": msg.image.url if msg.image else None,
-                "file_url": msg.file.url if msg.file else None,
-                "created_at": msg.created_at.strftime("%H:%M"),
-                "sender": "Support Agent",
-            }
-            for msg in messages
-        ]
+            
+            if ticket.status in ["RESOLVED", "CLOSED"]:
+                ticket.status = "IN_PROGRESS"
+                ticket.save()
 
-        last_id = messages.last().id if messages else last_message_id
-        return JsonResponse({"messages": messages_data, "last_message_id": last_id})
-    except Exception as e:
-        return JsonResponse({"success": False, "error": str(e)}, status=500)
+            return JsonResponse(
+                {
+                    "success": True,
+                    "message": {
+                        "id": message.id,
+                        "text": message_text,
+                        "image": message.image.url if message.image else None,
+                        "file": {
+                            "url": message.file.url if message.file else None,
+                            "name": message.file.name if message.file else None,
+                        },
+                        "sender": request.user.get_full_name(),
+                        "is_me": True,
+                        "created_at": message.created_at.strftime("%H:%M"),
+                    },
+                }
+            )
+        except SupportTicket.DoesNotExist:
+            return JsonResponse({"success": False, "error": "Ticket not found"})
+
+    return JsonResponse({"success": False, "error": "Invalid request"})
 
 
 @login_required
 def close_ticket(request, ticket_id):
-    try:
-        ticket = get_object_or_404(SupportTicket, id=ticket_id, user=request.user)
-        ticket.status = "CLOSED"
-        ticket.save()
-        return redirect("support_page")
-    except Exception as e:
-        messages.error(request, f"Error closing ticket: {str(e)}")
-        return redirect("support_page")
+    if request.method == "POST":
+        try:
+            ticket = SupportTicket.objects.get(id=ticket_id, user=request.user)
+            ticket.status = "CLOSED"
+            ticket.save()
+            return JsonResponse({"success": True})
+        except SupportTicket.DoesNotExist:
+            return JsonResponse({"success": False, "error": "Ticket not found"})
+
+    return JsonResponse({"success": False, "error": "Invalid request"})
 
 
-@login_required
+@user_passes_test(admin_required)
 def admin_dashboard(request):
+    one_week_ago = timezone.now() - timedelta(days=7)
+
     recent_chats = (
         User.objects.filter(
-            Q(support_chats__created_at__gte=timezone.now() - timedelta(days=7))
-            | Q(tickets__created_at__gte=timezone.now() - timedelta(days=7))
+            Q(tickets__messages__created_at__gte=one_week_ago)
+            | Q(tickets__created_at__gte=one_week_ago)
         )
         .annotate(
-            last_message_time=Max("support_chats__created_at"),
-            last_message=Max("support_chats__message"),
+            last_message_time=Max("tickets__messages__created_at"),
+            last_message=Max("tickets__messages__message"),
             unread_count=Count(
-                "support_chats",
+                "tickets__messages",
                 filter=Q(
-                    support_chats__is_read=False, support_chats__user__is_staff=False
+                    tickets__messages__is_read=False,
+                    tickets__messages__sender__is_staff=False,
                 ),
             ),
         )
         .order_by("-last_message_time")[:10]
     )
 
+    total_transactions = Transaction.objects.filter(status="COMPLETED").aggregate(
+        total=Sum("amount")
+    )["total"] or 0
+
+    total_withdrawals = Transaction.objects.filter(
+        transaction_type="WITHDRAWAL", status="COMPLETED"
+    ).aggregate(total=Sum("amount"))["total"] or 0
+
+    pending_transactions_list = Transaction.objects.filter(status="PENDING")\
+        .select_related("account__customer")\
+        .order_by("-created_at")[:10]
+
     context = {
-        "total_transactions": Transaction.objects.filter(status="COMPLETED").aggregate(
-            Sum("amount")
-        )["amount__sum"]
-        or 0,
-        "total_withdrawals": Transaction.objects.filter(
-            transaction_type="WITHDRAWAL", status="COMPLETED"
-        ).aggregate(Sum("amount"))["amount__sum"]
-        or 0,
+        "total_transactions": total_transactions,
+        "total_withdrawals": total_withdrawals,
         "total_users": User.objects.count(),
         "pending_transactions": Transaction.objects.filter(status="PENDING").count(),
-        "pending_transactions_list": Transaction.objects.filter(status="PENDING")
-        .select_related("account__customer")
-        .order_by("-created_at")[:10],
+        "pending_transactions_list": pending_transactions_list,
         "recent_chats": recent_chats,
     }
     return render(request, "main/dashboard_admin.html", context)
 
 
-@login_required
-def get_chat_history(request, user_id):
-    try:
-        user = User.objects.get(id=user_id)
+def credit_transaction(request, trans_id):
+    transaction = get_object_or_404(Transaction, id=trans_id)
+    transaction.status = "COMPLETED"
+    transaction.save()
 
-        messages = SupportChat.objects.filter(
-            Q(user=user) | Q(ticket__user=user)
-        ).order_by("created_at")
-
-        messages_data = []
-        for msg in messages:
-            message_data = {
-                "id": msg.id,
-                "message": msg.message,
-                "created_at": msg.created_at.strftime("%Y-%m-%d %H:%M:%S"),
-                "is_admin": msg.user.is_staff,
-            }
-
-            if msg.image:
-                message_data["image"] = msg.image.url
-
-            messages_data.append(message_data)
-
-        return JsonResponse(
-            {
-                "success": True,
-                "messages": messages_data,
-                "user_name": user.get_full_name(),
-            }
-        )
-    except User.DoesNotExist:
-        return JsonResponse({"success": False, "error": "User not found"}, status=404)
-    except Exception as e:
-        return JsonResponse({"success": False, "error": str(e)}, status=500)
+    transaction.account.balance += transaction.amount
+    transaction.account.save()
+    messages.success(request, 'Account Credited Successfully')
+    return redirect('admin_dashboard')
 
 
-@login_required
-def send_message_admin(request):
-    form = SupportChatForm(request.POST, request.FILES)
-    if not form.is_valid():
-        return JsonResponse({"success": False, "errors": form.errors}, status=400)
-
-    try:
-        chat = form.save(commit=False)
-        chat.user = request.user
-
-        user_id = request.POST.get("user_id")
-        if not user_id:
-            return JsonResponse(
-                {"success": False, "error": "User ID required"}, status=400
-            )
-
-        user = User.objects.get(id=user_id)
-        ticket = SupportTicket.objects.filter(
-            user=user, status__in=["OPEN", "IN_PROGRESS"]
-        ).first()
-
-        if not ticket:
-            ticket = SupportTicket.objects.create(
-                user=user, subject="General Support", status="IN_PROGRESS"
-            )
-
-        chat.ticket = ticket
-        chat.save()
-
-        return JsonResponse(
-            {
-                "success": True,
-                "message_id": chat.id,
-                "created_at": chat.created_at.strftime("%H:%M"),
-                "is_admin": True,
-            }
-        )
-    except User.DoesNotExist:
-        return JsonResponse({"success": False, "error": "User not found"}, status=404)
-    except Exception as e:
-        return JsonResponse({"success": False, "error": str(e)}, status=500)
-
-
-@login_required
-def mark_messages_read(request):
-    try:
-        user_id = request.POST.get("user_id")
-        if not user_id:
-            return JsonResponse(
-                {"success": False, "error": "User ID required"}, status=400
-            )
-
-        SupportChat.objects.filter(user_id=user_id, is_read=False).update(is_read=True)
-
-        return JsonResponse({"success": True})
-    except Exception as e:
-        return JsonResponse({"success": False, "error": str(e)}, status=500)
-
-
-@login_required
-def check_new_messages(request, user_id):
-    try:
-        last_message_id = request.GET.get("last_message_id", 0)
-
-        has_new = SupportChat.objects.filter(
-            user_id=user_id, id__gt=last_message_id, is_read=False, user__is_staff=False
-        ).exists()
-
-        return JsonResponse({"success": True, "has_new_messages": has_new})
-    except Exception as e:
-        return JsonResponse({"success": False, "error": str(e)}, status=500)
+def delete_transaction(request, trans_id):
+    transaction = get_object_or_404(Transaction, id=trans_id)
+    transaction.delete()
+    messages.success(request,'Account Deleted Successfully')
+    return redirect('admin_dashboard')
 
 
 @login_required
@@ -750,17 +714,16 @@ def process_transaction(request, transaction_id, action):
 def is_admin(user):
     return user.is_staff or user.is_superuser
 
-@login_required
+
+@user_passes_test(is_admin)
 def trade_list(request):
-    # Get all trades ordered by most recent first
-    trades = TradePosition.objects.all().order_by('-opened_at')
-    
-    # Apply filters if provided
-    status = request.GET.get('status')
-    trade_type = request.GET.get('type')
-    symbol = request.GET.get('symbol')
-    search = request.GET.get('search')
-    
+    trades = TradePosition.objects.all().order_by("-opened_at")
+
+    status = request.GET.get("status")
+    trade_type = request.GET.get("type")
+    symbol = request.GET.get("symbol")
+    search = request.GET.get("search")
+
     if status:
         trades = trades.filter(status=status)
     if trade_type:
@@ -769,100 +732,302 @@ def trade_list(request):
         trades = trades.filter(symbol__icontains=symbol)
     if search:
         trades = trades.filter(
-            Q(symbol__icontains=search) | 
-            Q(user__email__icontains=search) |
-            Q(user__first_name__icontains=search) |
-            Q(user__last_name__icontains=search)
+            Q(symbol__icontains=search)
+            | Q(user__email__icontains=search)
+            | Q(user__first_name__icontains=search)
+            | Q(user__last_name__icontains=search)
         )
+
+    total_trades = TradePosition.objects.count()
+    trades_this_month = TradePosition.objects.filter(
+        opened_at__gte=now().replace(day=1)
+    ).count()
     
-    # Pagination
-    paginator = Paginator(trades, 25)  
-    page_number = request.GET.get('page')
+    total_profit_loss = TradePosition.objects.aggregate(
+        total=models.Sum("profit_loss")
+    )["total"] or 0
+
+    open_trades = TradePosition.objects.filter(status="OPEN").count()
+    open_trades_today = TradePosition.objects.filter(
+        status="OPEN", opened_at__date=now().date()
+    ).count()
+
+    pending_trades = TradePosition.objects.filter(status="PENDING").count()
+    pending_trades_today = TradePosition.objects.filter(
+        status="PENDING", opened_at__date=now().date()
+    ).count()
+
+    paginator = Paginator(trades, 25)
+    page_number = request.GET.get("page")
     page_obj = paginator.get_page(page_number)
-    
+
     context = {
-        'trades': page_obj,
+        "trades": page_obj,
+        "total_trades": total_trades,
+        "trades_this_month": trades_this_month,
+        "total_profit_loss": total_profit_loss,
+        "open_trades": open_trades,
+        "open_trades_today": open_trades_today,
+        "pending_trades": pending_trades,
+        "pending_trades_today": pending_trades_today,
     }
-    return render(request, 'main/dash_trade.html', context)
+    return render(request, "main/dash_trade.html", context)
+
 
 @login_required
 def get_trade_json(request, trade_id):
     try:
         trade = TradePosition.objects.get(id=trade_id)
-        return JsonResponse({
-            'success': True,
-            'trade': {
-                'id': trade.id,
-                'symbol': trade.symbol,
-                'trade_type': trade.trade_type,
-                'amount': str(trade.amount),
-                'leverage': trade.leverage,
-                'entry_price': str(trade.entry_price),
-                'current_price': str(trade.current_price),
-                'take_profit': str(trade.take_profit),
-                'stop_loss': str(trade.stop_loss),
-                'status': trade.status,
-                'status_display': trade.get_status_display(),
-                'profit_loss': str(trade.profit_loss),
+        return JsonResponse(
+            {
+                "success": True,
+                "trade": {
+                    "id": trade.id,
+                    "symbol": trade.symbol,
+                    "trade_type": trade.trade_type,
+                    "amount": str(trade.amount),
+                    "leverage": trade.leverage,
+                    "entry_price": str(trade.entry_price),
+                    "current_price": str(trade.current_price),
+                    "take_profit": str(trade.take_profit),
+                    "stop_loss": str(trade.stop_loss),
+                    "status": trade.status,
+                    "status_display": trade.get_status_display(),
+                    "profit_loss": str(trade.profit_loss),
+                },
             }
-        })
+        )
     except TradePosition.DoesNotExist:
-        return JsonResponse({'success': False, 'error': 'Trade not found'}, status=404)
+        return JsonResponse({"success": False, "error": "Trade not found"}, status=404)
+
 
 @login_required
 @user_passes_test(is_admin)
 def update_trade(request):
-    if request.method == 'POST':
+    if request.method == "POST":
         try:
-            trade = TradePosition.objects.get(id=request.POST.get('trade_id'))
-            
+            trade = TradePosition.objects.get(id=request.POST.get("trade_id"))
+
             # Update trade fields
-            trade.symbol = request.POST.get('symbol')
-            trade.trade_type = request.POST.get('trade_type')
-            trade.amount = request.POST.get('amount')
-            trade.leverage = request.POST.get('leverage')
-            trade.entry_price = request.POST.get('entry_price')
-            trade.current_price = request.POST.get('current_price')
-            trade.take_profit = request.POST.get('take_profit')
-            trade.stop_loss = request.POST.get('stop_loss')
-            trade.status = request.POST.get('status')
-            
+            trade.symbol = request.POST.get("symbol")
+            trade.trade_type = request.POST.get("trade_type")
+            trade.amount = request.POST.get("amount")
+            trade.leverage = request.POST.get("leverage")
+            trade.entry_price = request.POST.get("entry_price")
+            trade.current_price = request.POST.get("current_price")
+            trade.take_profit = request.POST.get("take_profit")
+            trade.stop_loss = request.POST.get("stop_loss")
+            trade.status = request.POST.get("status")
+
             # Recalculate P/L
             trade.calculate_profit_loss()
-            
+
             trade.save()
-            
-            return JsonResponse({
-                'success': True,
-                'trade': {
-                    'id': trade.id,
-                    'symbol': trade.symbol,
-                    'trade_type': trade.trade_type,
-                    'amount': str(trade.amount),
-                    'leverage': trade.leverage,
-                    'entry_price': str(trade.entry_price),
-                    'current_price': str(trade.current_price),
-                    'take_profit': str(trade.take_profit),
-                    'stop_loss': str(trade.stop_loss),
-                    'status': trade.status,
-                    'status_display': trade.get_status_display(),
-                    'profit_loss': str(trade.profit_loss),
+
+            return JsonResponse(
+                {
+                    "success": True,
+                    "trade": {
+                        "id": trade.id,
+                        "symbol": trade.symbol,
+                        "trade_type": trade.trade_type,
+                        "amount": str(trade.amount),
+                        "leverage": trade.leverage,
+                        "entry_price": str(trade.entry_price),
+                        "current_price": str(trade.current_price),
+                        "take_profit": str(trade.take_profit),
+                        "stop_loss": str(trade.stop_loss),
+                        "status": trade.status,
+                        "status_display": trade.get_status_display(),
+                        "profit_loss": str(trade.profit_loss),
+                    },
                 }
-            })
+            )
         except TradePosition.DoesNotExist:
-            return JsonResponse({'success': False, 'error': 'Trade not found'}, status=404)
+            return JsonResponse(
+                {"success": False, "error": "Trade not found"}, status=404
+            )
         except Exception as e:
-            return JsonResponse({'success': False, 'error': str(e)}, status=400)
-    return JsonResponse({'success': False, 'error': 'Invalid request method'}, status=405)
+            return JsonResponse({"success": False, "error": str(e)}, status=400)
+    return JsonResponse(
+        {"success": False, "error": "Invalid request method"}, status=405
+    )
+
 
 @login_required
 @user_passes_test(is_admin)
 def delete_trade(request, trade_id):
-    if request.method == 'POST':
+    if request.method == "POST":
         try:
             trade = TradePosition.objects.get(id=trade_id)
             trade.delete()
-            return JsonResponse({'success': True})
+            return JsonResponse({"success": True})
         except TradePosition.DoesNotExist:
-            return JsonResponse({'success': False, 'error': 'Trade not found'}, status=404)
-    return JsonResponse({'success': False, 'error': 'Invalid request method'}, status=405)
+            return JsonResponse(
+                {"success": False, "error": "Trade not found"}, status=404
+            )
+    return JsonResponse(
+        {"success": False, "error": "Invalid request method"}, status=405
+    )
+
+
+
+
+
+@login_required
+def get_ticket_chat(request, ticket_id):
+    """Get messages for a specific ticket"""
+    ticket = get_object_or_404(SupportTicket, id=ticket_id)
+    
+    SupportMessage.objects.filter(
+        ticket=ticket,
+        is_read=False,
+        sender__is_staff=False 
+    ).update(is_read=True)
+    
+    messages = ticket.messages.select_related('sender').order_by('created_at')
+    
+    messages_data = [{
+        'id': msg.id,
+        'message': msg.message,
+        'sender_id': msg.sender.id,
+        'sender_name': msg.sender.get_full_name(),
+        'is_admin': msg.sender.is_staff,
+        'created_at': msg.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+        'is_read': msg.is_read,
+    } for msg in messages]
+    
+    return JsonResponse({
+        'status': 'success',
+        'ticket': {
+            'id': ticket.id,
+            'subject': ticket.subject,
+            'status': ticket.get_status_display(),
+            'created_at': ticket.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+        },
+        'user': {
+            'id': ticket.user.id,
+            'name': ticket.user.get_full_name(),
+            'email': ticket.user.email,
+        },
+        'messages': messages_data,
+    })
+
+@login_required
+def send_reply(request, ticket_id):
+    """Handle admin replies to tickets"""
+    ticket = get_object_or_404(SupportTicket, id=ticket_id)
+    data = json.loads(request.body)
+    
+    message = SupportMessage.objects.create(
+        ticket=ticket,
+        sender=request.user,
+        message=data.get('message'),
+        is_read=False  # Message to customer is unread by default
+    )
+    
+    # Update ticket status if needed
+    if ticket.status == 'OPEN':
+        ticket.status = 'IN_PROGRESS'
+        ticket.save()
+    
+    return JsonResponse({
+        'status': 'success',
+        'message': {
+            'id': message.id,
+            'text': message.message,
+            'sender': request.user.get_full_name(),
+            'created_at': message.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+        }
+    })
+
+@login_required
+def get_recent_chats(request):
+    """Get recent chats for the sidebar"""
+    one_week_ago = timezone.now() - timedelta(days=7)
+    
+    recent_chats = (
+        SupportTicket.objects.filter(
+            Q(messages__created_at__gte=one_week_ago) | 
+            Q(created_at__gte=one_week_ago)
+        )
+        .select_related('user')
+        .annotate(
+            last_message_time=Max('messages__created_at'),
+            last_message_text=Max('messages__message'),
+            unread_count=Count(
+                'messages',
+                filter=Q(
+                    messages__is_read=False,
+                    messages__sender__is_staff=False,
+                ),
+            ),
+        )
+        .order_by('-last_message_time')[:10]
+    )
+    
+    chats_data = [{
+        'ticket_id': chat.id,
+        'user_id': chat.user.id,
+        'user_name': chat.user.get_full_name(),
+        'subject': chat.subject,
+        'last_message': chat.last_message_text,
+        'last_message_time': chat.last_message_time.strftime("%Y-%m-%d %H:%M:%S") if chat.last_message_time else None,
+        'unread_count': chat.unread_count,
+    } for chat in recent_chats]
+    
+    return JsonResponse({
+        'status': 'success',
+        'chats': chats_data,
+    })
+
+
+def admin_required(user):
+    return user.is_staff or user.is_superuser
+
+@user_passes_test(admin_required)
+def edit_trade(request, trade_id):
+    trade = get_object_or_404(TradePosition, id=trade_id)
+    if request.method == "POST":
+        profit = request.POST.get("profit_loss")
+        status = request.POST.get("status")
+        if profit is not None:
+            trade.profit_loss = profit
+        if status and status in dict(TradePosition.STATUS_CHOICES):
+            trade.status = status
+        trade.save()
+        if request.is_ajax():
+            return JsonResponse({"success": True, "profit_loss": str(trade.profit_loss), "status": trade.get_status_display()})
+        return redirect('trade_list')
+   
+    return JsonResponse({
+        "id": trade.id,
+        "profit_loss": str(trade.profit_loss),
+        "status": trade.status,
+    })
+
+@user_passes_test(admin_required)
+def hide_trade(request, trade_id):
+    trade = get_object_or_404(TradePosition, id=trade_id)
+    if request.method == "POST":
+        trade.hidden = True  
+        trade.save()
+    return redirect('trade_list')
+
+
+
+def referal_code(request):
+    referal_codes = ReferalCode.objects.all()
+
+    return render(request, 'main/referal_code.html', {'referal_codes':referal_codes})
+
+
+def generate_code(request):
+    if request.method == 'POST':
+        name = request.POST['name']
+
+        code = ReferalCode.objects.create(
+            name=name
+        )
+        messages.success(request, 'Code Created Successfully')
+        return redirect('referal_code')

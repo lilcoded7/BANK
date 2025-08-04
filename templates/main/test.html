@@ -1,0 +1,3422 @@
+
+<body>
+    <div class="dashboard">
+        <!-- Sidebar -->
+        {% include 'main/side_bar.html' %}
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <div class="header">
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <button class="mobile-menu-toggle" id="menuToggle">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <div class="page-title">Support Chat</div>
+                </div>
+                <div class="user-profile">
+                    <div class="user-avatar">
+                        {% if user.is_biometric_enabled %}
+                            <i class="fas fa-fingerprint"></i>
+                        {% else %}
+                            {{ user.first_name|first }}{{ user.last_name|first }}
+                        {% endif %}
+                    </div>
+                    <div class="user-name">{{ user.first_name }} {{ user.last_name }}</div>
+                </div>
+            </div>
+
+            <!-- Display messages -->
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="message message-{% if message.tags %}{{ message.tags }}{% endif %}">
+                        <i class="fas 
+                            {% if message.tags == 'success' %}fa-check-circle
+                            {% elif message.tags == 'error' %}fa-exclamation-circle
+                            {% else %}fa-info-circle{% endif %}"></i>
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+
+            <!-- Support Page Layout -->
+            <div class="support-container">
+                <!-- Conversation Sidebar -->
+                <div class="ticket-sidebar">
+                    <div class="ticket-header">
+                        <h3>Your Conversations</h3>
+                        <button class="new-ticket-btn" id="newTicketBtn">
+                            <i class="fas fa-plus"></i> New Conversation
+                        </button>
+                    </div>
+                    
+                    <!-- Conversation Form (Hidden by default) -->
+                    <div class="ticket-form-container" id="ticketFormContainer" style="display: none;">
+                        <form class="ticket-form" id="ticketForm">
+                            {% csrf_token %}
+                            <div class="form-group">
+                                <label for="subject" class="form-label">Subject</label>
+                                <input type="text" id="subject" name="subject" class="form-control" placeholder="What's this about?" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="initialMessage" class="form-label">Message</label>
+                                <textarea id="initialMessage" name="message" class="form-control" rows="3" placeholder="Describe your issue..." required></textarea>
+                            </div>
+                            <div class="form-group">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-comment"></i> Start Conversation
+                                </button>
+                                <button type="button" class="btn btn-outline" id="cancelTicketBtn" style="margin-top: 0.5rem;">
+                                    Cancel
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                    
+                    <!-- Conversation List -->
+                    <div class="ticket-list" id="ticketList">
+                        {% for conversation in conversations %}
+                            <div class="ticket-item {% if active_conversation and conversation.id == active_conversation.id %}active{% endif %}" 
+                                 data-conversation-id="{{ conversation.id }}" 
+                                 onclick="loadConversation('{{ conversation.id }}')">
+                                <div class="ticket-subject">
+                                    {{ conversation.subject }}
+                                    {% if conversation.unread_count > 0 %}
+                                        <span class="unread-badge">{{ conversation.unread_count }}</span>
+                                    {% endif %}
+                                </div>
+                                <div class="ticket-meta">
+                                    <span class="ticket-date">
+                                        <i class="far fa-clock"></i> {{ conversation.last_message|date:"M d, Y" }}
+                                    </span>
+                                    {% if conversation.admin %}
+                                        <span class="ticket-assigned">
+                                            <i class="fas fa-user-shield"></i> {{ conversation.admin.get_full_name }}
+                                        </span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        {% empty %}
+                            <div class="welcome-message">
+                                <i class="fas fa-headset"></i>
+                                <h3>Welcome to Support</h3>
+                                <p>You don't have any active conversations yet. Start a new conversation or chat directly with our support team.</p>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                
+                <!-- Chat Container -->
+                <div class="chat-container" id="chatContainer">
+                    {% if active_conversation %}
+                        <!-- Conversation Chat Mode -->
+                        <div class="chat-header">
+                            <div>
+                                <div class="chat-title">
+                                    <i class="fas fa-headset"></i>
+                                    <span id="ticketSubject">{{ active_conversation.subject }}</span>
+                                </div>
+                                <div class="chat-status">
+                                    <div class="status-indicator" id="statusIndicator"></div>
+                                    <div class="status-text" id="statusText">Checking status...</div>
+                                </div>
+                            </div>
+                            <button class="create-ticket-btn" onclick="closeConversation()">
+                                <i class="fas fa-times"></i> Close Conversation
+                            </button>
+                        </div>
+                        
+                        <div class="chat-messages" id="chatMessages">
+                            {% for message in active_conversation.messages.all %}
+                                <div class="message {% if message.sender == request.user %}user-message{% else %}admin-message{% endif %}" 
+                                     data-message-id="{{ message.id }}">
+                                    {% if message.sender != request.user and message.sender.is_staff %}
+                                        <div class="admin-badge">SUPPORT AGENT</div>
+                                    {% endif %}
+                                    
+                                    {% if message.content %}
+                                        <div class="message-text">{{ message.content }}</div>
+                                    {% endif %}
+                                    
+                                    {% if message.attachment %}
+                                        {% if message.message_type == "IMAGE" %}
+                                            <img src="{{ message.attachment.url }}" alt="Support Image" class="message-image">
+                                        {% else %}
+                                            <div class="message-attachment">
+                                                <div class="attachment-icon">
+                                                    <i class="fas fa-file-alt"></i>
+                                                </div>
+                                                <div class="attachment-info">
+                                                    <div class="attachment-name">{{ message.attachment.name }}</div>
+                                                    <div class="attachment-size">{{ message.attachment.size|filesizeformat }}</div>
+                                                </div>
+                                                <a href="{{ message.attachment.url }}" class="download-btn" download>
+                                                    <i class="fas fa-download"></i>
+                                                </a>
+                                            </div>
+                                        {% endif %}
+                                    {% endif %}
+                                    
+                                    <div class="message-meta">
+                                        <span class="message-sender">
+                                            {% if message.sender == request.user %}You{% else %}{{ message.sender.get_full_name }}{% endif %}
+                                        </span>
+                                        <span>{{ message.created_at|time:"H:i" }}</span>
+                                        {% if message.is_read and message.sender == request.user %}
+                                            <span class="read-status"><i class="fas fa-check-double"></i> Read</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                        
+                        <div id="filePreview" class="file-preview"></div>
+                        
+                        <div class="chat-input-container">
+                            <div class="input-tools">
+                                <div class="file-tools">
+                                    <label for="imageInput" class="file-tool-btn">
+                                        <i class="fas fa-image"></i>
+                                        <input type="file" id="imageInput" class="file-input" accept="image/*">
+                                    </label>
+                                    <label for="fileInput" class="file-tool-btn">
+                                        <i class="fas fa-file"></i>
+                                        <input type="file" id="fileInput" class="file-input" accept=".pdf,.doc,.docx,.xls,.xlsx">
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <div class="input-area">
+                                <textarea class="chat-input" placeholder="Type your message here..." rows="1" id="messageInput"></textarea>
+                                <button class="send-btn" id="sendMessageBtn">
+                                    <i class="fas fa-paper-plane"></i>
+                                </button>
+                            </div>
+                        </div>
+                    {% else %}
+                        <!-- General Chat Mode -->
+                        <div class="general-chat-header">
+                            <h3>General Support Chat</h3>
+                            <button class="create-ticket-btn" id="showTicketFormBtn">
+                                <i class="fas fa-comments"></i> Start Conversation
+                            </button>
+                        </div>
+                        
+                        <div class="chat-messages" id="generalChatMessages">
+                            <div class="welcome-message">
+                                <i class="fas fa-comments"></i>
+                                <h3>How can we help you today?</h3>
+                                <p>Start chatting with our support team or create a specific conversation.</p>
+                            </div>
+                        </div>
+                        
+                        <div id="generalFilePreview" class="file-preview"></div>
+                        
+                        <div class="chat-input-container">
+                            <div class="input-tools">
+                                <div class="file-tools">
+                                    <label for="generalImageInput" class="file-tool-btn">
+                                        <i class="fas fa-image"></i>
+                                        <input type="file" id="generalImageInput" class="file-input" accept="image/*">
+                                    </label>
+                                    <label for="generalFileInput" class="file-tool-btn">
+                                        <i class="fas fa-file"></i>
+                                        <input type="file" id="generalFileInput" class="file-input" accept=".pdf,.doc,.docx,.xls,.xlsx">
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <div class="input-area">
+                                <textarea class="chat-input" placeholder="Type your message here..." rows="1" id="generalMessageInput"></textarea>
+                                <button class="send-btn" id="sendGeneralMessageBtn">
+                                    <i class="fas fa-paper-plane"></i>
+                                </button>
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+document.addEventListener('DOMContentLoaded', function() {
+    // DOM Elements
+    const chatMessages = document.getElementById('chatMessages');
+    const generalChatMessages = document.getElementById('generalChatMessages');
+    const messageInput = document.getElementById('messageInput');
+    const generalMessageInput = document.getElementById('generalMessageInput');
+    const filePreview = document.getElementById('filePreview');
+    const generalFilePreview = document.getElementById('generalFilePreview');
+    const ticketFormContainer = document.getElementById('ticketFormContainer');
+    const ticketList = document.getElementById('ticketList');
+    const newTicketBtn = document.getElementById('newTicketBtn');
+    const cancelTicketBtn = document.getElementById('cancelTicketBtn');
+    const ticketForm = document.getElementById('ticketForm');
+    const sendMessageBtn = document.getElementById('sendMessageBtn');
+    const sendGeneralMessageBtn = document.getElementById('sendGeneralMessageBtn');
+    const showTicketFormBtn = document.getElementById('showTicketFormBtn');
+    const statusText = document.getElementById('statusText');
+    const statusIndicator = document.getElementById('statusIndicator');
+    
+    let currentConversationId = {% if active_conversation %}{{ active_conversation.id }}{% else %}null{% endif %};
+    let generalChatLastMessageId = 0;
+    let isSupportOnline = false;
+    let supportStatusInterval;
+    let socket;
+    let typingTimeout;
+    const TYPING_DELAY = 2000; // 2 seconds
+
+    // Auto-response messages (only for offline)
+    const AUTO_RESPONSES = {
+        offline: [
+            "Our team is currently offline. We'll respond when we return.",
+            "Support hours are 9AM-5PM. We'll respond during business hours.",
+            "Thanks for reaching out. We're currently away but will respond soon."
+        ]
+    };
+
+    // Initialize chat
+    function initChat() {
+        // Create typing indicators
+        createTypingIndicators();
+        
+        // Set up event listeners
+        setupEventListeners();
+        
+        // Initialize WebSocket connection
+        setupWebSocket();
+        
+        // Check initial support status
+        checkSupportStatus();
+    }
+
+    function setupWebSocket() {
+        const protocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+        const host = window.location.host;
+        const path = "{% if active_conversation %}/ws/support/{{ active_conversation.id }}/{% else %}/ws/support/general/{% endif %}";
+        
+        socket = new WebSocket(protocol + host + path);
+        
+        socket.onopen = function(e) {
+            console.log("WebSocket connection established");
+            updateParticipantStatus(true);
+        };
+        
+        socket.onmessage = function(e) {
+            const data = JSON.parse(e.data);
+            handleSocketMessage(data);
+        };
+        
+        socket.onclose = function(e) {
+            console.log("WebSocket connection closed. Attempting to reconnect...");
+            updateParticipantStatus(false);
+            setTimeout(setupWebSocket, 3000);
+        };
+        
+        socket.onerror = function(err) {
+            console.error("WebSocket error:", err);
+        };
+    }
+
+    function updateParticipantStatus(isOnline) {
+        if (!currentConversationId) return;
+        
+        fetch('/support/update_participant/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({
+                conversation_id: currentConversationId,
+                is_online: isOnline
+            })
+        }).catch(error => console.error('Error updating participant status:', error));
+    }
+
+    function handleSocketMessage(data) {
+        switch (data.type) {
+            case 'message':
+                handleNewMessage(data);
+                break;
+            case 'typing':
+                handleTypingIndicator(data);
+                break;
+            case 'status':
+                handleSupportStatus(data);
+                break;
+            case 'read_receipt':
+                handleReadReceipt(data);
+                break;
+            case 'conversation_update':
+                handleConversationUpdate(data);
+                break;
+            default:
+                console.log("Unknown message type:", data.type);
+        }
+    }
+
+    function handleNewMessage(data) {
+        const isGeneral = !data.conversation_id;
+        const container = isGeneral ? generalChatMessages : chatMessages;
+        
+        addMessage({
+            id: data.id,
+            sender: data.sender_name,
+            text: data.content,
+            timestamp: data.timestamp,
+            type: data.sender === {{ request.user.id }} ? 'user' : 'admin',
+            file_url: data.file_url,
+            is_staff: data.is_staff,
+            is_read: data.is_read
+        }, isGeneral);
+        
+        scrollToBottom(isGeneral);
+        
+        if (!isGeneral && data.sender !== {{ request.user.id }} && !data.is_read) {
+            // Send read receipt for conversation messages
+            sendSocketMessage({
+                type: 'read_receipt',
+                message_id: data.id,
+                conversation_id: data.conversation_id
+            });
+        }
+    }
+
+    function handleTypingIndicator(data) {
+        if (data.user_id === {{ request.user.id }}) return;
+        
+        const indicator = chatMessages?.querySelector('.typing-indicator');
+        if (indicator) {
+            indicator.style.display = data.is_typing ? 'flex' : 'none';
+            if (data.is_typing) scrollToBottom();
+        }
+    }
+
+    function handleSupportStatus(data) {
+        isSupportOnline = data.is_online;
+        updateSupportStatusUI();
+    }
+
+    function handleReadReceipt(data) {
+        const messageElement = document.querySelector(`.message[data-message-id="${data.message_id}"]`);
+        if (messageElement) {
+            const meta = messageElement.querySelector('.message-meta');
+            if (meta && !meta.querySelector('.read-status')) {
+                const readStatus = document.createElement('span');
+                readStatus.className = 'read-status';
+                readStatus.innerHTML = '<i class="fas fa-check-double"></i> Read';
+                meta.appendChild(readStatus);
+            }
+        }
+    }
+
+    function handleConversationUpdate(data) {
+        if (data.action === 'new') {
+            const ticketList = document.getElementById('ticketList');
+            if (ticketList) {
+                const welcome = ticketList.querySelector('.welcome-message');
+                if (welcome) welcome.remove();
+                
+                const newItem = document.createElement('div');
+                newItem.className = 'ticket-item';
+                newItem.dataset.conversationId = data.id;
+                newItem.onclick = () => loadConversation(data.id);
+                
+                newItem.innerHTML = `
+                    <div class="ticket-subject">
+                        ${data.subject}
+                        <span class="unread-badge">1</span>
+                    </div>
+                    <div class="ticket-meta">
+                        <span class="ticket-date">
+                            <i class="far fa-clock"></i> Just now
+                        </span>
+                    </div>
+                `;
+                
+                ticketList.prepend(newItem);
+            }
+        }
+    }
+
+    function sendSocketMessage(message) {
+        if (socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify(message));
+        } else {
+            console.warn("WebSocket not ready. Message not sent:", message);
+        }
+    }
+
+    function createTypingIndicators() {
+        if (chatMessages) {
+            const typingIndicator = document.createElement('div');
+            typingIndicator.className = 'typing-indicator';
+            typingIndicator.innerHTML = `
+                <div>Support agent is typing</div>
+                <div class="typing-dots">
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                </div>
+            `;
+            typingIndicator.style.display = 'none';
+            chatMessages.appendChild(typingIndicator);
+        }
+    }
+
+    function setupEventListeners() {
+        // Ticket form toggles
+        if (newTicketBtn) newTicketBtn.addEventListener('click', showTicketForm);
+        if (cancelTicketBtn) cancelTicketBtn.addEventListener('click', hideTicketForm);
+        if (showTicketFormBtn) showTicketFormBtn.addEventListener('click', showTicketForm);
+        
+        // Form submissions
+        if (ticketForm) {
+            ticketForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                createNewConversation();
+            });
+        }
+        
+        // Message sending
+        if (sendMessageBtn) sendMessageBtn.addEventListener('click', sendConversationMessage);
+        if (sendGeneralMessageBtn) sendGeneralMessageBtn.addEventListener('click', sendGeneralMessage);
+        
+        // Enter key for messages
+        if (messageInput) {
+            messageInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendConversationMessage();
+                }
+            });
+            
+            messageInput.addEventListener('input', handleTyping);
+        }
+        
+        if (generalMessageInput) {
+            generalMessageInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendGeneralMessage();
+                }
+            });
+        }
+        
+        // File input handling
+        ['imageInput', 'fileInput', 'generalImageInput', 'generalFileInput'].forEach(id => {
+            const element = document.getElementById(id);
+            if (element) element.addEventListener('change', handleFileInput);
+        });
+    }
+
+    function handleTyping() {
+        if (!currentConversationId) return;
+        
+        sendSocketMessage({
+            type: 'typing',
+            conversation_id: currentConversationId,
+            is_typing: true
+        });
+        
+        clearTimeout(typingTimeout);
+        typingTimeout = setTimeout(() => {
+            sendSocketMessage({
+                type: 'typing',
+                conversation_id: currentConversationId,
+                is_typing: false
+            });
+        }, TYPING_DELAY);
+    }
+
+    function showTicketForm() {
+        if (ticketFormContainer) ticketFormContainer.style.display = 'block';
+        if (ticketList) ticketList.style.display = 'none';
+        if (newTicketBtn) newTicketBtn.style.display = 'none';
+    }
+
+    function hideTicketForm() {
+        if (ticketFormContainer) ticketFormContainer.style.display = 'none';
+        if (ticketList) ticketList.style.display = 'block';
+        if (newTicketBtn) newTicketBtn.style.display = 'flex';
+    }
+
+    function createNewConversation() {
+        const formData = new FormData(ticketForm);
+        
+        fetch('/support/conversations/create/', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showAlert('success', 'Conversation created successfully!');
+                setTimeout(() => {
+                    window.location.href = `/support/?conversation=${data.conversation_id}`;
+                }, 1500);
+            } else {
+                const errorMsg = data.errors ? Object.values(data.errors).join('\n') : 'Failed to start conversation';
+                showAlert('error', errorMsg);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showAlert('error', 'Failed to start conversation');
+        });
+    }
+
+    function sendConversationMessage() {
+        if (!currentConversationId) {
+            showAlert('error', 'Please select a conversation first');
+            return;
+        }
+        
+        const content = messageInput?.value.trim() || '';
+        const imageInput = document.getElementById('imageInput');
+        const fileInput = document.getElementById('fileInput');
+        const hasFile = (imageInput?.files.length || 0) > 0 || (fileInput?.files.length || 0) > 0;
+        
+        if (!content && !hasFile) {
+            showAlert('error', 'Message cannot be empty');
+            return;
+        }
+        
+        // Optimistic UI update
+        const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        addMessage({
+            sender: 'You',
+            text: content,
+            timestamp: timestamp,
+            type: 'user'
+        });
+        
+        // Clear input and preview
+        if (messageInput) messageInput.value = '';
+        clearFileInputs();
+        scrollToBottom();
+        
+        // Hide typing indicator
+        const typingIndicator = chatMessages?.querySelector('.typing-indicator');
+        if (typingIndicator) typingIndicator.style.display = 'none';
+        
+        // Prepare message for WebSocket
+        const message = {
+            type: 'message',
+            conversation_id: currentConversationId,
+            content: content,
+            is_general: false
+        };
+        
+        // Handle file upload
+        if (hasFile) {
+            uploadFile().then(fileData => {
+                if (fileData) {
+                    message.file_url = fileData.url;
+                    message.file_type = fileData.type;
+                }
+                sendSocketMessage(message);
+            }).catch(error => {
+                console.error('File upload failed:', error);
+                sendSocketMessage(message);
+            });
+        } else {
+            sendSocketMessage(message);
+        }
+        
+        // Send auto-response only if support is offline
+        if (!isSupportOnline) {
+            setTimeout(() => {
+                sendAutoResponse(false);
+            }, 1000);
+        }
+    }
+
+    function sendGeneralMessage() {
+        const content = generalMessageInput?.value.trim() || '';
+        const imageInput = document.getElementById('generalImageInput');
+        const fileInput = document.getElementById('generalFileInput');
+        const hasFile = (imageInput?.files.length || 0) > 0 || (fileInput?.files.length || 0) > 0;
+        
+        if (!content && !hasFile) {
+            showAlert('error', 'Message cannot be empty');
+            return;
+        }
+        
+        // Optimistic UI update
+        const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        addMessage({
+            sender: 'You',
+            text: content,
+            timestamp: timestamp,
+            type: 'user'
+        }, true);
+        
+        // Clear input and preview
+        if (generalMessageInput) generalMessageInput.value = '';
+        clearFileInputs(true);
+        scrollToBottom(true);
+        
+        // Prepare message for WebSocket
+        const message = {
+            type: 'message',
+            content: content,
+            is_general: true
+        };
+        
+        // Handle file upload
+        if (hasFile) {
+            uploadFile(true).then(fileData => {
+                if (fileData) {
+                    message.file_url = fileData.url;
+                    message.file_type = fileData.type;
+                }
+                sendSocketMessage(message);
+            }).catch(error => {
+                console.error('File upload failed:', error);
+                sendSocketMessage(message);
+            });
+        } else {
+            sendSocketMessage(message);
+        }
+        
+        // Send auto-response only if support is offline
+        if (!isSupportOnline) {
+            setTimeout(() => {
+                sendAutoResponse(true);
+            }, 1000);
+        }
+    }
+
+    function uploadFile(isGeneral = false) {
+        return new Promise((resolve, reject) => {
+            const fileInput = isGeneral ? 
+                document.getElementById('generalImageInput') || document.getElementById('generalFileInput') :
+                document.getElementById('imageInput') || document.getElementById('fileInput');
+            
+            if (!fileInput || fileInput.files.length === 0) {
+                resolve(null);
+                return;
+            }
+            
+            const file = fileInput.files[0];
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+            
+            fetch('/support/upload/', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    resolve({
+                        url: data.file_url,
+                        type: file.type.startsWith('image/') ? 'image' : 'file'
+                    });
+                } else {
+                    reject(data.error || 'File upload failed');
+                }
+            })
+            .catch(error => {
+                reject(error);
+            });
+        });
+    }
+
+    function handleFileInput(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        const previewContainer = e.target.id.includes('general') ? generalFilePreview : filePreview;
+        previewContainer.innerHTML = '';
+        
+        if (file.type.startsWith('image/')) {
+            const img = document.createElement('img');
+            img.src = URL.createObjectURL(file);
+            img.className = 'file-preview-image';
+            previewContainer.appendChild(img);
+        } else {
+            const fileInfo = document.createElement('div');
+            fileInfo.className = 'file-preview-info';
+            fileInfo.innerHTML = `
+                <i class="fas fa-file"></i>
+                <div>
+                    <div class="file-name">${file.name}</div>
+                    <div class="file-size">${formatFileSize(file.size)}</div>
+                </div>
+                <button class="remove-file-btn" onclick="this.parentElement.remove()">
+                    <i class="fas fa-times"></i>
+                </button>
+            `;
+            previewContainer.appendChild(fileInfo);
+        }
+    }
+
+    function formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    function clearFileInputs(isGeneral = false) {
+        const inputs = isGeneral ? 
+            ['generalImageInput', 'generalFileInput'] : 
+            ['imageInput', 'fileInput'];
+        
+        inputs.forEach(id => {
+            const element = document.getElementById(id);
+            if (element) element.value = '';
+        });
+        
+        if (isGeneral) {
+            generalFilePreview.innerHTML = '';
+        } else {
+            filePreview.innerHTML = '';
+        }
+    }
+
+    function sendAutoResponse(isGeneralChat) {
+        if (isSupportOnline) return; // Only send auto-responses when offline
+        
+        const responses = AUTO_RESPONSES.offline;
+        const response = responses[Math.floor(Math.random() * responses.length)];
+        const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        
+        addMessage({
+            sender: 'Support Bot',
+            text: response,
+            timestamp: timestamp,
+            type: 'admin',
+            is_staff: true
+        }, isGeneralChat);
+    }
+
+    function checkSupportStatus() {
+        fetch('/support/status/')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    isSupportOnline = data.is_online;
+                    updateSupportStatusUI();
+                }
+            })
+            .catch(error => console.error('Error checking support status:', error));
+        
+        // Check every 2 minutes
+        supportStatusInterval = setInterval(() => {
+            fetch('/support/status/')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        isSupportOnline = data.is_online;
+                        updateSupportStatusUI();
+                    }
+                })
+                .catch(error => console.error('Error checking support status:', error));
+        }, 120000);
+    }
+
+    function updateSupportStatusUI() {
+        if (statusIndicator) {
+            statusIndicator.style.backgroundColor = isSupportOnline ? '#4CAF50' : '#F44336';
+        }
+        
+        if (statusText) {
+            statusText.textContent = isSupportOnline ? 
+                'Online - Usually replies within 5 minutes' : 
+                'Offline - Responses may be delayed';
+        }
+    }
+
+    function addMessage({id, sender, text, timestamp, type, file_url, is_staff, is_read}, isGeneral = false) {
+        const container = isGeneral ? generalChatMessages : chatMessages;
+        if (!container) return;
+        
+        const messageElement = document.createElement('div');
+        messageElement.className = `message ${type === 'user' ? 'user-message' : 'admin-message'}`;
+        if (id) messageElement.dataset.messageId = id;
+        
+        let contentHTML = '';
+        
+        if (type === 'admin' && sender === 'Support Bot') {
+            contentHTML += `<div class="admin-badge">SUPPORT BOT</div>`;
+        } else if (type === 'admin' && is_staff) {
+            contentHTML += `<div class="admin-badge">SUPPORT AGENT</div>`;
+        }
+        
+        if (text) contentHTML += `<div class="message-text">${text}</div>`;
+        
+        if (file_url) {
+            if (file_url.toLowerCase().match(/\.(jpg|jpeg|png|gif)$/)) {
+                contentHTML += `<img src="${file_url}" alt="Support Image" class="message-image">`;
+            } else {
+                const fileName = file_url.split('/').pop();
+                contentHTML += `
+                    <div class="message-attachment">
+                        <div class="attachment-icon">
+                            <i class="fas fa-file-alt"></i>
+                        </div>
+                        <div class="attachment-info">
+                            <div class="attachment-name">${fileName}</div>
+                            <div class="attachment-size">File</div>
+                        </div>
+                        <a href="${file_url}" class="download-btn" download>
+                            <i class="fas fa-download"></i>
+                        </a>
+                    </div>
+                `;
+            }
+        }
+        
+        contentHTML += `
+            <div class="message-meta">
+                <span class="message-sender">${sender}</span>
+                <span>${timestamp}</span>
+                ${type === 'user' && is_read ? '<span class="read-status"><i class="fas fa-check-double"></i> Read</span>' : ''}
+            </div>
+        `;
+        
+        messageElement.innerHTML = contentHTML;
+        container.appendChild(messageElement);
+        scrollToBottom(isGeneral);
+    }
+
+    function scrollToBottom(isGeneral = false) {
+        const container = isGeneral ? generalChatMessages : chatMessages;
+        if (container) {
+            setTimeout(() => {
+                container.scrollTop = container.scrollHeight;
+            }, 10);
+        }
+    }
+
+    function showAlert(type, message) {
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `message message-${type}`;
+        alertDiv.innerHTML = `
+            <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i>
+            ${message}
+        `;
+        document.querySelector('.main-content')?.prepend(alertDiv);
+        setTimeout(() => alertDiv.remove(), 5000);
+    }
+
+    function loadConversation(conversationId) {
+        window.location.href = `/support/?conversation=${conversationId}`;
+    }
+
+    function closeConversation() {
+        if (!currentConversationId) return;
+        
+        fetch(`/support/conversations/${currentConversationId}/close/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                window.location.href = '/support/';
+            } else {
+                showAlert('error', 'Failed to close conversation');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showAlert('error', 'Failed to close conversation');
+        });
+    }
+
+    // Initialize the chat
+    initChat();
+    
+    // Clean up on page unload
+    window.addEventListener('beforeunload', function() {
+        if (socket) {
+            socket.close();
+        }
+        if (supportStatusInterval) {
+            clearInterval(supportStatusInterval);
+        }
+    });
+});
+</script>
+
+</body>
+
+
+check the chat properly , when i sent a message to the support , the support desnt get the message ,
+
+also support is only but it say offline , 
+
+im getting this during testing , also when i text support i get the below , response while support is only :
+
+Support hours are 9AM-5PM. We'll respond during business hours.
+Support Bot
+
+below are my websocket:
+
+# views.py
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib.auth.decorators import login_required, user_passes_test
+from django.http import JsonResponse
+from django.views.decorators.http import require_POST, require_GET
+from django.db.models import Max, Count, Q, Sum, F
+from django.utils import timezone
+from datetime import timedelta
+from django.contrib.auth import authenticate, login, logout, get_user_model
+from django.core.paginator import Paginator
+from django.contrib import messages
+from django.db import transaction
+from decimal import Decimal
+import random
+import string
+from bank.models import (
+    Account,
+    InvestmentPackage,
+    Investment,
+    TradePosition,
+    Transaction,
+    SecurityLog,
+    PrestigeSettings,
+    Conversation,
+    ChatMessage,
+    Participant,
+)
+from bank.forms import *
+
+User = get_user_model()
+
+
+def is_staff_user(user):
+    return user.is_staff
+
+
+def login_view(request):
+    if request.user.is_authenticated:
+        return redirect("trade_investment_dashboard")
+
+    if request.method == "POST":
+        form = LoginForm(request.POST)
+        if form.is_valid():
+            user = authenticate(
+                email=form.cleaned_data["email"], password=form.cleaned_data["password"]
+            )
+            if user:
+                login(request, user)
+                SecurityLog.objects.create(
+                    user=user,
+                    event_type="LOGIN",
+                    ip_address=request.META.get("REMOTE_ADDR"),
+                    device_info={"user_agent": request.META.get("HTTP_USER_AGENT")},
+                    details="Standard password authentication",
+                )
+                return redirect("trade_investment_dashboard")
+            messages.error(request, "Invalid email or password")
+        else:
+            for field, errors in form.errors.items():
+                for error in errors:
+                    messages.error(request, f"{field}: {error}")
+    else:
+        form = LoginForm()
+    return render(request, "auth/login.html", {"form": form})
+
+
+def logout_view(request):
+    SecurityLog.objects.create(
+        user=request.user,
+        event_type="LOGOUT",
+        ip_address=request.META.get("REMOTE_ADDR"),
+        details="User initiated logout",
+    )
+    logout(request)
+    return redirect("login")
+
+
+# Trading Views
+@login_required
+def trade_investment_dashboard(request):
+    user = request.user
+    bank_settings = PrestigeSettings.load()
+    account = Account.objects.filter(customer=user).first()
+
+    context = {
+        "investment_balance": account.balance if account else 0,
+        "active_trades": TradePosition.objects.filter(user=user, status="OPEN").count(),
+        "pending_trades": TradePosition.objects.filter(
+            user=user, status="PENDING"
+        ).count(),
+        "total_profit": TradePosition.objects.filter(
+            user=user, status="CLOSED"
+        ).aggregate(Sum("profit_loss"))["profit_loss__sum"]
+        or Decimal("0.00"),
+        "has_active_investment": Investment.objects.filter(
+            account__customer=user, status="ACTIVE"
+        ).exists(),
+        "packages": InvestmentPackage.objects.all(),
+        "active_positions": TradePosition.objects.filter(
+            user=user, status="OPEN"
+        ).order_by("-opened_at"),
+        "accounts": Account.objects.filter(customer=user),
+        "bank_settings": bank_settings,
+        "deposit_form": DepositForm(),
+        "open_trade_form": OpenTradeForm(user=user, bank_settings=bank_settings),
+        "investment_form": InvestmentForm(),
+    }
+
+    SecurityLog.objects.create(
+        user=user,
+        event_type="DASHBOARD_ACCESS",
+        ip_address=request.META.get("REMOTE_ADDR"),
+        details="Accessed Trade Investment Dashboard",
+    )
+    return render(request, "main/trade.html", context)
+
+
+@login_required
+def open_trade(request):
+    user = request.user
+    bank_settings = PrestigeSettings.load()
+    form = OpenTradeForm(request.POST, user=user, bank_settings=bank_settings)
+
+    if not form.is_valid():
+        for error in form.errors.values():
+            messages.error(request, error[0])
+        return redirect("trade_investment_dashboard")
+
+    try:
+        with transaction.atomic():
+            account = Account.objects.get(customer=user, account_type="INVESTMENT")
+            data = form.cleaned_data
+            margin_required = data["amount"] / data["leverage"]
+
+            if account.balance < margin_required:
+                messages.error(request, "Insufficient funds for this trade")
+                return redirect("trade_investment_dashboard")
+
+            position = TradePosition.objects.create(
+                user=user,
+                symbol=data["symbol"],
+                trade_type=data["trade_type"],
+                amount=data["amount"],
+                leverage=data["leverage"],
+                entry_price=data.get("entry_price", 0),
+                current_price=data.get("entry_price", 0),
+                take_profit=data["take_profit"],
+                stop_loss=data["stop_loss"],
+            )
+
+            account.balance -= margin_required
+            account.save()
+
+            Transaction.objects.create(
+                account=account,
+                transaction_id="".join(
+                    random.choices(string.ascii_uppercase + string.digits, k=12)
+                ),
+                transaction_type="TRADE",
+                amount=margin_required,
+                description=f"{data['trade_type']} position on {data['symbol']}",
+                trade_position=position,
+            )
+
+            messages.success(
+                request, f"Trade opened successfully! Position ID: {position.id}"
+            )
+    except Account.DoesNotExist:
+        messages.error(request, "Investment account not found")
+    except Exception as e:
+        messages.error(request, f"Error opening trade: {str(e)}")
+
+    return redirect("trade_investment_dashboard")
+
+
+@login_required
+def close_trade(request, position_id):
+    try:
+        position = TradePosition.objects.get(
+            id=position_id, user=request.user, status="OPEN"
+        )
+        account = Account.objects.get(customer=request.user, account_type="INVESTMENT")
+
+        with transaction.atomic():
+            position.calculate_profit_loss()
+            position.status = "CLOSED"
+            position.closed_at = timezone.now()
+            position.save()
+
+            amount_to_return = position.profit_loss
+            account.balance += amount_to_return
+            account.save()
+
+            Transaction.objects.create(
+                account=account,
+                transaction_id="".join(
+                    random.choices(string.ascii_uppercase + string.digits, k=12)
+                ),
+                transaction_type="TRADE_CLOSE",
+                amount=amount_to_return,
+                description=f"Closed {position.get_trade_type_display()} position",
+                trade_position=position,
+            )
+
+            messages.success(
+                request, f"Position closed! Profit/Loss: ${position.profit_loss:.2f}"
+            )
+
+    except TradePosition.DoesNotExist:
+        messages.error(request, "Position not found or already closed")
+    except Account.DoesNotExist:
+        messages.error(request, "Investment account not found")
+    except Exception as e:
+        messages.error(request, f"Error closing trade: {str(e)}")
+
+    return redirect("trade_investment_dashboard")
+
+
+@login_required
+def create_investment(request):
+    form = InvestmentForm(request.POST)
+    if not form.is_valid():
+        for error in form.errors.values():
+            messages.error(request, error[0])
+        return redirect("trade_investment_dashboard")
+
+    try:
+        with transaction.atomic():
+            account = Account.objects.get(
+                customer=request.user, account_type="INVESTMENT"
+            )
+            package = form.cleaned_data["package"]
+            amount = form.cleaned_data["amount"]
+
+            if not package.min_amount <= amount <= package.max_amount:
+                messages.error(
+                    request,
+                    f"Amount must be between ${package.min_amount} and ${package.max_amount}",
+                )
+                return redirect("trade_investment_dashboard")
+
+            if amount > account.balance:
+                messages.error(request, "Insufficient funds for this investment")
+                return redirect("trade_investment_dashboard")
+
+            Investment.objects.create(
+                account=account,
+                package=package,
+                amount=amount,
+            )
+            account.balance -= amount
+            account.save()
+
+            messages.success(request, "Investment created successfully!")
+    except Account.DoesNotExist:
+        messages.error(request, "Account not found")
+    except Exception as e:
+        messages.error(request, f"Error creating investment: {str(e)}")
+
+    return redirect("trade_investment_dashboard")
+
+
+@login_required
+def get_market_data(request, symbol):
+    try:
+        base_price = {
+            "BTCUSDT": Decimal("55000.00"),
+            "ETHUSDT": Decimal("3000.00"),
+            "BNBUSDT": Decimal("500.00"),
+            "SOLUSDT": Decimal("100.00"),
+            "XRPUSDT": Decimal("0.50"),
+        }.get(symbol, Decimal("10000.00"))
+
+        price = base_price * Decimal(1 + random.uniform(-0.02, 0.02)).quantize(
+            Decimal("0.01")
+        )
+        change = Decimal(random.uniform(-3, 3)).quantize(Decimal("0.01"))
+        high = price * Decimal(1 + random.uniform(0.01, 0.03)).quantize(Decimal("0.01"))
+        low = price * Decimal(1 - random.uniform(0.01, 0.03)).quantize(Decimal("0.01"))
+        volume = round(random.uniform(1000000, 50000000))
+
+        return JsonResponse(
+            {
+                "success": True,
+                "symbol": symbol,
+                "price": float(price),
+                "change": float(change),
+                "high": float(high),
+                "low": float(low),
+                "volume": volume,
+            }
+        )
+    except Exception as e:
+        return JsonResponse({"success": False, "error": str(e)}, status=500)
+
+
+@login_required
+def deposit_page(request):
+    account = Account.objects.filter(customer=request.user).first()
+    deposits = Transaction.objects.filter(
+        account__customer=request.user, transaction_type="DEPOSIT"
+    ).order_by("-timestamp")
+
+    context = {
+        "deposits": deposits,
+        "total_deposited": deposits.filter(status="COMPLETED").aggregate(Sum("amount"))[
+            "amount__sum"
+        ]
+        or 0,
+        "completed_deposits": deposits.filter(status="COMPLETED").count(),
+        "pending_deposits": deposits.filter(status="PENDING").count(),
+        "deposit_form": DepositForm(),
+        "account": account,
+    }
+    return render(request, "main/deposit.html", context)
+
+
+@login_required
+def deposit_funds(request):
+    form = DepositForm(request.POST)
+    if not form.is_valid():
+        for field, errors in form.errors.items():
+            for error in errors:
+                messages.error(request, f"{field}: {error}")
+        return redirect("deposit_page")
+
+    try:
+        currency = form.cleaned_data["currency"]
+        amount = form.cleaned_data["amount"]
+        settings = PrestigeSettings.load()
+
+        address_lookup = {
+            "BTC": settings.deposit_btc_address,
+            "ETH": settings.deposit_eth_address,
+            "USDT": settings.deposit_usdt_address,
+        }
+        deposit_address = address_lookup.get(currency)
+
+        if not deposit_address:
+            messages.error(request, f"No deposit address configured for {currency}")
+            return redirect("deposit_page")
+
+        account = Account.objects.get(customer=request.user, account_type="INVESTMENT")
+
+        transaction_id = "".join(
+            random.choices(string.ascii_uppercase + string.digits, k=12)
+        )
+        Transaction.objects.create(
+            account=account,
+            transaction_id=transaction_id,
+            transaction_type="DEPOSIT",
+            amount=Decimal(amount),
+            currency=currency,
+            status="PENDING",
+            description="Crypto deposit to investment account",
+            metadata={
+                "deposit_address": deposit_address,
+                "currency": currency,
+                "expected_amount": str(amount),
+            },
+        )
+
+        SecurityLog.objects.create(
+            user=request.user,
+            event_type="DEPOSIT_INITIATED",
+            ip_address=request.META.get("REMOTE_ADDR"),
+            details=f"Initiated {currency} deposit of {amount}",
+        )
+
+        messages.success(
+            request,
+            f"📬 Deposit Instructions:\n\n"
+            f"1. Send exactly {amount} {currency} to:\n"
+            f"   **{deposit_address}**\n\n"
+            f"2. After sending, contact support with:\n"
+            f"   - Transaction ID: **{transaction_id}**\n"
+            f"   - Transaction hash\n\n"
+            f"💡 Funds will be credited after verification.",
+        )
+    except Account.DoesNotExist:
+        messages.error(request, "Investment account not found")
+    except Exception as e:
+        messages.error(request, f"Error processing deposit: {str(e)}")
+
+    return redirect("deposit_page")
+
+
+@login_required
+def withdraw_fund(request):
+    account = Account.objects.filter(customer=request.user).first()
+
+    if request.method == "POST":
+        try:
+            currency = request.POST.get("currency")
+            amount = Decimal(request.POST.get("amount", 0))
+            user_address = request.POST.get("userAddress")
+
+            if amount <= 0:
+                messages.error(request, "Enter a valid amount")
+                return redirect("withdraw_fund")
+
+            if account.balance < amount:
+                messages.error(request, "Insufficient Balance")
+                return redirect("withdraw_fund")
+
+            with transaction.atomic():
+                Transaction.objects.create(
+                    account=account,
+                    transaction_type="WITHDRAWAL",
+                    amount=amount,
+                    currency=currency,
+                    wallet_address=user_address,
+                    status="PENDING",
+                )
+                account.balance -= amount
+                account.save()
+
+            messages.success(
+                request,
+                "Your withdrawal request has been submitted and will be processed within 24 hours",
+            )
+        except Exception as e:
+            messages.error(request, f"Error processing withdrawal: {str(e)}")
+
+    withdrawals = Transaction.objects.filter(
+        account__customer=request.user, transaction_type="WITHDRAWAL"
+    ).order_by("-timestamp")
+
+    context = {
+        "account": account,
+        "withdrawals": withdrawals,
+        "completed_withdrawals": withdrawals.filter(status="COMPLETED").count(),
+        "pending_withdrawals": withdrawals.filter(status="PENDING").count(),
+        "total_withdrawals": withdrawals.filter(status="COMPLETED").aggregate(
+            Sum("amount")
+        )["amount__sum"]
+        or 0,
+    }
+    return render(request, "main/withdraw_fund.html", context)
+
+
+@login_required
+def support_page(request):
+    conversations = Conversation.objects.filter(
+        customer=request.user, is_active=True
+    ).order_by("-last_message")
+
+    active_conversation_id = request.GET.get("conversation")
+    active_conversation = None
+
+    if active_conversation_id:
+        try:
+            active_conversation = Conversation.objects.get(
+                id=active_conversation_id, customer=request.user
+            )
+        except Conversation.DoesNotExist:
+            messages.error(request, "Conversation not found")
+
+    if not active_conversation and conversations.exists():
+        active_conversation = conversations.first()
+
+    # Get unread counts for all conversations
+    for conv in conversations:
+        conv.unread_count = ChatMessage.objects.filter(
+            conversation=conv, 
+            is_read=False
+        ).exclude(sender=request.user).count()
+
+    return render(
+        request,
+        "main/support.html",
+        {
+            "conversations": conversations,
+            "active_conversation": active_conversation,
+        },
+    )
+
+
+
+@login_required
+def create_conversation(request):
+    if request.method == 'POST':
+        form = ConversationForm(request.POST, user=request.user)
+        if form.is_valid():
+            conversation = Conversation.objects.create(
+                customer=request.user,
+                subject=form.cleaned_data['subject']
+            )
+            # Create initial message
+            ChatMessage.objects.create(
+                conversation=conversation,
+                sender=request.user,
+                content=form.cleaned_data['message']
+            )
+            # Create participant record
+            Participant.objects.create(
+                user=request.user,
+                conversation=conversation,
+                is_online=True
+            )
+            return JsonResponse({
+                'success': True,
+                'conversation_id': conversation.id
+            })
+        return JsonResponse({
+            'success': False,
+            'errors': form.errors
+        }, status=400)
+    return JsonResponse({'success': False}, status=405)
+
+
+
+@login_required
+def send_message(request, conversation_id):
+    conversation = get_object_or_404(
+        Conversation, 
+        id=conversation_id, 
+        customer=request.user
+    )
+    
+    content = request.POST.get("message", "")
+    file = request.FILES.get("file")
+    message_type = "TEXT"
+    
+    if not content and not file:
+        return JsonResponse({
+            "success": False, 
+            "error": "Message content or file is required"
+        }, status=400)
+    
+    try:
+        # Create new message
+        message = ChatMessage.objects.create(
+            conversation=conversation,
+            sender=request.user,
+            content=content,
+            message_type=message_type,
+            attachment=file
+        )
+        
+        # Update conversation timestamp
+        conversation.last_message = timezone.now()
+        conversation.save()
+        
+        # Prepare response data
+        response_data = {
+            "success": True,
+            "message": {
+                "id": message.id,
+                "text": message.content,
+                "file_url": message.attachment.url if message.attachment else None,
+                "created_at": message.created_at.strftime("%H:%M"),
+                "sender": "You",
+                "message_type": message.message_type
+            }
+        }
+        
+        return JsonResponse(response_data)
+    except Exception as e:
+        return JsonResponse({"success": False, "error": str(e)}, status=500)
+
+
+@login_required
+def get_new_messages(request, conversation_id):
+    try:
+        conversation = get_object_or_404(
+            Conversation, 
+            id=conversation_id, 
+            customer=request.user
+        )
+        last_message_id = request.GET.get("last_message_id", 0)
+
+        # Get new messages since last_message_id
+        new_messages = ChatMessage.objects.filter(
+            conversation=conversation,
+            id__gt=last_message_id
+        ).exclude(sender=request.user).order_by("created_at")
+        
+        # Mark messages as read
+        new_messages.filter(is_read=False).update(is_read=True)
+        
+        messages_data = []
+        for msg in new_messages:
+            message_data = {
+                "id": msg.id,
+                "text": msg.content,
+                "file_url": msg.attachment.url if msg.attachment else None,
+                "created_at": msg.created_at.strftime("%H:%M"),
+                "sender": "Support Agent" if msg.sender.is_staff else msg.sender.get_full_name(),
+                "message_type": msg.message_type
+            }
+            messages_data.append(message_data)
+        
+        last_id = new_messages.last().id if new_messages else last_message_id
+        
+        return JsonResponse({
+            "messages": messages_data, 
+            "last_message_id": last_id
+        })
+    except Exception as e:
+        return JsonResponse({"success": False, "error": str(e)}, status=500)
+
+
+@login_required
+def close_conversation(request, conversation_id):
+    try:
+        conversation = get_object_or_404(
+            Conversation, 
+            id=conversation_id, 
+            customer=request.user
+        )
+        conversation.is_active = False
+        conversation.save()
+        return redirect("support_page")
+    except Exception as e:
+        messages.error(request, f"Error closing conversation: {str(e)}")
+        return redirect("support_page")
+
+
+
+def admin_dashboard(request):
+    # Get recent active conversations
+    recent_conversations = Conversation.objects.filter(
+        is_active=True
+    ).annotate(
+        last_message_time=Max('messages__created_at'),
+        unread_count=Count(
+            'messages',
+            filter=Q(messages__is_read=False) & ~Q(messages__sender=F('customer'))
+        )
+    ).order_by('-last_message_time')[:10]
+
+    
+    context = {
+        "total_transactions": Transaction.objects.filter(status="COMPLETED").aggregate(
+            Sum("amount")
+        )["amount__sum"] or 0,
+        "total_withdrawals": Transaction.objects.filter(
+            transaction_type="WITHDRAWAL", status="COMPLETED"
+        ).aggregate(Sum("amount"))["amount__sum"] or 0,
+        "total_users": User.objects.count(),
+        "pending_transactions": Transaction.objects.filter(status="PENDING").count(),
+        "pending_transactions_list": Transaction.objects.filter(status="PENDING")
+        .select_related("account__customer")
+        .order_by("-created_at")[:10],
+        "recent_conversations": recent_conversations,
+    }
+    return render(request, "main/dashboard_admin.html", context)
+
+# In views.py
+@login_required
+def get_chat_history(request, conversation_id):
+    try:
+        conversation = get_object_or_404(Conversation, id=conversation_id)
+        
+        # Verify admin has access to this conversation
+        if request.user.is_staff and not conversation.admin:
+            conversation.admin = request.user
+            conversation.save()
+        
+        messages = ChatMessage.objects.filter(
+            conversation=conversation
+        ).select_related('sender').order_by('created_at')
+        
+        messages_data = []
+        for msg in messages:
+            message_data = {
+                'id': msg.id,
+                'content': msg.content,
+                'created_at': msg.created_at.strftime('%H:%M'),
+                'is_admin': msg.sender.is_staff,
+                'sender_name': msg.sender.get_full_name(),
+                'message_type': msg.message_type,
+                'file_url': msg.attachment.url if msg.attachment else None,
+            }
+            messages_data.append(message_data)
+        
+        # Mark messages as read for admin
+        if request.user.is_staff:
+            ChatMessage.objects.filter(
+                conversation=conversation,
+                is_read=False
+            ).exclude(sender=request.user).update(is_read=True)
+        
+        return JsonResponse({
+            'success': True,
+            'messages': messages_data,
+            'subject': conversation.subject,
+            'customer_name': conversation.customer.get_full_name(),
+            'is_online': Participant.objects.filter(
+                user=conversation.customer,
+                last_seen__gte=timezone.now()-timedelta(minutes=5)
+                .exists())
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+
+@login_required
+def upload_file(request):
+    if request.method == 'POST' and request.FILES.get('file'):
+        try:
+            file = request.FILES['file']
+            # Save file to storage
+            message_file = ChatMessage(
+                sender=request.user,
+                message_type='FILE' if not file.content_type.startswith('image/') else 'IMAGE',
+                attachment=file
+            )
+            message_file.save()
+            
+            return JsonResponse({
+                'success': True,
+                'file_url': message_file.attachment.url,
+                'file_type': 'image' if file.content_type.startswith('image/') else 'file'
+            })
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'error': str(e)
+            }, status=500)
+    return JsonResponse({
+        'success': False,
+        'error': 'Invalid request'
+    }, status=400)
+
+@login_required
+@user_passes_test(is_staff_user)
+def send_message_admin(request):
+    form = SupportChatForm(request.POST, request.FILES)
+    if not form.is_valid():
+        return JsonResponse({"success": False, "errors": form.errors}, status=400)
+
+    try:
+        conversation_id = request.POST.get("conversation_id")
+        if not conversation_id:
+            return JsonResponse(
+                {"success": False, "error": "Conversation ID required"}, status=400
+            )
+
+        conversation = Conversation.objects.get(id=conversation_id)
+        content = form.cleaned_data.get("message", "")
+        file = request.FILES.get("file")
+        
+        if not content and not file:
+            return JsonResponse(
+                {"success": False, "error": "Message or file is required"}, status=400
+            )
+
+        # Create new message
+        message = ChatMessage.objects.create(
+            conversation=conversation,
+            sender=request.user,
+            content=content,
+            message_type="TEXT",
+            attachment=file
+        )
+        
+        # Update conversation timestamp
+        conversation.last_message = timezone.now()
+        conversation.save()
+
+        return JsonResponse({
+            "success": True,
+            "message_id": message.id,
+            "created_at": message.created_at.strftime("%H:%M"),
+            "is_admin": True,
+        })
+    except Conversation.DoesNotExist:
+        return JsonResponse({"success": False, "error": "Conversation not found"}, status=404)
+    except Exception as e:
+        return JsonResponse({"success": False, "error": str(e)}, status=500)
+
+
+@login_required
+@user_passes_test(is_staff_user)
+def mark_messages_read(request, conversation_id):
+    try:
+        conversation = get_object_or_404(Conversation, id=conversation_id)
+        ChatMessage.objects.filter(
+            conversation=conversation, 
+            is_read=False
+        ).exclude(sender=request.user).update(is_read=True)
+        
+        return JsonResponse({"success": True})
+    except Exception as e:
+        return JsonResponse({"success": False, "error": str(e)}, status=500)
+
+
+@login_required
+@user_passes_test(is_staff_user)
+def check_new_messages(request, conversation_id):
+    try:
+        last_message_id = request.GET.get("last_message_id", 0)
+        
+        has_new = ChatMessage.objects.filter(
+            conversation_id=conversation_id,
+            id__gt=last_message_id,
+            is_read=False
+        ).exclude(sender=request.user).exists()
+
+        return JsonResponse({"success": True, "has_new_messages": has_new})
+    except Exception as e:
+        return JsonResponse({"success": False, "error": str(e)}, status=500)
+
+
+@login_required
+@user_passes_test(is_staff_user)
+def process_transaction(request, transaction_id, action):
+    try:
+        transaction = Transaction.objects.get(id=transaction_id)
+
+        if action == "credit":
+            with transaction.atomic():
+                transaction.status = "COMPLETED"
+                transaction.save()
+
+                transaction.account.balance += transaction.amount
+                transaction.account.save()
+
+                return JsonResponse(
+                    {"success": True, "message": "Transaction credited successfully"}
+                )
+
+        elif action == "delete":
+            with transaction.atomic():
+                transaction.delete()
+                return JsonResponse(
+                    {"success": True, "message": "Transaction deleted successfully"}
+                )
+
+        return JsonResponse({"success": False, "error": "Invalid action"}, status=400)
+    except Transaction.DoesNotExist:
+        return JsonResponse(
+            {"success": False, "error": "Transaction not found"}, status=404
+        )
+    except Exception as e:
+        return JsonResponse({"success": False, "error": str(e)}, status=500)
+
+
+def is_admin(user):
+    return user.is_staff or user.is_superuser
+
+@login_required
+def trade_list(request):
+    # Get all trades ordered by most recent first
+    trades = TradePosition.objects.all().order_by('-opened_at')
+    
+    # Apply filters if provided
+    status = request.GET.get('status')
+    trade_type = request.GET.get('type')
+    symbol = request.GET.get('symbol')
+    search = request.GET.get('search')
+    
+    if status:
+        trades = trades.filter(status=status)
+    if trade_type:
+        trades = trades.filter(trade_type=trade_type)
+    if symbol:
+        trades = trades.filter(symbol__icontains=symbol)
+    if search:
+        trades = trades.filter(
+            Q(symbol__icontains=search) | 
+            Q(user__email__icontains=search) |
+            Q(user__first_name__icontains=search) |
+            Q(user__last_name__icontains=search)
+        )
+    
+    # Pagination
+    paginator = Paginator(trades, 25)  
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    context = {
+        'trades': page_obj,
+    }
+    return render(request, 'main/dash_trade.html', context)
+
+@login_required
+def get_trade_json(request, trade_id):
+    try:
+        trade = TradePosition.objects.get(id=trade_id)
+        return JsonResponse({
+            'success': True,
+            'trade': {
+                'id': trade.id,
+                'symbol': trade.symbol,
+                'trade_type': trade.trade_type,
+                'amount': str(trade.amount),
+                'leverage': trade.leverage,
+                'entry_price': str(trade.entry_price),
+                'current_price': str(trade.current_price),
+                'take_profit': str(trade.take_profit),
+                'stop_loss': str(trade.stop_loss),
+                'status': trade.status,
+                'status_display': trade.get_status_display(),
+                'profit_loss': str(trade.profit_loss),
+            }
+        })
+    except TradePosition.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Trade not found'}, status=404)
+
+@login_required
+@user_passes_test(is_admin)
+def update_trade(request):
+    if request.method == 'POST':
+        try:
+            trade = TradePosition.objects.get(id=request.POST.get('trade_id'))
+            
+            # Update trade fields
+            trade.symbol = request.POST.get('symbol')
+            trade.trade_type = request.POST.get('trade_type')
+            trade.amount = request.POST.get('amount')
+            trade.leverage = request.POST.get('leverage')
+            trade.entry_price = request.POST.get('entry_price')
+            trade.current_price = request.POST.get('current_price')
+            trade.take_profit = request.POST.get('take_profit')
+            trade.stop_loss = request.POST.get('stop_loss')
+            trade.status = request.POST.get('status')
+            
+            # Recalculate P/L
+            trade.calculate_profit_loss()
+            
+            trade.save()
+            
+            return JsonResponse({
+                'success': True,
+                'trade': {
+                    'id': trade.id,
+                    'symbol': trade.symbol,
+                    'trade_type': trade.trade_type,
+                    'amount': str(trade.amount),
+                    'leverage': trade.leverage,
+                    'entry_price': str(trade.entry_price),
+                    'current_price': str(trade.current_price),
+                    'take_profit': str(trade.take_profit),
+                    'stop_loss': str(trade.stop_loss),
+                    'status': trade.status,
+                    'status_display': trade.get_status_display(),
+                    'profit_loss': str(trade.profit_loss),
+                }
+            })
+        except TradePosition.DoesNotExist:
+            return JsonResponse({'success': False, 'error': 'Trade not found'}, status=404)
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)}, status=400)
+    return JsonResponse({'success': False, 'error': 'Invalid request method'}, status=405)
+
+@login_required
+@user_passes_test(is_admin)
+def delete_trade(request, trade_id):
+    if request.method == 'POST':
+        try:
+            trade = TradePosition.objects.get(id=trade_id)
+            trade.delete()
+            return JsonResponse({'success': True})
+        except TradePosition.DoesNotExist:
+            return JsonResponse({'success': False, 'error': 'Trade not found'}, status=404)
+    return JsonResponse({'success': False, 'error': 'Invalid request method'}, status=405)
+
+
+
+def check_support_status(request):
+    """API endpoint to check if support is online"""
+    try:
+        # Check if any admin is currently online (has been active in last 5 minutes)
+        five_min_ago = timezone.now() - timedelta(minutes=5)
+        is_online = Participant.objects.filter(
+            user__is_staff=True,
+            last_seen__gte=five_min_ago
+        ).exists()
+        
+        return JsonResponse({
+            'success': True,
+            'is_online': is_online,
+            'status': 'Online' if is_online else 'Offline'
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+'''websocket url patterrns'''
+from django.urls import path
+from .consumers import SupportConsumer
+
+websocket_urlpatterns = [
+    path('ws/support/<conversation_id>/', SupportConsumer.as_asgi()),
+]
+
+, below are my models and views :
+
+from django.db import models
+from django.utils import timezone
+from django.contrib.auth import get_user_model
+from setup.basemodel import TimeBaseModel
+from decimal import Decimal
+import uuid
+
+User = get_user_model()
+
+
+class PrestigeSettings(TimeBaseModel):
+    # Remove the invalid 'name=True' parameter
+    user = models.ForeignKey(
+        User, 
+        on_delete=models.CASCADE, 
+        related_name="prestige_settings",
+        blank=True,
+        null=True
+    )
+    deposit_btc_address = models.CharField(max_length=100, blank=True)
+    deposit_eth_address = models.CharField(max_length=100, blank=True)
+    deposit_usdt_address = models.CharField(max_length=100, blank=True)
+    trading_enabled = models.BooleanField(default=True)
+    min_trade_amount = models.DecimalField(
+        max_digits=15, decimal_places=2, default=100.00
+    )
+    max_leverage = models.PositiveIntegerField(default=50)
+
+    class Meta:
+        verbose_name_plural = "Prestige Settings"
+
+    def save(self, *args, **kwargs):
+
+        if not self.user:
+            self.user = User.objects.filter(is_superuser=True).first()
+        self.pk = 1
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def load(cls):
+        obj, created = cls.objects.get_or_create(pk=1)
+        return obj
+
+
+class Account(TimeBaseModel):
+    ACCOUNT_TYPES = [
+        ("SAVINGS", "Savings Account"),
+        ("CHECKING", "Checking Account"),
+        ("FIXED", "Fixed Deposit"),
+        ("INVESTMENT", "Investment Account"),
+    ]
+    STATUS_CHOICES = [
+        ("ACTIVE", "Active"),
+        ("DORMANT", "Dormant"),
+        ("CLOSED", "Closed"),
+    ]
+
+    BIN = "123456"
+    customer = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="accounts"
+    )
+    account_number = models.CharField(max_length=20, unique=True)
+    account_type = models.CharField(max_length=20, choices=ACCOUNT_TYPES)
+    balance = models.DecimalField(max_digits=15, decimal_places=2, default=0.00)
+    currency = models.CharField(max_length=3, default="GHS")
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="ACTIVE")
+    date_opened = models.DateTimeField(default=timezone.now)
+    is_interoperable = models.BooleanField(default=True)
+
+    def __str__(self):
+        return f"{self.account_number} - {self.get_account_type_display()}"
+
+    def save(self, *args, **kwargs):
+        if not self.account_number:
+            self.account_number = self.generate_account_number()
+        super().save(*args, **kwargs)
+
+    def generate_account_number(self):
+        latest = (
+            Account.objects.filter(account_number__startswith=self.BIN)
+            .order_by("-account_number")
+            .first()
+        )
+        last_seq = (
+            int(latest.account_number[-4:]) if latest and latest.account_number else 0
+        )
+        return f"{self.BIN}{str(last_seq + 1).zfill(4)}"
+
+
+class InvestmentPackage(TimeBaseModel):
+    PACKAGE_TYPES = [
+        ("STARTER", "Starter"),
+        ("PREMIUM", "Premium"),
+        ("VIP", "VIP"),
+    ]
+
+    name = models.CharField(max_length=20, choices=PACKAGE_TYPES)
+    min_amount = models.DecimalField(max_digits=15, decimal_places=2)
+    max_amount = models.DecimalField(max_digits=15, decimal_places=2)
+    duration_days = models.PositiveIntegerField()
+    roi_percentage = models.DecimalField(max_digits=5, decimal_places=2)
+    features = models.JSONField(default=list)
+
+    def __str__(self):
+        return self.get_name_display()
+
+
+class Investment(TimeBaseModel):
+    STATUS_CHOICES = [
+        ("ACTIVE", "Active"),
+        ("COMPLETED", "Completed"),
+        ("CANCELLED", "Cancelled"),
+    ]
+
+    account = models.ForeignKey(
+        Account, on_delete=models.CASCADE, related_name="investments"
+    )
+    package = models.ForeignKey(InvestmentPackage, on_delete=models.PROTECT)
+    amount = models.DecimalField(max_digits=15, decimal_places=2)
+    start_date = models.DateTimeField(default=timezone.now)
+    end_date = models.DateTimeField()
+    expected_return = models.DecimalField(max_digits=15, decimal_places=2)
+    actual_return = models.DecimalField(
+        max_digits=15, decimal_places=2, null=True, blank=True
+    )
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="ACTIVE")
+
+    def save(self, *args, **kwargs):
+        if not self.end_date:
+            self.end_date = self.start_date + timezone.timedelta(
+                days=self.package.duration_days
+            )
+        if not self.expected_return:
+            self.expected_return = self.amount * (
+                self.package.roi_percentage / Decimal(100)
+            )
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.account.customer.email} - {self.package.name}"
+
+
+class TradePosition(TimeBaseModel):
+    TRADE_TYPES = [
+        ("BUY", "Buy (Long)"),
+        ("SELL", "Sell (Short)"),
+    ]
+    STATUS_CHOICES = [
+        ("OPEN", "Open"),
+        ("CLOSED", "Closed"),
+        ("PENDING", "Pending"),
+    ]
+
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="trade_positions"
+    )
+    symbol = models.CharField(max_length=20)
+    trade_type = models.CharField(max_length=10, choices=TRADE_TYPES)
+    amount = models.DecimalField(max_digits=15, decimal_places=2)
+    leverage = models.PositiveIntegerField(default=1)
+    entry_price = models.DecimalField(max_digits=15, decimal_places=6)
+    current_price = models.DecimalField(
+        max_digits=15, decimal_places=6, null=True, blank=True
+    )
+    take_profit = models.DecimalField(max_digits=5, decimal_places=2)
+    stop_loss = models.DecimalField(max_digits=5, decimal_places=2)
+    profit_loss = models.DecimalField(max_digits=15, decimal_places=2, default=0.00)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="OPEN")
+    opened_at = models.DateTimeField(auto_now_add=True)
+    closed_at = models.DateTimeField(null=True, blank=True)
+
+    def calculate_profit_loss(self):
+        if not self.current_price:
+            return Decimal("0.00")
+        price_difference = self.current_price - self.entry_price
+        if self.trade_type == "SELL":
+            price_difference = -price_difference
+        self.profit_loss = self.amount * price_difference / self.entry_price
+        return self.profit_loss
+
+    def save(self, *args, **kwargs):
+        if not self.current_price:
+            self.current_price = self.entry_price
+        self.calculate_profit_loss()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.user.email} - {self.symbol} {self.get_trade_type_display()}"
+
+
+class Transaction(TimeBaseModel):
+    TRANSACTION_TYPES = [
+        ("TRANSFER", "Bank Transfer"),
+        ("BTC", "BTC"),
+        ("DEPOSIT", "Deposit"),
+        ("WITHDRAWAL", "Withdrawal"),
+        ("BILL_PAYMENT", "Bill Payment"),
+        ("INVESTMENT", "Investment"),
+        ("TRADE", "Trade"),
+    ]
+    STATUS_CHOICES = [
+        ("PENDING", "Pending"),
+        ("COMPLETED", "Completed"),
+        ("FAILED", "Failed"),
+    ]
+
+    account = models.ForeignKey(
+        Account, on_delete=models.CASCADE, related_name="transactions"
+    )
+    transaction_id = models.CharField(max_length=30, unique=True)
+    transaction_type = models.CharField(max_length=20, choices=TRANSACTION_TYPES)
+    amount = models.DecimalField(max_digits=15, decimal_places=2)
+    currency = models.CharField(max_length=3, default="BTC")
+    sender_account = models.ForeignKey(
+        Account,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="sent_transactions",
+    )
+    recipient_account = models.ForeignKey(
+        Account,
+        on_delete=models.PROTECT,
+        related_name="received_transactions",
+        null=True,
+        blank=True,
+    )
+    recipient_number = models.CharField(max_length=20, null=True, blank=True)
+    description = models.TextField(null=True, blank=True)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="PENDING")
+    timestamp = models.DateTimeField(auto_now_add=True)
+    metadata = models.JSONField(default=dict)
+    investment = models.ForeignKey(
+        Investment, on_delete=models.SET_NULL, null=True, blank=True
+    )
+    trade_position = models.ForeignKey(
+        TradePosition, on_delete=models.SET_NULL, null=True, blank=True
+    )
+    wallet_address = models.CharField(max_length=225, null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.transaction_id} - {self.get_transaction_type_display()}"
+
+
+class SecurityLog(TimeBaseModel):
+    EVENT_TYPES = [
+        ("LOGIN", "User Login"),
+        ("LOGOUT", "User Logout"),
+        ("PASSWORD_CHANGE", "Password Change"),
+        ("TRANSACTION", "Transaction"),
+        ("BIOMETRIC_UPDATE", "Biometric Update"),
+        ("TRADE_EXECUTED", "Trade Executed"),
+        ("INVESTMENT_CREATED", "Investment Created"),
+    ]
+
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="security_logs"
+    )
+    event_type = models.CharField(max_length=20, choices=EVENT_TYPES)
+    ip_address = models.GenericIPAddressField()
+    device_info = models.JSONField(default=dict)
+    timestamp = models.DateTimeField(auto_now_add=True)
+    details = models.TextField()
+
+    def __str__(self):
+        return f"{self.user.email} - {self.get_event_type_display()}"
+
+
+class FingerPrint(TimeBaseModel):
+    user = models.OneToOneField(
+        User, on_delete=models.CASCADE, related_name="biometric"
+    )
+    template_data = models.BinaryField(null=True, blank=True)
+    image = models.ImageField(upload_to="biometrics/", null=True, blank=True)
+
+    def __str__(self):
+        return f"FingerPrint: {self.user.username}"
+
+
+class TradeInfo(TimeBaseModel):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
+    trade_position = models.ForeignKey(
+        TradePosition, on_delete=models.CASCADE, related_name="trade_info"
+    )
+    current_price = models.FloatField()
+    high_price = models.FloatField()
+    low_price = models.FloatField()
+    volume_price = models.FloatField()
+
+    def __str__(self):
+        return f"Trade Info for {self.trade_position.symbol}"
+
+
+class ReferalCode(TimeBaseModel):
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="referral_codes"
+    )
+    code = models.CharField(max_length=100, unique=True)
+    is_expired = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expiration_date = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return f"Referral: {self.user.email} - {self.code}"
+
+    def save(self, *args, **kwargs):
+        if not self.code:
+            unique_code = uuid.uuid4().hex[:8].upper()
+            while ReferalCode.objects.filter(code=unique_code).exists():
+                unique_code = uuid.uuid4().hex[:8].upper()
+            self.code = unique_code
+        super().save(*args, **kwargs)
+
+
+# ============ ENHANCED SUPPORT CHAT SYSTEM ============ #
+class Conversation(TimeBaseModel):
+    """Represents a chat conversation between customer and admin"""
+
+    customer = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="customer_conversations"
+    )
+    admin = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="admin_conversations",
+    )
+    subject = models.CharField(max_length=200)
+    is_active = models.BooleanField(default=True)
+    last_message = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-last_message"]
+        verbose_name = "Chat Conversation"
+        verbose_name_plural = "Chat Conversations"
+        indexes = [
+            models.Index(fields=["customer", "admin"]),
+            models.Index(fields=["last_message"]),
+        ]
+
+    def __str__(self):
+        return f"Chat: {self.customer.email} - {self.subject}"
+
+    def get_unread_count(self, user):
+        return self.messages.filter(is_read=False).exclude(sender=user).count()
+
+    def mark_as_read(self, user):
+        self.messages.exclude(sender=user).update(is_read=True)
+
+
+class ChatMessage(TimeBaseModel):
+    """Individual messages within a conversation"""
+
+    MESSAGE_TYPES = [
+        ("TEXT", "Text"),
+        ("IMAGE", "Image"),
+        ("FILE", "File"),
+        ("SYSTEM", "System Notification"),
+    ]
+
+    conversation = models.ForeignKey(
+        Conversation, on_delete=models.CASCADE, related_name="messages"
+    )
+    sender = models.ForeignKey(User, on_delete=models.CASCADE)
+    content = models.TextField(blank=True, null=True)
+    message_type = models.CharField(
+        max_length=10, choices=MESSAGE_TYPES, default="TEXT"
+    )
+    attachment = models.FileField(
+        upload_to="chat_attachments/%Y/%m/%d/", null=True, blank=True
+    )
+    is_read = models.BooleanField(default=False)
+    delivered = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ["created_at"]
+        verbose_name = "Chat Message"
+        verbose_name_plural = "Chat Messages"
+        indexes = [
+            models.Index(fields=["conversation", "created_at"]),
+            models.Index(fields=["is_read", "delivered"]),
+        ]
+
+    def __str__(self):
+        return f"Msg from {self.sender.email} - {self.created_at}"
+
+    def save(self, *args, **kwargs):
+        # Update conversation's last message timestamp
+        if not self.pk:
+            self.conversation.last_message = timezone.now()
+            self.conversation.save()
+
+            # Mark as delivered if sent by admin to customer
+            if self.sender == self.conversation.admin:
+                self.delivered = True
+        super().save(*args, **kwargs)
+
+
+class Participant(TimeBaseModel):
+    """Tracks user's status in conversations"""
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    conversation = models.ForeignKey(Conversation, on_delete=models.CASCADE)
+    is_online = models.BooleanField(default=False)
+    last_seen = models.DateTimeField(auto_now=True)
+    typing_status = models.BooleanField(default=False)
+
+    class Meta:
+        unique_together = ("user", "conversation")
+        verbose_name = "Chat Participant"
+        verbose_name_plural = "Chat Participants"
+
+    def __str__(self):
+        status = "Online" if self.is_online else f"Last seen: {self.last_seen}"
+        return f"{self.user.email} in {self.conversation} - {status}"
+
+
+veiws;
+
+# views.py
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib.auth.decorators import login_required, user_passes_test
+from django.http import JsonResponse
+from django.views.decorators.http import require_POST, require_GET
+from django.db.models import Max, Count, Q, Sum, F
+from django.utils import timezone
+from datetime import timedelta
+from django.contrib.auth import authenticate, login, logout, get_user_model
+from django.core.paginator import Paginator
+from django.contrib import messages
+from django.db import transaction
+from decimal import Decimal
+import random
+import string
+from bank.models import (
+    Account,
+    InvestmentPackage,
+    Investment,
+    TradePosition,
+    Transaction,
+    SecurityLog,
+    PrestigeSettings,
+    Conversation,
+    ChatMessage,
+    Participant,
+)
+from bank.forms import *
+
+User = get_user_model()
+
+
+def is_staff_user(user):
+    return user.is_staff
+
+
+def login_view(request):
+    if request.user.is_authenticated:
+        return redirect("trade_investment_dashboard")
+
+    if request.method == "POST":
+        form = LoginForm(request.POST)
+        if form.is_valid():
+            user = authenticate(
+                email=form.cleaned_data["email"], password=form.cleaned_data["password"]
+            )
+            if user:
+                login(request, user)
+                SecurityLog.objects.create(
+                    user=user,
+                    event_type="LOGIN",
+                    ip_address=request.META.get("REMOTE_ADDR"),
+                    device_info={"user_agent": request.META.get("HTTP_USER_AGENT")},
+                    details="Standard password authentication",
+                )
+                return redirect("trade_investment_dashboard")
+            messages.error(request, "Invalid email or password")
+        else:
+            for field, errors in form.errors.items():
+                for error in errors:
+                    messages.error(request, f"{field}: {error}")
+    else:
+        form = LoginForm()
+    return render(request, "auth/login.html", {"form": form})
+
+
+def logout_view(request):
+    SecurityLog.objects.create(
+        user=request.user,
+        event_type="LOGOUT",
+        ip_address=request.META.get("REMOTE_ADDR"),
+        details="User initiated logout",
+    )
+    logout(request)
+    return redirect("login")
+
+
+# Trading Views
+@login_required
+def trade_investment_dashboard(request):
+    user = request.user
+    bank_settings = PrestigeSettings.load()
+    account = Account.objects.filter(customer=user).first()
+
+    context = {
+        "investment_balance": account.balance if account else 0,
+        "active_trades": TradePosition.objects.filter(user=user, status="OPEN").count(),
+        "pending_trades": TradePosition.objects.filter(
+            user=user, status="PENDING"
+        ).count(),
+        "total_profit": TradePosition.objects.filter(
+            user=user, status="CLOSED"
+        ).aggregate(Sum("profit_loss"))["profit_loss__sum"]
+        or Decimal("0.00"),
+        "has_active_investment": Investment.objects.filter(
+            account__customer=user, status="ACTIVE"
+        ).exists(),
+        "packages": InvestmentPackage.objects.all(),
+        "active_positions": TradePosition.objects.filter(
+            user=user, status="OPEN"
+        ).order_by("-opened_at"),
+        "accounts": Account.objects.filter(customer=user),
+        "bank_settings": bank_settings,
+        "deposit_form": DepositForm(),
+        "open_trade_form": OpenTradeForm(user=user, bank_settings=bank_settings),
+        "investment_form": InvestmentForm(),
+    }
+
+    SecurityLog.objects.create(
+        user=user,
+        event_type="DASHBOARD_ACCESS",
+        ip_address=request.META.get("REMOTE_ADDR"),
+        details="Accessed Trade Investment Dashboard",
+    )
+    return render(request, "main/trade.html", context)
+
+
+@login_required
+def open_trade(request):
+    user = request.user
+    bank_settings = PrestigeSettings.load()
+    form = OpenTradeForm(request.POST, user=user, bank_settings=bank_settings)
+
+    if not form.is_valid():
+        for error in form.errors.values():
+            messages.error(request, error[0])
+        return redirect("trade_investment_dashboard")
+
+    try:
+        with transaction.atomic():
+            account = Account.objects.get(customer=user, account_type="INVESTMENT")
+            data = form.cleaned_data
+            margin_required = data["amount"] / data["leverage"]
+
+            if account.balance < margin_required:
+                messages.error(request, "Insufficient funds for this trade")
+                return redirect("trade_investment_dashboard")
+
+            position = TradePosition.objects.create(
+                user=user,
+                symbol=data["symbol"],
+                trade_type=data["trade_type"],
+                amount=data["amount"],
+                leverage=data["leverage"],
+                entry_price=data.get("entry_price", 0),
+                current_price=data.get("entry_price", 0),
+                take_profit=data["take_profit"],
+                stop_loss=data["stop_loss"],
+            )
+
+            account.balance -= margin_required
+            account.save()
+
+            Transaction.objects.create(
+                account=account,
+                transaction_id="".join(
+                    random.choices(string.ascii_uppercase + string.digits, k=12)
+                ),
+                transaction_type="TRADE",
+                amount=margin_required,
+                description=f"{data['trade_type']} position on {data['symbol']}",
+                trade_position=position,
+            )
+
+            messages.success(
+                request, f"Trade opened successfully! Position ID: {position.id}"
+            )
+    except Account.DoesNotExist:
+        messages.error(request, "Investment account not found")
+    except Exception as e:
+        messages.error(request, f"Error opening trade: {str(e)}")
+
+    return redirect("trade_investment_dashboard")
+
+
+@login_required
+def close_trade(request, position_id):
+    try:
+        position = TradePosition.objects.get(
+            id=position_id, user=request.user, status="OPEN"
+        )
+        account = Account.objects.get(customer=request.user, account_type="INVESTMENT")
+
+        with transaction.atomic():
+            position.calculate_profit_loss()
+            position.status = "CLOSED"
+            position.closed_at = timezone.now()
+            position.save()
+
+            amount_to_return = position.profit_loss
+            account.balance += amount_to_return
+            account.save()
+
+            Transaction.objects.create(
+                account=account,
+                transaction_id="".join(
+                    random.choices(string.ascii_uppercase + string.digits, k=12)
+                ),
+                transaction_type="TRADE_CLOSE",
+                amount=amount_to_return,
+                description=f"Closed {position.get_trade_type_display()} position",
+                trade_position=position,
+            )
+
+            messages.success(
+                request, f"Position closed! Profit/Loss: ${position.profit_loss:.2f}"
+            )
+
+    except TradePosition.DoesNotExist:
+        messages.error(request, "Position not found or already closed")
+    except Account.DoesNotExist:
+        messages.error(request, "Investment account not found")
+    except Exception as e:
+        messages.error(request, f"Error closing trade: {str(e)}")
+
+    return redirect("trade_investment_dashboard")
+
+
+@login_required
+def create_investment(request):
+    form = InvestmentForm(request.POST)
+    if not form.is_valid():
+        for error in form.errors.values():
+            messages.error(request, error[0])
+        return redirect("trade_investment_dashboard")
+
+    try:
+        with transaction.atomic():
+            account = Account.objects.get(
+                customer=request.user, account_type="INVESTMENT"
+            )
+            package = form.cleaned_data["package"]
+            amount = form.cleaned_data["amount"]
+
+            if not package.min_amount <= amount <= package.max_amount:
+                messages.error(
+                    request,
+                    f"Amount must be between ${package.min_amount} and ${package.max_amount}",
+                )
+                return redirect("trade_investment_dashboard")
+
+            if amount > account.balance:
+                messages.error(request, "Insufficient funds for this investment")
+                return redirect("trade_investment_dashboard")
+
+            Investment.objects.create(
+                account=account,
+                package=package,
+                amount=amount,
+            )
+            account.balance -= amount
+            account.save()
+
+            messages.success(request, "Investment created successfully!")
+    except Account.DoesNotExist:
+        messages.error(request, "Account not found")
+    except Exception as e:
+        messages.error(request, f"Error creating investment: {str(e)}")
+
+    return redirect("trade_investment_dashboard")
+
+
+@login_required
+def get_market_data(request, symbol):
+    try:
+        base_price = {
+            "BTCUSDT": Decimal("55000.00"),
+            "ETHUSDT": Decimal("3000.00"),
+            "BNBUSDT": Decimal("500.00"),
+            "SOLUSDT": Decimal("100.00"),
+            "XRPUSDT": Decimal("0.50"),
+        }.get(symbol, Decimal("10000.00"))
+
+        price = base_price * Decimal(1 + random.uniform(-0.02, 0.02)).quantize(
+            Decimal("0.01")
+        )
+        change = Decimal(random.uniform(-3, 3)).quantize(Decimal("0.01"))
+        high = price * Decimal(1 + random.uniform(0.01, 0.03)).quantize(Decimal("0.01"))
+        low = price * Decimal(1 - random.uniform(0.01, 0.03)).quantize(Decimal("0.01"))
+        volume = round(random.uniform(1000000, 50000000))
+
+        return JsonResponse(
+            {
+                "success": True,
+                "symbol": symbol,
+                "price": float(price),
+                "change": float(change),
+                "high": float(high),
+                "low": float(low),
+                "volume": volume,
+            }
+        )
+    except Exception as e:
+        return JsonResponse({"success": False, "error": str(e)}, status=500)
+
+
+@login_required
+def deposit_page(request):
+    account = Account.objects.filter(customer=request.user).first()
+    deposits = Transaction.objects.filter(
+        account__customer=request.user, transaction_type="DEPOSIT"
+    ).order_by("-timestamp")
+
+    context = {
+        "deposits": deposits,
+        "total_deposited": deposits.filter(status="COMPLETED").aggregate(Sum("amount"))[
+            "amount__sum"
+        ]
+        or 0,
+        "completed_deposits": deposits.filter(status="COMPLETED").count(),
+        "pending_deposits": deposits.filter(status="PENDING").count(),
+        "deposit_form": DepositForm(),
+        "account": account,
+    }
+    return render(request, "main/deposit.html", context)
+
+
+@login_required
+def deposit_funds(request):
+    form = DepositForm(request.POST)
+    if not form.is_valid():
+        for field, errors in form.errors.items():
+            for error in errors:
+                messages.error(request, f"{field}: {error}")
+        return redirect("deposit_page")
+
+    try:
+        currency = form.cleaned_data["currency"]
+        amount = form.cleaned_data["amount"]
+        settings = PrestigeSettings.load()
+
+        address_lookup = {
+            "BTC": settings.deposit_btc_address,
+            "ETH": settings.deposit_eth_address,
+            "USDT": settings.deposit_usdt_address,
+        }
+        deposit_address = address_lookup.get(currency)
+
+        if not deposit_address:
+            messages.error(request, f"No deposit address configured for {currency}")
+            return redirect("deposit_page")
+
+        account = Account.objects.get(customer=request.user, account_type="INVESTMENT")
+
+        transaction_id = "".join(
+            random.choices(string.ascii_uppercase + string.digits, k=12)
+        )
+        Transaction.objects.create(
+            account=account,
+            transaction_id=transaction_id,
+            transaction_type="DEPOSIT",
+            amount=Decimal(amount),
+            currency=currency,
+            status="PENDING",
+            description="Crypto deposit to investment account",
+            metadata={
+                "deposit_address": deposit_address,
+                "currency": currency,
+                "expected_amount": str(amount),
+            },
+        )
+
+        SecurityLog.objects.create(
+            user=request.user,
+            event_type="DEPOSIT_INITIATED",
+            ip_address=request.META.get("REMOTE_ADDR"),
+            details=f"Initiated {currency} deposit of {amount}",
+        )
+
+        messages.success(
+            request,
+            f"📬 Deposit Instructions:\n\n"
+            f"1. Send exactly {amount} {currency} to:\n"
+            f"   **{deposit_address}**\n\n"
+            f"2. After sending, contact support with:\n"
+            f"   - Transaction ID: **{transaction_id}**\n"
+            f"   - Transaction hash\n\n"
+            f"💡 Funds will be credited after verification.",
+        )
+    except Account.DoesNotExist:
+        messages.error(request, "Investment account not found")
+    except Exception as e:
+        messages.error(request, f"Error processing deposit: {str(e)}")
+
+    return redirect("deposit_page")
+
+
+@login_required
+def withdraw_fund(request):
+    account = Account.objects.filter(customer=request.user).first()
+
+    if request.method == "POST":
+        try:
+            currency = request.POST.get("currency")
+            amount = Decimal(request.POST.get("amount", 0))
+            user_address = request.POST.get("userAddress")
+
+            if amount <= 0:
+                messages.error(request, "Enter a valid amount")
+                return redirect("withdraw_fund")
+
+            if account.balance < amount:
+                messages.error(request, "Insufficient Balance")
+                return redirect("withdraw_fund")
+
+            with transaction.atomic():
+                Transaction.objects.create(
+                    account=account,
+                    transaction_type="WITHDRAWAL",
+                    amount=amount,
+                    currency=currency,
+                    wallet_address=user_address,
+                    status="PENDING",
+                )
+                account.balance -= amount
+                account.save()
+
+            messages.success(
+                request,
+                "Your withdrawal request has been submitted and will be processed within 24 hours",
+            )
+        except Exception as e:
+            messages.error(request, f"Error processing withdrawal: {str(e)}")
+
+    withdrawals = Transaction.objects.filter(
+        account__customer=request.user, transaction_type="WITHDRAWAL"
+    ).order_by("-timestamp")
+
+    context = {
+        "account": account,
+        "withdrawals": withdrawals,
+        "completed_withdrawals": withdrawals.filter(status="COMPLETED").count(),
+        "pending_withdrawals": withdrawals.filter(status="PENDING").count(),
+        "total_withdrawals": withdrawals.filter(status="COMPLETED").aggregate(
+            Sum("amount")
+        )["amount__sum"]
+        or 0,
+    }
+    return render(request, "main/withdraw_fund.html", context)
+
+
+@login_required
+def support_page(request):
+    conversations = Conversation.objects.filter(
+        customer=request.user, is_active=True
+    ).order_by("-last_message")
+
+    active_conversation_id = request.GET.get("conversation")
+    active_conversation = None
+
+    if active_conversation_id:
+        try:
+            active_conversation = Conversation.objects.get(
+                id=active_conversation_id, customer=request.user
+            )
+        except Conversation.DoesNotExist:
+            messages.error(request, "Conversation not found")
+
+    if not active_conversation and conversations.exists():
+        active_conversation = conversations.first()
+
+    # Get unread counts for all conversations
+    for conv in conversations:
+        conv.unread_count = ChatMessage.objects.filter(
+            conversation=conv, 
+            is_read=False
+        ).exclude(sender=request.user).count()
+
+    return render(
+        request,
+        "main/support.html",
+        {
+            "conversations": conversations,
+            "active_conversation": active_conversation,
+        },
+    )
+
+
+
+@login_required
+def create_conversation(request):
+    if request.method == 'POST':
+        form = ConversationForm(request.POST, user=request.user)
+        if form.is_valid():
+            conversation = Conversation.objects.create(
+                customer=request.user,
+                subject=form.cleaned_data['subject']
+            )
+            # Create initial message
+            ChatMessage.objects.create(
+                conversation=conversation,
+                sender=request.user,
+                content=form.cleaned_data['message']
+            )
+            # Create participant record
+            Participant.objects.create(
+                user=request.user,
+                conversation=conversation,
+                is_online=True
+            )
+            return JsonResponse({
+                'success': True,
+                'conversation_id': conversation.id
+            })
+        return JsonResponse({
+            'success': False,
+            'errors': form.errors
+        }, status=400)
+    return JsonResponse({'success': False}, status=405)
+
+
+
+@login_required
+def send_message(request, conversation_id):
+    conversation = get_object_or_404(
+        Conversation, 
+        id=conversation_id, 
+        customer=request.user
+    )
+    
+    content = request.POST.get("message", "")
+    file = request.FILES.get("file")
+    message_type = "TEXT"
+    
+    if not content and not file:
+        return JsonResponse({
+            "success": False, 
+            "error": "Message content or file is required"
+        }, status=400)
+    
+    try:
+        # Create new message
+        message = ChatMessage.objects.create(
+            conversation=conversation,
+            sender=request.user,
+            content=content,
+            message_type=message_type,
+            attachment=file
+        )
+        
+        # Update conversation timestamp
+        conversation.last_message = timezone.now()
+        conversation.save()
+        
+        # Prepare response data
+        response_data = {
+            "success": True,
+            "message": {
+                "id": message.id,
+                "text": message.content,
+                "file_url": message.attachment.url if message.attachment else None,
+                "created_at": message.created_at.strftime("%H:%M"),
+                "sender": "You",
+                "message_type": message.message_type
+            }
+        }
+        
+        return JsonResponse(response_data)
+    except Exception as e:
+        return JsonResponse({"success": False, "error": str(e)}, status=500)
+
+
+@login_required
+def get_new_messages(request, conversation_id):
+    try:
+        conversation = get_object_or_404(
+            Conversation, 
+            id=conversation_id, 
+            customer=request.user
+        )
+        last_message_id = request.GET.get("last_message_id", 0)
+
+        # Get new messages since last_message_id
+        new_messages = ChatMessage.objects.filter(
+            conversation=conversation,
+            id__gt=last_message_id
+        ).exclude(sender=request.user).order_by("created_at")
+        
+        # Mark messages as read
+        new_messages.filter(is_read=False).update(is_read=True)
+        
+        messages_data = []
+        for msg in new_messages:
+            message_data = {
+                "id": msg.id,
+                "text": msg.content,
+                "file_url": msg.attachment.url if msg.attachment else None,
+                "created_at": msg.created_at.strftime("%H:%M"),
+                "sender": "Support Agent" if msg.sender.is_staff else msg.sender.get_full_name(),
+                "message_type": msg.message_type
+            }
+            messages_data.append(message_data)
+        
+        last_id = new_messages.last().id if new_messages else last_message_id
+        
+        return JsonResponse({
+            "messages": messages_data, 
+            "last_message_id": last_id
+        })
+    except Exception as e:
+        return JsonResponse({"success": False, "error": str(e)}, status=500)
+
+
+@login_required
+def close_conversation(request, conversation_id):
+    try:
+        conversation = get_object_or_404(
+            Conversation, 
+            id=conversation_id, 
+            customer=request.user
+        )
+        conversation.is_active = False
+        conversation.save()
+        return redirect("support_page")
+    except Exception as e:
+        messages.error(request, f"Error closing conversation: {str(e)}")
+        return redirect("support_page")
+
+
+
+def admin_dashboard(request):
+    # Get recent active conversations
+    recent_conversations = Conversation.objects.filter(
+        is_active=True
+    ).annotate(
+        last_message_time=Max('messages__created_at'),
+        unread_count=Count(
+            'messages',
+            filter=Q(messages__is_read=False) & ~Q(messages__sender=F('customer'))
+        )
+    ).order_by('-last_message_time')[:10]
+
+    
+    context = {
+        "total_transactions": Transaction.objects.filter(status="COMPLETED").aggregate(
+            Sum("amount")
+        )["amount__sum"] or 0,
+        "total_withdrawals": Transaction.objects.filter(
+            transaction_type="WITHDRAWAL", status="COMPLETED"
+        ).aggregate(Sum("amount"))["amount__sum"] or 0,
+        "total_users": User.objects.count(),
+        "pending_transactions": Transaction.objects.filter(status="PENDING").count(),
+        "pending_transactions_list": Transaction.objects.filter(status="PENDING")
+        .select_related("account__customer")
+        .order_by("-created_at")[:10],
+        "recent_conversations": recent_conversations,
+    }
+    return render(request, "main/dashboard_admin.html", context)
+
+# In views.py
+@login_required
+def get_chat_history(request, conversation_id):
+    try:
+        conversation = get_object_or_404(Conversation, id=conversation_id)
+        
+        # Verify admin has access to this conversation
+        if request.user.is_staff and not conversation.admin:
+            conversation.admin = request.user
+            conversation.save()
+        
+        messages = ChatMessage.objects.filter(
+            conversation=conversation
+        ).select_related('sender').order_by('created_at')
+        
+        messages_data = []
+        for msg in messages:
+            message_data = {
+                'id': msg.id,
+                'content': msg.content,
+                'created_at': msg.created_at.strftime('%H:%M'),
+                'is_admin': msg.sender.is_staff,
+                'sender_name': msg.sender.get_full_name(),
+                'message_type': msg.message_type,
+                'file_url': msg.attachment.url if msg.attachment else None,
+            }
+            messages_data.append(message_data)
+        
+        # Mark messages as read for admin
+        if request.user.is_staff:
+            ChatMessage.objects.filter(
+                conversation=conversation,
+                is_read=False
+            ).exclude(sender=request.user).update(is_read=True)
+        
+        return JsonResponse({
+            'success': True,
+            'messages': messages_data,
+            'subject': conversation.subject,
+            'customer_name': conversation.customer.get_full_name(),
+            'is_online': Participant.objects.filter(
+                user=conversation.customer,
+                last_seen__gte=timezone.now()-timedelta(minutes=5)
+                .exists())
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+
+@login_required
+def upload_file(request):
+    if request.method == 'POST' and request.FILES.get('file'):
+        try:
+            file = request.FILES['file']
+            # Save file to storage
+            message_file = ChatMessage(
+                sender=request.user,
+                message_type='FILE' if not file.content_type.startswith('image/') else 'IMAGE',
+                attachment=file
+            )
+            message_file.save()
+            
+            return JsonResponse({
+                'success': True,
+                'file_url': message_file.attachment.url,
+                'file_type': 'image' if file.content_type.startswith('image/') else 'file'
+            })
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'error': str(e)
+            }, status=500)
+    return JsonResponse({
+        'success': False,
+        'error': 'Invalid request'
+    }, status=400)
+
+@login_required
+@user_passes_test(is_staff_user)
+def send_message_admin(request):
+    form = SupportChatForm(request.POST, request.FILES)
+    if not form.is_valid():
+        return JsonResponse({"success": False, "errors": form.errors}, status=400)
+
+    try:
+        conversation_id = request.POST.get("conversation_id")
+        if not conversation_id:
+            return JsonResponse(
+                {"success": False, "error": "Conversation ID required"}, status=400
+            )
+
+        conversation = Conversation.objects.get(id=conversation_id)
+        content = form.cleaned_data.get("message", "")
+        file = request.FILES.get("file")
+        
+        if not content and not file:
+            return JsonResponse(
+                {"success": False, "error": "Message or file is required"}, status=400
+            )
+
+        # Create new message
+        message = ChatMessage.objects.create(
+            conversation=conversation,
+            sender=request.user,
+            content=content,
+            message_type="TEXT",
+            attachment=file
+        )
+        
+        # Update conversation timestamp
+        conversation.last_message = timezone.now()
+        conversation.save()
+
+        return JsonResponse({
+            "success": True,
+            "message_id": message.id,
+            "created_at": message.created_at.strftime("%H:%M"),
+            "is_admin": True,
+        })
+    except Conversation.DoesNotExist:
+        return JsonResponse({"success": False, "error": "Conversation not found"}, status=404)
+    except Exception as e:
+        return JsonResponse({"success": False, "error": str(e)}, status=500)
+
+
+@login_required
+@user_passes_test(is_staff_user)
+def mark_messages_read(request, conversation_id):
+    try:
+        conversation = get_object_or_404(Conversation, id=conversation_id)
+        ChatMessage.objects.filter(
+            conversation=conversation, 
+            is_read=False
+        ).exclude(sender=request.user).update(is_read=True)
+        
+        return JsonResponse({"success": True})
+    except Exception as e:
+        return JsonResponse({"success": False, "error": str(e)}, status=500)
+
+
+@login_required
+@user_passes_test(is_staff_user)
+def check_new_messages(request, conversation_id):
+    try:
+        last_message_id = request.GET.get("last_message_id", 0)
+        
+        has_new = ChatMessage.objects.filter(
+            conversation_id=conversation_id,
+            id__gt=last_message_id,
+            is_read=False
+        ).exclude(sender=request.user).exists()
+
+        return JsonResponse({"success": True, "has_new_messages": has_new})
+    except Exception as e:
+        return JsonResponse({"success": False, "error": str(e)}, status=500)
+
+
+@login_required
+@user_passes_test(is_staff_user)
+def process_transaction(request, transaction_id, action):
+    try:
+        transaction = Transaction.objects.get(id=transaction_id)
+
+        if action == "credit":
+            with transaction.atomic():
+                transaction.status = "COMPLETED"
+                transaction.save()
+
+                transaction.account.balance += transaction.amount
+                transaction.account.save()
+
+                return JsonResponse(
+                    {"success": True, "message": "Transaction credited successfully"}
+                )
+
+        elif action == "delete":
+            with transaction.atomic():
+                transaction.delete()
+                return JsonResponse(
+                    {"success": True, "message": "Transaction deleted successfully"}
+                )
+
+        return JsonResponse({"success": False, "error": "Invalid action"}, status=400)
+    except Transaction.DoesNotExist:
+        return JsonResponse(
+            {"success": False, "error": "Transaction not found"}, status=404
+        )
+    except Exception as e:
+        return JsonResponse({"success": False, "error": str(e)}, status=500)
+
+
+def is_admin(user):
+    return user.is_staff or user.is_superuser
+
+@login_required
+def trade_list(request):
+    # Get all trades ordered by most recent first
+    trades = TradePosition.objects.all().order_by('-opened_at')
+    
+    # Apply filters if provided
+    status = request.GET.get('status')
+    trade_type = request.GET.get('type')
+    symbol = request.GET.get('symbol')
+    search = request.GET.get('search')
+    
+    if status:
+        trades = trades.filter(status=status)
+    if trade_type:
+        trades = trades.filter(trade_type=trade_type)
+    if symbol:
+        trades = trades.filter(symbol__icontains=symbol)
+    if search:
+        trades = trades.filter(
+            Q(symbol__icontains=search) | 
+            Q(user__email__icontains=search) |
+            Q(user__first_name__icontains=search) |
+            Q(user__last_name__icontains=search)
+        )
+    
+    # Pagination
+    paginator = Paginator(trades, 25)  
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    context = {
+        'trades': page_obj,
+    }
+    return render(request, 'main/dash_trade.html', context)
+
+@login_required
+def get_trade_json(request, trade_id):
+    try:
+        trade = TradePosition.objects.get(id=trade_id)
+        return JsonResponse({
+            'success': True,
+            'trade': {
+                'id': trade.id,
+                'symbol': trade.symbol,
+                'trade_type': trade.trade_type,
+                'amount': str(trade.amount),
+                'leverage': trade.leverage,
+                'entry_price': str(trade.entry_price),
+                'current_price': str(trade.current_price),
+                'take_profit': str(trade.take_profit),
+                'stop_loss': str(trade.stop_loss),
+                'status': trade.status,
+                'status_display': trade.get_status_display(),
+                'profit_loss': str(trade.profit_loss),
+            }
+        })
+    except TradePosition.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Trade not found'}, status=404)
+
+@login_required
+@user_passes_test(is_admin)
+def update_trade(request):
+    if request.method == 'POST':
+        try:
+            trade = TradePosition.objects.get(id=request.POST.get('trade_id'))
+            
+            # Update trade fields
+            trade.symbol = request.POST.get('symbol')
+            trade.trade_type = request.POST.get('trade_type')
+            trade.amount = request.POST.get('amount')
+            trade.leverage = request.POST.get('leverage')
+            trade.entry_price = request.POST.get('entry_price')
+            trade.current_price = request.POST.get('current_price')
+            trade.take_profit = request.POST.get('take_profit')
+            trade.stop_loss = request.POST.get('stop_loss')
+            trade.status = request.POST.get('status')
+            
+            # Recalculate P/L
+            trade.calculate_profit_loss()
+            
+            trade.save()
+            
+            return JsonResponse({
+                'success': True,
+                'trade': {
+                    'id': trade.id,
+                    'symbol': trade.symbol,
+                    'trade_type': trade.trade_type,
+                    'amount': str(trade.amount),
+                    'leverage': trade.leverage,
+                    'entry_price': str(trade.entry_price),
+                    'current_price': str(trade.current_price),
+                    'take_profit': str(trade.take_profit),
+                    'stop_loss': str(trade.stop_loss),
+                    'status': trade.status,
+                    'status_display': trade.get_status_display(),
+                    'profit_loss': str(trade.profit_loss),
+                }
+            })
+        except TradePosition.DoesNotExist:
+            return JsonResponse({'success': False, 'error': 'Trade not found'}, status=404)
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)}, status=400)
+    return JsonResponse({'success': False, 'error': 'Invalid request method'}, status=405)
+
+@login_required
+@user_passes_test(is_admin)
+def delete_trade(request, trade_id):
+    if request.method == 'POST':
+        try:
+            trade = TradePosition.objects.get(id=trade_id)
+            trade.delete()
+            return JsonResponse({'success': True})
+        except TradePosition.DoesNotExist:
+            return JsonResponse({'success': False, 'error': 'Trade not found'}, status=404)
+    return JsonResponse({'success': False, 'error': 'Invalid request method'}, status=405)
+
+
+
+def check_support_status(request):
+    """API endpoint to check if support is online"""
+    try:
+        # Check if any admin is currently online (has been active in last 5 minutes)
+        five_min_ago = timezone.now() - timedelta(minutes=5)
+        is_online = Participant.objects.filter(
+            user__is_staff=True,
+            last_seen__gte=five_min_ago
+        ).exists()
+        
+        return JsonResponse({
+            'success': True,
+            'is_online': is_online,
+            'status': 'Online' if is_online else 'Offline'
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+urls.py ;
+
+from django.urls import path
+from . import views
+
+urlpatterns = [
+    # Authentication URLs
+    path('login/', views.login_view, name='login'),
+    path('logout/', views.logout_view, name='logout'),
+
+    # Trading and Investment URLs
+    path('', views.trade_investment_dashboard, name='trade_investment_dashboard'),
+    path('open_trade/', views.open_trade, name='open_trade'),
+    path('close_trade/<int:position_id>/', views.close_trade, name='close_trade'),
+    path('create_investment/', views.create_investment, name='create_investment'),
+    path('market_data/<str:symbol>/', views.get_market_data, name='get_market_data'),
+
+    # Financial Transaction URLs
+    path('deposit/page/', views.deposit_page, name='deposit_page'),
+    path('deposit_funds/', views.deposit_funds, name='deposit_funds'),
+    path('withdraw/cash/', views.withdraw_fund, name='withdraw_fund'),
+
+    # Chat System URLs
+    path('support/', views.support_page, name='support_page'),
+    path('support/conversations/create/', views.create_conversation, name='create_conversation'),
+    path('support/conversations/<int:conversation_id>/close/', views.close_conversation, name='close_conversation'),
+    path('support/conversations/<int:conversation_id>/send/', views.send_message, name='send_message'),
+    path('support/conversations/<int:conversation_id>/messages/', views.get_new_messages, name='get_new_messages'),
+
+    # Admin Dashboard URLs
+    path('dashboard/admin/', views.admin_dashboard, name='admin_dashboard'),
+    path('admin/chat/history/<int:conversation_id>/', views.get_chat_history, name='admin_chat_history'),
+    path('admin/send/message/', views.send_message_admin, name='admin_send_message'),
+    path('admin/mark/messages/read/<int:conversation_id>/', views.mark_messages_read, name='admin_mark_messages_read'),
+    path('admin/check/new/messages/<int:conversation_id>/', views.check_new_messages, name='admin_check_new_messages'),
+    path('admin/transaction/<int:transaction_id>/<str:action>/', views.process_transaction, name='admin_process_transaction'),
+
+    # Trade Management URLs
+    path('dash/trades/', views.trade_list, name='trade_list'),
+    path('dash/trades/<int:trade_id>/json/', views.get_trade_json, name='get_trade_json'),
+    path('dash/trades/update/', views.update_trade, name='update_trade'),
+    path('dash/trades/<int:trade_id>/delete/', views.delete_trade, name='delete_trade'),
+    path('support/status/', views.check_support_status, name='support_status'),
+    path('support/upload/', views.upload_file, name='upload_file'),
+]
+
+'''websocket url patterrns'''
+from django.urls import path
+from .consumers import SupportConsumer
+
+websocket_urlpatterns = [
+    path('ws/support/<conversation_id>/', SupportConsumer.as_asgi()),
+]

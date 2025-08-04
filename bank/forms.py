@@ -8,7 +8,7 @@ from .models import (
     Investment,
     PrestigeSettings,
     SupportTicket,
-    SupportChat
+    
 )
 
 User = get_user_model()
@@ -201,87 +201,3 @@ class SecuritySettingsForm(forms.Form):
             if cleaned_data["new_password"] != cleaned_data["confirm_password"]:
                 raise ValidationError("Passwords do not match")
         return cleaned_data
-
-class SupportTicketForm(forms.ModelForm):
-    subject = forms.CharField(
-        widget=forms.TextInput(attrs={
-            "placeholder": "Briefly describe your issue",
-            "class": "form-control"
-        }),
-        max_length=200
-    )
-    priority = forms.ChoiceField(
-        choices=SupportTicket.PRIORITY_CHOICES,
-        widget=forms.Select(attrs={"class": "form-control"}),
-        initial="MEDIUM"
-    )
-    message = forms.CharField(
-        widget=forms.Textarea(attrs={
-            "placeholder": "Please describe your issue in detail",
-            "class": "form-control",
-            "rows": 4
-        })
-    )
-
-    class Meta:
-        model = SupportTicket
-        fields = ["subject", "priority"]
-
-    def __init__(self, *args, user=None, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.user = user
-
-    def save(self, commit=True):
-        ticket = super().save(commit=False)
-        if self.user:
-            ticket.user = self.user
-        if commit:
-            ticket.save()
-        return ticket
-
-class SupportChatForm(forms.ModelForm):
-    message = forms.CharField(
-        required=False,
-        widget=forms.Textarea(attrs={
-            "class": "chat-input",
-            "placeholder": "Type your message here...",
-            "rows": 1
-        })
-    )
-    image = forms.ImageField(
-        required=False,
-        widget=forms.FileInput(attrs={
-            "accept": "image/*"
-        })
-    )
-    file = forms.FileField(
-        required=False,
-        widget=forms.FileInput(attrs={
-            "accept": ".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
-        })
-    )
-
-    class Meta:
-        model = SupportChat
-        fields = ["message", "image", "file"]
-
-    def clean(self):
-        cleaned_data = super().clean()
-        if not any(cleaned_data.values()):
-            raise ValidationError("You must enter a message or attach a file")
-        return cleaned_data
-
-    def __init__(self, *args, user=None, ticket=None, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.user = user
-        self.ticket = ticket
-
-    def save(self, commit=True):
-        chat = super().save(commit=False)
-        if self.user:
-            chat.user = self.user
-        if self.ticket:
-            chat.ticket = self.ticket
-        if commit:
-            chat.save()
-        return chat

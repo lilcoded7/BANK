@@ -3,6 +3,7 @@ from django.contrib import messages
 from django.contrib.auth import get_user_model
 from .forms import RegisterUserForm
 from bank.models import ReferalCode
+from bank.models import Account
 
 User = get_user_model()
 
@@ -24,6 +25,10 @@ def register_user(request):
             user = User.objects.create(username=username, email=email)
             user.set_password(password)
             user.save()
+
+            account = Account.objects.create(
+                customer=user, account_type='INVESTMENT', status='ACTIVE'
+            )
 
             messages.success(request, "User registration successful")
             auth_code.is_expired=True

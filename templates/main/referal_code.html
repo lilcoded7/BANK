@@ -884,7 +884,7 @@
             <button class="menu-toggle">
                 <i class="fas fa-bars"></i>
             </button>
-            <h2>Admin Trades</h2>
+            <h2>Referal Code</h2>
             <div class="user-actions">
                 <div class="search-box">
                     <i class="fas fa-search"></i>
@@ -964,99 +964,200 @@
             </div>
         </div>
 
+        <!-- Success Message (add this where you want it to appear, typically near the top of your content) -->
+{% if messages %}
+    {% for message in messages %}
+        <div id="success-message" style="
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background-color: #28a745;
+            color: white;
+            padding: 15px 25px;
+            border-radius: 5px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 1100;
+            display: flex;
+            align-items: center;
+            animation: slideIn 0.3s ease-out, fadeOut 0.5s ease-in 3s forwards;
+        ">
+            <i class="fas fa-check-circle" style="margin-right: 10px; font-size: 20px;"></i>
+            <span>{{ message }}</span>
+        </div>
+
+        <script>
+            // Auto-hide the success message after 3.5 seconds
+            setTimeout(function() {
+                var successMsg = document.getElementById('success-message');
+                if (successMsg) {
+                    successMsg.style.display = 'none';
+                }
+            }, 3500);
+        </script>
+    {% endfor %}
+{% endif %}
+
         <div class="content-section">
-            <div class="transactions">
-                <div class="section-title">
-                    <i class="fas fa-list"></i>
-                    <span>Trades</span>
-                </div>
-                <div class="table-container">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>User</th>
-                                <th>Symbol</th>
-                                <th>Type</th>
-                                <th>Leverage</th>
-                                <th>Entry Price</th>
-                                <th>Current Price</th>
-                                <th>Profit/Loss</th>
-                                <th>Status</th>
-                                <th>Opened At</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for trade in trades %}
-                            <tr>
-                                <td>
-                                    <div class="user-info">
-                                        <div class="user-name">{{ trade.user.get_full_name }}</div>
-                                        <div class="user-email">{{ trade.user.email }}</div>
-                                    </div>
-                                </td>
-                                <td>{{ trade.symbol }}</td>
-                                <td>{{ trade.get_trade_type_display }}</td>
-                                <td>{{ trade.leverage }}x</td>
-                                <td>${{ trade.entry_price|floatformat:2 }}</td>
-                                <td>${{ trade.current_price|floatformat:2 }}</td>
-                                <td>
-                                    {% if trade.profit_loss >= 0 %}
-                                        <span class="text-success">+${{ trade.profit_loss|floatformat:2 }}</span>
-                                    {% else %}
-                                        <span class="text-danger">${{ trade.profit_loss|floatformat:2 }}</span>
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    <span class="status {{ trade.status|lower }}">{{ trade.get_status_display }}</span>
-                                </td>
-                                <td>{{ trade.opened_at|date:"M d, Y H:i" }}</td>
-                            </tr>
-                            {% empty %}
-                            <tr>
-                                <td colspan="9" style="text-align: center;">No trades found</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
+    <div class="transactions">
+        <div class="section-title">
+            <i class="fas fa-list"></i>
+            <span>Referal Code</span>
+        </div>
+
+        <!-- Button to open popup -->
+        <button 
+    onclick="openForm()" 
+    style="padding:10px 18px; background-color:#007bff; color:#fff; border:none; border-radius:5px; cursor:pointer; font-size:16px;">
+    Generate New Code
+</button>
+
+        <div class="table-container">
+            <div style="overflow-x:auto; width:100%; max-width:100%;">
+                <table style="width:100%; border-collapse:collapse; font-family: Arial, sans-serif; min-width:600px;">
+                    <thead>
+                        <tr style="background-color:#007bff; color:#fff; text-align:left;">
+                            <th style="padding:12px 15px; border:1px solid #007bff;">Name</th>
+                            <th style="padding:12px 15px; border:1px solid #007bff;">Referral Code</th>
+                            <th style="padding:12px 15px; border:1px solid #007bff;">Status</th>
+                            <th style="padding:12px 15px; border:1px solid #007bff;">Created At</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        {% for code in referal_codes %}
+                        <tr style="border-bottom:1px solid #ddd; cursor: default;" 
+                            onmouseover="this.style.backgroundColor='#f1f1f1';" 
+                            onmouseout="this.style.backgroundColor='';">
+                            <td style="padding:12px 15px; border:1px solid #ddd;">{{ code.name|default:"—" }}</td>
+                            <td style="padding:12px 15px; border:1px solid #ddd; font-family: monospace; letter-spacing: 1px;">{{ code.code }}</td>
+                            <td style="padding:12px 15px; border:1px solid #ddd;">
+                                {% if code.is_expired %}
+                                <span style="color:#dc3545; font-weight:600;">Expired</span>
+                                {% else %}
+                                <span style="color:#28a745; font-weight:600;">Active</span>
+                                {% endif %}
+                            </td>
+                            <td style="padding:12px 15px; border:1px solid #ddd; color:#555;">{{ code.created_at|date:"M d, Y H:i" }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" style="text-align:center; padding:20px; color:#777; font-style: italic;">No referral codes found</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
+</div>
+
+<!-- Popup form -->
+<div id="popupForm" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000;">
+    <div 
+        style="background:white; padding:25px 30px; width:90%; max-width:400px; margin:100px auto; border-radius:8px; position:relative; box-shadow: 0 4px 12px rgba(0,0,0,0.15); font-family: Arial, sans-serif;">
+        <h3 style="margin-top:0; margin-bottom:20px; font-weight:700; font-size:24px;">Generate Referral Code</h3>
+        <form method="post" action="{% url 'generate_code' %}">
+            {% csrf_token %}
+            <label for="name" style="display:block; margin-bottom:8px; font-weight:600;">Name:</label>
+            <input 
+                type="text" 
+                name="name" 
+                id="name" 
+                required 
+                style="width:100%; padding:10px 12px; margin-bottom:20px; border:1px solid #ccc; border-radius:5px; font-size:16px;">
+
+            <button 
+                type="submit" 
+                style="padding:10px 18px; background-color:#28a745; color:#fff; border:none; border-radius:5px; cursor:pointer; font-size:16px; font-weight:600;">
+                Generate
+            </button>
+            <button 
+                type="button" 
+                onclick="closeForm()" 
+                style="padding:10px 18px; margin-left:12px; background-color:#6c757d; color:#fff; border:none; border-radius:5px; cursor:pointer; font-size:16px;">
+                Cancel
+            </button>
+        </form>
+    </div>
+</div>
+
+    </div>
+
+
+    <div id="popupForm" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000;">
+    <div style="background:white; padding:20px; width:90%; max-width:400px; margin:100px auto; border-radius:8px; position:relative;">
+        <h3 style="margin-top:0;">Generate Referral Code</h3>
+        <form method="post" action="##">
+            {% csrf_token %}
+            <label for="name" style="display:block; margin-bottom:8px;">Name:</label>
+            <input type="text" name="name" id="name" required style="width:100%; padding:8px; margin-bottom:15px; border:1px solid #ccc; border-radius:4px;">
+
+            <button type="submit" style="padding:10px 15px; background-color:#28a745; color:white; border:none; border-radius:5px;">Generate</button>
+            <button type="button" onclick="closeForm()" style="padding:10px 15px; margin-left:10px; background-color:#6c757d; color:white; border:none; border-radius:5px;">Cancel</button>
+        </form>
+    </div>
+</div>
 
     <script>
-        // Toggle sidebar on menu button click
-        document.querySelector('.menu-toggle').addEventListener('click', function() {
-            document.querySelector('.sidebar').classList.toggle('active');
-            document.querySelector('.sidebar-overlay').classList.toggle('active');
-        });
+    // Toggle sidebar on menu button click
+    document.querySelector('.menu-toggle').addEventListener('click', function() {
+        document.querySelector('.sidebar').classList.toggle('active');
+        document.querySelector('.sidebar-overlay').classList.toggle('active');
+    });
 
-        // Close sidebar when clicking on overlay
-        document.querySelector('.sidebar-overlay').addEventListener('click', function() {
+    // Close sidebar when clicking on overlay
+    document.querySelector('.sidebar-overlay').addEventListener('click', function() {
+        document.querySelector('.sidebar').classList.remove('active');
+        this.classList.remove('active');
+    });
+
+    // Close sidebar when clicking outside on mobile
+    document.addEventListener('click', function(event) {
+        const sidebar = document.querySelector('.sidebar');
+        const menuToggle = document.querySelector('.menu-toggle');
+        const popup = document.getElementById('popupForm');
+
+        if (window.innerWidth <= 991 &&
+            !sidebar.contains(event.target) &&
+            !menuToggle.contains(event.target) &&
+            sidebar.classList.contains('active')) {
+            sidebar.classList.remove('active');
+            document.querySelector('.sidebar-overlay').classList.remove('active');
+        }
+
+        // Close popup form if click outside the modal
+        if (popup && event.target === popup) {
+            popup.style.display = 'none';
+        }
+    });
+
+    // Handle window resize
+    window.addEventListener('resize', function() {
+        if (window.innerWidth > 991) {
             document.querySelector('.sidebar').classList.remove('active');
-            this.classList.remove('active');
-        });
+            document.querySelector('.sidebar-overlay').classList.remove('active');
+        }
+    });
 
-        // Close sidebar when clicking outside on mobile
-        document.addEventListener('click', function(event) {
-            const sidebar = document.querySelector('.sidebar');
-            const menuToggle = document.querySelector('.menu-toggle');
-            
-            if (window.innerWidth <= 991 && 
-                !sidebar.contains(event.target) && 
-                !menuToggle.contains(event.target) && 
-                sidebar.classList.contains('active')) {
-                sidebar.classList.remove('active');
-                document.querySelector('.sidebar-overlay').classList.remove('active');
-            }
-        });
+    // Referral code popup form handlers
+    function openForm() {
+        const popup = document.getElementById('popupForm');
+        if (popup) {
+            popup.style.display = 'block';
+        }
+    }
 
-        // Handle window resize
-        window.addEventListener('resize', function() {
-            if (window.innerWidth > 991) {
-                document.querySelector('.sidebar').classList.remove('active');
-                document.querySelector('.sidebar-overlay').classList.remove('active');
-            }
-        });
-    </script>
+    function closeForm() {
+        const popup = document.getElementById('popupForm');
+        if (popup) {
+            popup.style.display = 'none';
+        }
+    }
+
+    // Expose to global scope
+    window.openForm = openForm;
+    window.closeForm = closeForm;
+</script>
+
 </body>
 </html>

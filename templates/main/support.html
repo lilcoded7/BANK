@@ -1085,452 +1085,945 @@
         </div>
     </div>
 
-    <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // DOM Elements
-    const chatMessages = document.getElementById('chatMessages');
-    const generalChatMessages = document.getElementById('generalChatMessages');
-    const messageInput = document.getElementById('messageInput');
-    const generalMessageInput = document.getElementById('generalMessageInput');
-    const filePreview = document.getElementById('filePreview');
-    const generalFilePreview = document.getElementById('generalFilePreview');
-    const ticketFormContainer = document.getElementById('ticketFormContainer');
-    const ticketList = document.getElementById('ticketList');
-    const newTicketBtn = document.getElementById('newTicketBtn');
-    const cancelTicketBtn = document.getElementById('cancelTicketBtn');
-    const ticketForm = document.getElementById('ticketForm');
-    const sendMessageBtn = document.getElementById('sendMessageBtn');
-    const sendGeneralMessageBtn = document.getElementById('sendGeneralMessageBtn');
-    const showTicketFormBtn = document.getElementById('showTicketFormBtn');
-    
-    let currentTicketId = {% if active_ticket %}{{ active_ticket.id }}{% else %}null{% endif %};
-    let generalChatLastMessageId = 0;
-    let isSupportOnline = false;
-    let supportStatusInterval;
 
-    // Auto-response messages
-    const AUTO_RESPONSES = {
-        ticket_created: [
-            "Thank you for creating ticket #{ticketId}. We'll respond within 24 hours.",
-            "We've received your ticket (#{ticketId}) and will respond soon.",
-            "Your ticket (#{ticketId}) has been logged. Our team will review it shortly."
-        ],
-        message_received: [
-            "Thanks for your message! Our team will respond as soon as possible.",
-            "We've received your message and will get back to you shortly.",
-            "Message received. Our support team is reviewing your inquiry."
-        ],
-        offline: [
-            "Our team is currently offline. We'll respond when we return.",
-            "Support hours are 9AM-5PM. We'll respond during business hours.",
-            "Thanks for reaching out. We're currently away but will respond soon."
-        ]
-    };
-
-    // Initialize chat
-    function initChat() {
-        // Create typing indicators
-        createTypingIndicators();
-        
-        // Set up event listeners
-        setupEventListeners();
-        
-        // Check initial support status
-        checkSupportStatus();
-        
-        // Start polling for messages
-        startMessagePolling();
-    }
-
-    function createTypingIndicators() {
-        if (chatMessages) {
-            const typingIndicator = document.createElement('div');
-            typingIndicator.className = 'typing-indicator';
-            typingIndicator.innerHTML = `
-                <div>Support agent is typing</div>
-                <div class="typing-dots">
-                    <div class="typing-dot"></div>
-                    <div class="typing-dot"></div>
-                    <div class="typing-dot"></div>
-                </div>
-            `;
-            typingIndicator.style.display = 'none';
-            chatMessages.appendChild(typingIndicator);
-        }
-        
-        if (generalChatMessages) {
-            const typingIndicator = document.createElement('div');
-            typingIndicator.className = 'typing-indicator';
-            typingIndicator.innerHTML = `
-                <div>Support agent is typing</div>
-                <div class="typing-dots">
-                    <div class="typing-dot"></div>
-                    <div class="typing-dot"></div>
-                    <div class="typing-dot"></div>
-                </div>
-            `;
-            typingIndicator.style.display = 'none';
-            generalChatMessages.appendChild(typingIndicator);
-        }
-    }
-
-    function setupEventListeners() {
-        // Ticket form toggles
-        if (newTicketBtn) newTicketBtn.addEventListener('click', showTicketForm);
-        if (cancelTicketBtn) cancelTicketBtn.addEventListener('click', hideTicketForm);
-        if (showTicketFormBtn) showTicketFormBtn.addEventListener('click', showTicketForm);
-        
-        // Form submissions
-        if (ticketForm) {
-            ticketForm.addEventListener('submit', function(e) {
-                e.preventDefault();
-                createNewTicket();
-            });
-        }
-        
-        // Message sending
-        if (sendMessageBtn) sendMessageBtn.addEventListener('click', sendTicketMessage);
-        if (sendGeneralMessageBtn) sendGeneralMessageBtn.addEventListener('click', sendGeneralMessage);
-        
-        // Enter key for messages
-        if (messageInput) {
-            messageInput.addEventListener('keypress', function(e) {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    sendTicketMessage();
-                }
-            });
-        }
-        
-        if (generalMessageInput) {
-            generalMessageInput.addEventListener('keypress', function(e) {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    sendGeneralMessage();
-                }
-            });
-        }
-    }
-
-    function showTicketForm() {
-        if (ticketFormContainer) ticketFormContainer.style.display = 'block';
-        if (ticketList) ticketList.style.display = 'none';
-        if (newTicketBtn) newTicketBtn.style.display = 'none';
-    }
-
-    function hideTicketForm() {
-        if (ticketFormContainer) ticketFormContainer.style.display = 'none';
-        if (ticketList) ticketList.style.display = 'block';
-        if (newTicketBtn) newTicketBtn.style.display = 'flex';
-    }
-
-    function createNewTicket() {
-        const formData = new FormData(ticketForm);
-        
-        fetch('/support/tickets/create/', {
-            method: 'POST',
-            body: formData,
-            headers: {
-                'X-CSRFToken': '{{ csrf_token }}'
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                // Show auto-response before redirect
-                const responses = isSupportOnline ? 
-                    AUTO_RESPONSES.ticket_created : 
-                    AUTO_RESPONSES.offline;
-                const response = responses[Math.floor(Math.random() * responses.length)]
-                    .replace('{ticketId}', data.ticket_id);
-                
-                showAlert('success', response);
-                setTimeout(() => {
-                    window.location.href = `/support/?ticket=${data.ticket_id}`;
-                }, 2000);
-            } else {
-                const errorMsg = data.errors ? Object.values(data.errors).join('\n') : 'Failed to create ticket';
-                showAlert('error', errorMsg);
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            showAlert('error', 'Failed to create ticket');
-        });
-    }
-
-    function sendTicketMessage() {
-        if (!currentTicketId) {
-            showAlert('error', 'Please select a ticket first');
-            return;
-        }
-        
-        const formData = new FormData();
-        if (messageInput) formData.append('message', messageInput.value);
-        formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
-        
-        // Optimistic UI update
-        const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        addMessage({
-            sender: 'You',
-            text: messageInput ? messageInput.value : '',
-            timestamp: timestamp,
-            type: 'user'
-        });
-        
-        // Clear input
-        if (messageInput) messageInput.value = '';
-        scrollToBottom();
-        
-        // Show typing indicator
-        showTypingIndicator(true);
-        
-        fetch(`/support/tickets/${currentTicketId}/send/`, {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-            hideTypingIndicator(true);
-            if (data.success) {
-                // Show auto-response
-                setTimeout(() => {
-                    sendAutoResponse(false);
-                }, isSupportOnline ? 2000 : 1000);
-            } else {
-                const errorMsg = data.errors ? Object.values(data.errors).join('\n') : 'Failed to send message';
-                showAlert('error', errorMsg);
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            hideTypingIndicator(true);
-            showAlert('error', 'Failed to send message');
-        });
-    }
-
-    function sendGeneralMessage() {
-        const formData = new FormData();
-        if (generalMessageInput) formData.append('message', generalMessageInput.value);
-        formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
-        
-        // Optimistic UI update
-        const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        addMessage({
-            sender: 'You',
-            text: generalMessageInput ? generalMessageInput.value : '',
-            timestamp: timestamp,
-            type: 'user'
-        }, true);
-        
-        // Clear input
-        if (generalMessageInput) generalMessageInput.value = '';
-        scrollToBottom(true);
-        
-        // Show typing indicator
-        showTypingIndicator(false, true);
-        
-        fetch('/support/send/general/message/', {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-            hideTypingIndicator(false, true);
-            if (data.success) {
-                generalChatLastMessageId = data.message_id;
-                // Show auto-response
-                setTimeout(() => {
-                    sendAutoResponse(true);
-                }, isSupportOnline ? 2000 : 1000);
-            } else {
-                const errorMsg = data.errors ? Object.values(data.errors).join('\n') : 'Failed to send message';
-                showAlert('error', errorMsg);
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            hideTypingIndicator(false, true);
-            showAlert('error', 'Failed to send message');
-        });
-    }
-
-    function sendAutoResponse(isGeneralChat) {
-        const responses = isSupportOnline ? 
-            AUTO_RESPONSES.message_received : 
-            AUTO_RESPONSES.offline;
-        const response = responses[Math.floor(Math.random() * responses.length)];
-        const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        
-        addMessage({
-            sender: 'Support Bot',
-            text: response,
-            timestamp: timestamp,
-            type: 'admin'
-        }, isGeneralChat);
-    }
-
-    function checkSupportStatus() {
-        fetch('/support/check_availability/')
-            .then(response => response.json())
-            .then(data => {
-                isSupportOnline = data.is_online;
-                updateSupportStatusUI();
-            })
-            .catch(() => {
-                isSupportOnline = false;
-                updateSupportStatusUI();
-            });
-        
-        // Check every 5 minutes
-        supportStatusInterval = setInterval(checkSupportStatus, 300000);
-    }
-
-    function updateSupportStatusUI() {
-        const statusIndicators = document.querySelectorAll('.status-indicator');
-        const statusTexts = document.querySelectorAll('.status-text');
-        
-        statusIndicators.forEach(indicator => {
-            indicator.style.backgroundColor = isSupportOnline ? '#4CAF50' : '#F44336';
-        });
-        
-        statusTexts.forEach(text => {
-            text.textContent = isSupportOnline ? 
-                'Online - Usually replies within 5 minutes' : 
-                'Offline - Responses may be delayed';
-        });
-    }
-
-    function showTypingIndicator(isTicketChat = true) {
-        const indicator = isTicketChat ? 
-            chatMessages?.querySelector('.typing-indicator') : 
-            generalChatMessages?.querySelector('.typing-indicator');
-        if (indicator) indicator.style.display = 'flex';
-    }
-
-    function hideTypingIndicator(isTicketChat = true) {
-        const indicator = isTicketChat ? 
-            chatMessages?.querySelector('.typing-indicator') : 
-            generalChatMessages?.querySelector('.typing-indicator');
-        if (indicator) indicator.style.display = 'none';
-    }
-
-    function addMessage({sender, text, timestamp, type, image, file}, isGeneral = false) {
-        const container = isGeneral ? generalChatMessages : chatMessages;
-        if (!container) return;
-        
-        const messageElement = document.createElement('div');
-        messageElement.className = `message ${type === 'user' ? 'user-message' : 'admin-message'}`;
-        
-        let contentHTML = '';
-        
-        if (type === 'admin' && sender === 'Support Bot') {
-            contentHTML += `<div class="admin-badge">SUPPORT BOT</div>`;
-        } else if (type === 'admin') {
-            contentHTML += `<div class="admin-badge">SUPPORT AGENT</div>`;
-        }
-        
-        if (text) contentHTML += `<div class="message-text">${text}</div>`;
-        if (image) contentHTML += `<img src="${image}" alt="Support Image" class="message-image">`;
-        
-        if (file) {
-            contentHTML += `
-                <div class="message-attachment">
-                    <div class="attachment-icon">
-                        <i class="fas fa-file-alt"></i>
-                    </div>
-                    <div class="attachment-info">
-                        <div class="attachment-name">${file.name}</div>
-                        <div class="attachment-size">${file.size}</div>
-                    </div>
-                    <a href="${file.url}" class="download-btn" download>
-                        <i class="fas fa-download"></i>
-                    </a>
-                </div>
-            `;
-        }
-        
-        contentHTML += `
-            <div class="message-meta">
-                <span class="message-sender">${sender}</span>
-                <span>${timestamp}</span>
-            </div>
-        `;
-        
-        messageElement.innerHTML = contentHTML;
-        container.appendChild(messageElement);
-        scrollToBottom(isGeneral);
-    }
-
-    function startMessagePolling() {
-        if (currentTicketId) {
-            // Poll for ticket messages
-            setInterval(() => {
-                fetch(`/support/tickets/${currentTicketId}/messages/?last_message_id=${getLastMessageId(true)}`)
-                    .then(response => response.json())
-                    .then(handleNewMessages(true))
-                    .catch(console.error);
-            }, 3000);
-        } else {
-            // Poll for general chat messages
-            setInterval(() => {
-                fetch(`/support/get/new/general/messages/?last_message_id=${getLastMessageId(false)}`)
-                    .then(response => response.json())
-                    .then(handleNewMessages(false))
-                    .catch(console.error);
-            }, 3000);
-        }
-    }
-
-    function getLastMessageId(isTicketChat) {
-        // Implement logic to get last message ID
-        return isTicketChat ? 
-            (chatMessages?.lastChild?.dataset?.messageId || 0) : 
-            (generalChatMessages?.lastChild?.dataset?.messageId || 0);
-    }
-
-    function handleNewMessages(isTicketChat) {
-        return data => {
-            if (data.messages?.length) {
-                data.messages.forEach(msg => {
-                    addMessage({
-                        sender: msg.sender,
-                        text: msg.text,
-                        timestamp: msg.timestamp,
-                        type: 'admin',
-                        image: msg.image_url,
-                        file: msg.file_url ? {
-                            name: msg.file_url.split('/').pop(),
-                            size: 'Unknown',
-                            url: msg.file_url
-                        } : null
-                    }, !isTicketChat);
-                });
-            }
-        };
-    }
-
-    function scrollToBottom(isGeneral = false) {
-        const container = isGeneral ? generalChatMessages : chatMessages;
-        if (container) container.scrollTop = container.scrollHeight;
-    }
-
-    function showAlert(type, message) {
-        const alertDiv = document.createElement('div');
-        alertDiv.className = `message message-${type}`;
-        alertDiv.innerHTML = `
-            <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i>
-            ${message}
-        `;
-        document.querySelector('.main-content')?.prepend(alertDiv);
-        setTimeout(() => alertDiv.remove(), 5000);
-    }
-
-    // Initialize the chat
-    initChat();
-});
-</script>
 
 </body>
+
+<script>
+// Global variables
+let chatSocket = null;
+let currentTicketId = null;
+let typingTimeout = null;
+
+// Initialize when DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+    // Check URL for active ticket
+    const urlParams = new URLSearchParams(window.location.search);
+    const ticketId = urlParams.get('ticket_id');
+    
+    if (ticketId) {
+        loadTicket(ticketId);
+    }
+
+    // Setup event listeners
+    setupEventListeners();
+});
+
+function setupEventListeners() {
+    // Ticket form toggle
+    document.getElementById('newTicketBtn')?.addEventListener('click', showTicketForm);
+    document.getElementById('cancelTicketBtn')?.addEventListener('click', hideTicketForm);
+    document.getElementById('showTicketFormBtn')?.addEventListener('click', showTicketForm);
+
+    // Ticket form submission
+    document.getElementById('ticketForm')?.addEventListener('submit', handleTicketFormSubmit);
+
+    // Message sending
+    document.getElementById('sendMessageBtn')?.addEventListener('click', sendMessage);
+    document.getElementById('messageInput')?.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
+        }
+    });
+
+    // General message sending
+    document.getElementById('sendGeneralMessageBtn')?.addEventListener('click', sendGeneralMessage);
+    document.getElementById('generalMessageInput')?.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendGeneralMessage();
+        }
+    });
+
+    // Typing indicator
+    document.getElementById('messageInput')?.addEventListener('input', handleTypingIndicator);
+
+    // File preview handlers
+    document.getElementById('imageInput')?.addEventListener('change', handleFilePreview);
+    document.getElementById('fileInput')?.addEventListener('change', handleFilePreview);
+    document.getElementById('generalImageInput')?.addEventListener('change', handleFilePreview);
+    document.getElementById('generalFileInput')?.addEventListener('change', handleFilePreview);
+}
+
+// WebSocket functions
+function connectWebSocket(ticketId) {
+    if (chatSocket) {
+        chatSocket.close();
+    }
+    
+    currentTicketId = ticketId;
+    const protocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+    const socketUrl = protocol + window.location.host + '/ws/support/' + ticketId + '/';
+    
+    console.log('Connecting to WebSocket:', socketUrl);
+    
+    chatSocket = new WebSocket(socketUrl);
+    
+    chatSocket.onopen = function() {
+        console.log('WebSocket connection established');
+    };
+    
+    chatSocket.onmessage = function(e) {
+        try {
+            const data = JSON.parse(e.data);
+            handleWebSocketMessage(data);
+        } catch (error) {
+            console.error('Error parsing WebSocket message:', error);
+        }
+    };
+    
+    chatSocket.onclose = function() {
+        console.log('WebSocket disconnected. Attempting to reconnect...');
+        setTimeout(() => {
+            if (currentTicketId) {
+                connectWebSocket(currentTicketId);
+            }
+        }, 3000);
+    };
+    
+    chatSocket.onerror = function(error) {
+        console.error('WebSocket error:', error);
+    };
+}
+
+function handleWebSocketMessage(data) {
+    switch(data.type) {
+        case 'chat_message':
+            addMessageToChat({
+                message: data.message,
+                sender: {
+                    id: data.sender_id,
+                    name: data.sender_username,
+                    is_me: false,
+                    is_staff: true
+                },
+                created_at: data.timestamp,
+                is_read: true
+            });
+            if (currentTicketId) {
+                markMessagesAsRead(currentTicketId);
+            }
+            break;
+            
+        case 'typing':
+            showTypingIndicator(data.user_id, data.username, data.is_typing);
+            break;
+            
+        case 'status_update':
+            updateAdminStatus(data.status === 'ONLINE');
+            break;
+            
+        default:
+            console.warn('Unknown WebSocket message type:', data.type);
+    }
+}
+
+// Ticket functions
+function showTicketForm() {
+    document.getElementById('ticketFormContainer').style.display = 'block';
+    document.getElementById('ticketList').style.display = 'none';
+}
+
+function hideTicketForm() {
+    document.getElementById('ticketFormContainer').style.display = 'none';
+    document.getElementById('ticketList').style.display = 'block';
+}
+
+function handleTicketFormSubmit(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(e.target);
+    
+    fetch('/support/create-ticket/', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken'),
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            window.location.href = data.redirect_url;
+        } else {
+            showAlert('Error creating ticket: ' + (data.error || 'Unknown error'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showAlert('Error creating ticket');
+    });
+}
+
+function loadTicket(ticketId) {
+    fetch(`/support/ticket/${ticketId}/messages/`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                updateTicketUI(data);
+                connectWebSocket(ticketId);
+                markMessagesAsRead(ticketId);
+            } else {
+                showAlert('Error loading ticket: ' + (data.error || 'Unknown error'));
+            }
+        })
+        .catch(error => {
+            console.error('Error loading ticket:', error);
+            showAlert('Error loading ticket messages');
+        });
+}
+
+function updateTicketUI(data) {
+    document.getElementById('ticketSubject').textContent = data.ticket.subject;
+    
+    const chatMessages = document.getElementById('chatMessages');
+    chatMessages.innerHTML = '';
+    
+    data.messages.forEach(message => {
+        addMessageToChat(message);
+    });
+    
+    updateAdminStatus(data.admin_online);
+}
+
+// Message functions
+function sendMessage() {
+    const messageInput = document.getElementById('messageInput');
+    const message = messageInput.value.trim();
+    const imageInput = document.getElementById('imageInput');
+    const fileInput = document.getElementById('fileInput');
+    
+    if (!message && !imageInput.files[0] && !fileInput.files[0]) {
+        showAlert('Please enter a message or attach a file');
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('message', message);
+    if (imageInput.files[0]) formData.append('image', imageInput.files[0]);
+    if (fileInput.files[0]) formData.append('file', fileInput.files[0]);
+    
+    fetch(`/support/ticket/${currentTicketId}/send/`, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken'),
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            handleMessageSuccess(data, messageInput, imageInput, fileInput);
+        } else {
+            showAlert('Error sending message: ' + (data.error || 'Unknown error'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showAlert('Error sending message');
+    });
+}
+
+function handleMessageSuccess(data, messageInput, imageInput, fileInput) {
+    addMessageToChat({
+        message: data.message.text,
+        image: data.message.image,
+        file: data.message.file,
+        sender: {
+            id: data.message.sender_id || 0,
+            name: data.message.sender,
+            is_me: true,
+            is_staff: false
+        },
+        created_at: data.message.created_at,
+        is_read: true
+    });
+    
+    // Clear inputs
+    messageInput.value = '';
+    imageInput.value = '';
+    fileInput.value = '';
+    document.getElementById('filePreview').innerHTML = '';
+    
+    // Send via WebSocket if connected
+    if (chatSocket?.readyState === WebSocket.OPEN) {
+        chatSocket.send(JSON.stringify({
+            type: 'chat_message',
+            message: data.message.text
+        }));
+    }
+}
+
+function sendGeneralMessage() {
+    const messageInput = document.getElementById('generalMessageInput');
+    const message = messageInput.value.trim();
+    const imageInput = document.getElementById('generalImageInput');
+    const fileInput = document.getElementById('generalFileInput');
+    
+    if (!message && !imageInput.files[0] && !fileInput.files[0]) {
+        showAlert('Please enter a message or attach a file');
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('subject', 'General Support Request');
+    formData.append('priority', 'MEDIUM');
+    formData.append('message', message);
+    if (imageInput.files[0]) formData.append('image', imageInput.files[0]);
+    if (fileInput.files[0]) formData.append('file', fileInput.files[0]);
+    
+    fetch('/support/create-ticket/', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken'),
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            window.location.href = data.redirect_url;
+        } else {
+            showAlert('Error creating ticket: ' + (data.error || 'Unknown error'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showAlert('Error creating ticket');
+    });
+}
+
+// UI functions
+function addMessageToChat(messageData) {
+    const chatMessages = document.getElementById('chatMessages');
+    if (!chatMessages) return;
+
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message ${messageData.sender.is_me ? 'user-message' : 'admin-message'}`;
+    
+    let messageHtml = '';
+    if (!messageData.sender.is_me && messageData.sender.is_staff) {
+        messageHtml += `<div class="admin-badge">SUPPORT AGENT</div>`;
+    }
+    
+    if (messageData.message) {
+        messageHtml += `<div class="message-text">${messageData.message}</div>`;
+    }
+    
+    if (messageData.image) {
+        messageHtml += `<img src="${messageData.image}" alt="Support Image" class="message-image">`;
+    }
+    
+    if (messageData.file?.url) {
+        messageHtml += `
+        <div class="message-attachment">
+            <div class="attachment-icon">
+                <i class="fas fa-file-alt"></i>
+            </div>
+            <div class="attachment-info">
+                <div class="attachment-name">${messageData.file.name}</div>
+            </div>
+            <a href="${messageData.file.url}" class="download-btn" download>
+                <i class="fas fa-download"></i>
+            </a>
+        </div>`;
+    }
+    
+    messageHtml += `
+    <div class="message-meta">
+        <span class="message-sender">
+            ${messageData.sender.is_me ? 'You' : messageData.sender.name}
+        </span>
+        <span>${messageData.created_at}</span>
+    </div>`;
+    
+    messageDiv.innerHTML = messageHtml;
+    chatMessages.appendChild(messageDiv);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+function markMessagesAsRead(ticketId) {
+    fetch(`/support/ticket/${ticketId}/mark-read/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken'),
+        }
+    }).catch(error => {
+        console.error('Error marking messages as read:', error);
+    });
+}
+
+function updateAdminStatus(isOnline) {
+    const statusIndicator = document.querySelector('.status-indicator');
+    const statusText = document.querySelector('.status-text');
+    
+    if (statusIndicator && statusText) {
+        statusIndicator.style.backgroundColor = isOnline ? '#4CAF50' : '#F44336';
+        statusText.textContent = isOnline 
+            ? 'Online - Usually replies in 5 minutes' 
+            : 'Offline - We\'ll reply as soon as possible';
+    }
+}
+
+function handleTypingIndicator() {
+    if (chatSocket?.readyState === WebSocket.OPEN) {
+        chatSocket.send(JSON.stringify({
+            type: 'typing',
+            is_typing: true
+        }));
+        
+        clearTimeout(typingTimeout);
+        typingTimeout = setTimeout(() => {
+            if (chatSocket?.readyState === WebSocket.OPEN) {
+                chatSocket.send(JSON.stringify({
+                    type: 'typing',
+                    is_typing: false
+                }));
+            }
+        }, 2000);
+    }
+}
+
+function handleFilePreview(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const previewId = e.target.id.includes('general') ? 'generalFilePreview' : 'filePreview';
+    const preview = document.getElementById(previewId);
+    if (!preview) return;
+
+    let previewHtml = '';
+    const inputId = e.target.id;
+
+    if (file.type.startsWith('image/')) {
+        previewHtml = `
+            <div class="file-preview-item">
+                <img src="${URL.createObjectURL(file)}" class="preview-image">
+                <button class="remove-file-btn" onclick="removeFile('${inputId}', '${previewId}')">
+                    <i class="fas fa-times"></i>
+                </button>
+                <span class="file-name">${file.name}</span>
+            </div>`;
+    } else {
+        previewHtml = `
+            <div class="file-preview-item">
+                <i class="fas fa-file-alt file-icon"></i>
+                <span class="file-name">${file.name}</span>
+                <button class="remove-file-btn" onclick="removeFile('${inputId}', '${previewId}')">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>`;
+    }
+
+    preview.innerHTML = previewHtml;
+}
+
+function removeFile(inputId, previewId) {
+    document.getElementById(inputId).value = '';
+    if (previewId) {
+        document.getElementById(previewId).innerHTML = '';
+    }
+}
+
+function closeTicket() {
+    if (!currentTicketId) return;
+
+    fetch(`/support/ticket/${currentTicketId}/close/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken'),
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            window.location.href = '/support/';
+        } else {
+            showAlert('Error closing ticket: ' + (data.error || 'Unknown error'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showAlert('Error closing ticket');
+    });
+}
+
+function showTypingIndicator(userId, username, isTyping) {
+    // Implement typing indicator UI here
+    console.log(`${username} is ${isTyping ? 'typing...' : 'not typing'}`);
+}
+
+function showAlert(message) {
+    // Implement a nice alert/notification system here
+    alert(message);
+}
+
+// Utility functions
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+
+
+<style>
+    /* Support Chat Styles */
+.support-container {
+    display: flex;
+    height: calc(100vh - 120px);
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.ticket-sidebar {
+    width: 300px;
+    background: #fff;
+    border-right: 1px solid #e0e0e0;
+    display: flex;
+    flex-direction: column;
+}
+
+.ticket-header {
+    padding: 15px;
+    border-bottom: 1px solid #e0e0e0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.ticket-header h3 {
+    margin: 0;
+    font-size: 16px;
+    color: #333;
+}
+
+.new-ticket-btn {
+    background: #4CAF50;
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.new-ticket-btn:hover {
+    background: #3e8e41;
+}
+
+.ticket-form-container {
+    padding: 15px;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.ticket-list {
+    flex: 1;
+    overflow-y: auto;
+}
+
+.ticket-item {
+    padding: 15px;
+    border-bottom: 1px solid #f0f0f0;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.ticket-item:hover {
+    background: #f9f9f9;
+}
+
+.ticket-item.active {
+    background: #e3f2fd;
+}
+
+.ticket-subject {
+    font-weight: 500;
+    margin-bottom: 5px;
+    color: #333;
+}
+
+.ticket-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    font-size: 12px;
+    color: #666;
+}
+
+.ticket-status {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.status-open {
+    color: #2196F3;
+}
+
+.status-in_progress {
+    color: #FF9800;
+}
+
+.status-resolved, .status-closed {
+    color: #4CAF50;
+}
+
+.ticket-priority {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.priority-low {
+    color: #4CAF50;
+}
+
+.priority-medium {
+    color: #FFC107;
+}
+
+.priority-high {
+    color: #FF9800;
+}
+
+.priority-urgent {
+    color: #F44336;
+}
+
+.chat-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: #f5f5f5;
+}
+
+.chat-header {
+    padding: 15px;
+    background: #fff;
+    border-bottom: 1px solid #e0e0e0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.chat-title {
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.chat-status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: #666;
+    margin-top: 4px;
+}
+
+.status-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #4CAF50;
+}
+
+.create-ticket-btn {
+    background: #2196F3;
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.create-ticket-btn:hover {
+    background: #0b7dda;
+}
+
+.chat-messages {
+    flex: 1;
+    padding: 15px;
+    overflow-y: auto;
+    background: #f5f5f5;
+}
+
+.message {
+    max-width: 70%;
+    margin-bottom: 15px;
+    padding: 10px 15px;
+    border-radius: 18px;
+    position: relative;
+}
+
+.user-message {
+    background: #2196F3;
+    color: white;
+    margin-left: auto;
+    border-bottom-right-radius: 4px;
+}
+
+.admin-message {
+    background: #fff;
+    color: #333;
+    margin-right: auto;
+    border-bottom-left-radius: 4px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.admin-badge {
+    font-size: 10px;
+    background: #FF9800;
+    color: white;
+    padding: 2px 6px;
+    border-radius: 10px;
+    display: inline-block;
+    margin-bottom: 5px;
+}
+
+.message-text {
+    word-wrap: break-word;
+}
+
+.message-image {
+    max-width: 100%;
+    max-height: 200px;
+    border-radius: 8px;
+    margin-top: 8px;
+}
+
+.message-attachment {
+    display: flex;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 8px;
+    padding: 8px;
+    margin-top: 8px;
+}
+
+.attachment-icon {
+    font-size: 24px;
+    margin-right: 10px;
+    color: #666;
+}
+
+.attachment-info {
+    flex: 1;
+}
+
+.attachment-name {
+    font-size: 14px;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 200px;
+}
+
+.attachment-size {
+    font-size: 12px;
+    color: #999;
+}
+
+.download-btn {
+    color: #2196F3;
+    font-size: 18px;
+    margin-left: 10px;
+}
+
+.message-meta {
+    font-size: 11px;
+    margin-top: 5px;
+    display: flex;
+    justify-content: space-between;
+    opacity: 0.8;
+}
+
+.user-message .message-meta {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.admin-message .message-meta {
+    color: rgba(0, 0, 0, 0.6);
+}
+
+.chat-input-container {
+    padding: 15px;
+    background: #fff;
+    border-top: 1px solid #e0e0e0;
+}
+
+.input-tools {
+    margin-bottom: 10px;
+}
+
+.file-tool-btn {
+    cursor: pointer;
+    color: #666;
+    margin-right: 10px;
+}
+
+.file-tool-btn:hover {
+    color: #2196F3;
+}
+
+.file-input {
+    display: none;
+}
+
+.input-area {
+    display: flex;
+    align-items: flex-end;
+    gap: 10px;
+}
+
+.chat-input {
+    flex: 1;
+    border: 1px solid #e0e0e0;
+    border-radius: 20px;
+    padding: 10px 15px;
+    resize: none;
+    max-height: 100px;
+    outline: none;
+    font-family: inherit;
+}
+
+.chat-input:focus {
+    border-color: #2196F3;
+}
+
+.send-btn {
+    background: #2196F3;
+    color: white;
+    border: none;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.send-btn:hover {
+    background: #0b7dda;
+}
+
+.file-preview {
+    padding: 0 15px;
+    background: #f5f5f5;
+}
+
+.file-preview-item {
+    display: flex;
+    align-items: center;
+    background: #fff;
+    padding: 8px 12px;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.preview-image {
+    max-width: 50px;
+    max-height: 50px;
+    margin-right: 10px;
+}
+
+.file-icon {
+    font-size: 20px;
+    margin-right: 10px;
+    color: #666;
+}
+
+.file-name {
+    flex: 1;
+    font-size: 14px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.remove-file-btn {
+    background: none;
+    border: none;
+    color: #666;
+    cursor: pointer;
+    margin-left: 10px;
+}
+
+.remove-file-btn:hover {
+    color: #F44336;
+}
+
+.welcome-message {
+    text-align: center;
+    padding: 40px 20px;
+    color: #666;
+}
+
+.welcome-message i {
+    font-size: 48px;
+    color: #2196F3;
+    margin-bottom: 20px;
+}
+
+.welcome-message h3 {
+    color: #333;
+    margin-bottom: 10px;
+}
+
+.welcome-message p {
+    margin: 0;
+}
+</style>
+
 
 </html>

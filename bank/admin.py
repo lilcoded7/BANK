@@ -1,61 +1,32 @@
 # admin.py
 from django.contrib import admin
 from django import forms
-from .models import (
-    Account,
-    InvestmentPackage,
-    Investment,
-    TradePosition,
-    Transaction,
-    SecurityLog,
-    FingerPrint,
-    PrestigeSettings,
-    SupportTicket,
-    SupportChat,
-    ReferalCode
-)
+from bank.models import *
+
 
 admin.site.register(SupportTicket)
-admin.site.register(SupportChat)
-
+admin.site.register(SupportMessage)
+admin.site.register(UserStatus)
 
 admin.site.register(ReferalCode)
 
-class PrestigeSettingsForm(forms.ModelForm):
-    class Meta:
-        model = PrestigeSettings
-        fields = "__all__"
-        widgets = {
-            "deposit_btc_address": forms.TextInput(attrs={"size": 50}),
-            "deposit_eth_address": forms.TextInput(attrs={"size": 50}),
-            "deposit_usdt_address": forms.TextInput(attrs={"size": 50}),
-        }
-
-
 @admin.register(PrestigeSettings)
 class PrestigeSettingsAdmin(admin.ModelAdmin):
-    form = PrestigeSettingsForm
-    list_display = ("trading_enabled", "min_trade_amount", "max_leverage")
-    fieldsets = (
-        (
-            "Trading Settings",
-            {"fields": ("trading_enabled", "min_trade_amount", "max_leverage")},
-        ),
-        (
-            "Deposit Addresses",
-            {
-                "fields": (
-                    "deposit_btc_address",
-                    "deposit_eth_address",
-                    "deposit_usdt_address",
-                )
-            },
-        ),
-    )
-
     def has_add_permission(self, request):
-        # Only allow one instance to exist
-        return not PrestigeSettings.objects.exists()
+     
+        return False if PrestigeSettings.objects.exists() else True
+
+    def get_actions(self, request):
+       
+        actions = super().get_actions(request)
+        if 'delete_selected' in actions:
+            del actions['delete_selected']
+        return actions
+
+    def has_delete_permission(self, request, obj=None):
+        
+        return False
+
 
 
 @admin.register(Account)

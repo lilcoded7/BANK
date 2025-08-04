@@ -7,25 +7,56 @@ import uuid
 
 User = get_user_model()
 
+
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
+
+
 class PrestigeSettings(TimeBaseModel):
+    user = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,  # Use SET_NULL instead of CASCADE for admin user
+        null=True,
+        blank=True,
+        verbose_name="Admin User",
+    )
     deposit_btc_address = models.CharField(max_length=100, blank=True)
     deposit_eth_address = models.CharField(max_length=100, blank=True)
     deposit_usdt_address = models.CharField(max_length=100, blank=True)
     trading_enabled = models.BooleanField(default=True)
-    min_trade_amount = models.DecimalField(max_digits=15, decimal_places=2, default=100.00)
+    min_trade_amount = models.DecimalField(
+        max_digits=15, decimal_places=2, default=100.00
+    )
     max_leverage = models.PositiveIntegerField(default=50)
 
     class Meta:
         verbose_name_plural = "Prestige Settings"
 
     def save(self, *args, **kwargs):
-        self.pk = 1
+        existing = PrestigeSettings.objects.first()
+
+        if existing and existing.pk != self.pk:
+            self.pk = existing.pk
+
         super().save(*args, **kwargs)
 
+        PrestigeSettings.objects.exclude(pk=self.pk).delete()
+
     @classmethod
-    def load(cls):
-        obj, created = cls.objects.get_or_create(pk=1)
+    def load(cls, admin_user=None):
+        obj = cls.objects.first()
+        if not obj:
+            obj = cls.objects.create(pk=1)
+            if admin_user:
+                obj.user = admin_user
+                obj.save()
         return obj
+
+    def __str__(self):
+        return "Prestige Settings"
+        return obj
+
 
 class Account(TimeBaseModel):
     ACCOUNT_TYPES = [
@@ -59,9 +90,16 @@ class Account(TimeBaseModel):
         super().save(*args, **kwargs)
 
     def generate_account_number(self):
-        latest = Account.objects.filter(account_number__startswith=self.BIN).order_by("-account_number").first()
-        last_seq = int(latest.account_number[-4:]) if latest and latest.account_number else 0
+        latest = (
+            Account.objects.filter(account_number__startswith=self.BIN)
+            .order_by("-account_number")
+            .first()
+        )
+        last_seq = (
+            int(latest.account_number[-4:]) if latest and latest.account_number else 0
+        )
         return f"{self.BIN}{str(last_seq + 1).zfill(4)}"
+
 
 class InvestmentPackage(TimeBaseModel):
     PACKAGE_TYPES = [
@@ -80,6 +118,7 @@ class InvestmentPackage(TimeBaseModel):
     def __str__(self):
         return self.get_name_display()
 
+
 class Investment(TimeBaseModel):
     STATUS_CHOICES = [
         ("ACTIVE", "Active"),
@@ -93,18 +132,25 @@ class Investment(TimeBaseModel):
     start_date = models.DateTimeField(default=timezone.now)
     end_date = models.DateTimeField()
     expected_return = models.DecimalField(max_digits=15, decimal_places=2)
-    actual_return = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True)
+    actual_return = models.DecimalField(
+        max_digits=15, decimal_places=2, null=True, blank=True
+    )
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="ACTIVE")
 
     def save(self, *args, **kwargs):
         if not self.end_date:
-            self.end_date = self.start_date + timezone.timedelta(days=self.package.duration_days)
+            self.end_date = self.start_date + timezone.timedelta(
+                days=self.package.duration_days
+            )
         if not self.expected_return:
-            self.expected_return = self.amount * (self.package.roi_percentage / Decimal(100))
+            self.expected_return = self.amount * (
+                self.package.roi_percentage / Decimal(100)
+            )
         super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.account.customer.email} - {self.package.name}"
+
 
 class TradePosition(TimeBaseModel):
     TRADE_TYPES = [
@@ -123,13 +169,17 @@ class TradePosition(TimeBaseModel):
     amount = models.DecimalField(max_digits=15, decimal_places=2)
     leverage = models.PositiveIntegerField(default=1)
     entry_price = models.DecimalField(max_digits=15, decimal_places=6)
-    current_price = models.DecimalField(max_digits=15, decimal_places=6, null=True, blank=True)
+    current_price = models.DecimalField(
+        max_digits=15, decimal_places=6, null=True, blank=True
+    )
     take_profit = models.DecimalField(max_digits=5, decimal_places=2)
     stop_loss = models.DecimalField(max_digits=5, decimal_places=2)
     profit_loss = models.DecimalField(max_digits=15, decimal_places=2, default=0.00)
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="OPEN")
     opened_at = models.DateTimeField(auto_now_add=True)
     closed_at = models.DateTimeField(null=True, blank=True)
+
+    hidden = models.BooleanField(default=False)
 
     def calculate_profit_loss(self):
         if not self.current_price:
@@ -171,19 +221,36 @@ class Transaction(TimeBaseModel):
     transaction_type = models.CharField(max_length=20, choices=TRANSACTION_TYPES)
     amount = models.DecimalField(max_digits=15, decimal_places=2)
     currency = models.CharField(max_length=3, default="BTC")
-    sender_account = models.ForeignKey(Account, on_delete=models.PROTECT, null=True, blank=True, related_name="sent_transactions")
-    recipient_account = models.ForeignKey(Account, on_delete=models.PROTECT, related_name="received_transactions", null=True, blank=True)
+    sender_account = models.ForeignKey(
+        Account,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="sent_transactions",
+    )
+    recipient_account = models.ForeignKey(
+        Account,
+        on_delete=models.PROTECT,
+        related_name="received_transactions",
+        null=True,
+        blank=True,
+    )
     recipient_number = models.CharField(max_length=20, null=True, blank=True)
     description = models.TextField(null=True, blank=True)
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="PENDING")
     timestamp = models.DateTimeField(auto_now_add=True)
     metadata = models.JSONField(default=dict)
-    investment = models.ForeignKey(Investment, on_delete=models.SET_NULL, null=True, blank=True)
-    trade_position = models.ForeignKey(TradePosition, on_delete=models.SET_NULL, null=True, blank=True)
+    investment = models.ForeignKey(
+        Investment, on_delete=models.SET_NULL, null=True, blank=True
+    )
+    trade_position = models.ForeignKey(
+        TradePosition, on_delete=models.SET_NULL, null=True, blank=True
+    )
     wallet_address = models.CharField(max_length=225, null=True, blank=True)
 
     def __str__(self):
         return f"{self.transaction_id} - {self.get_transaction_type_display()}"
+
 
 class SecurityLog(TimeBaseModel):
     EVENT_TYPES = [
@@ -206,6 +273,7 @@ class SecurityLog(TimeBaseModel):
     def __str__(self):
         return f"{self.user.email} - {self.get_event_type_display()}"
 
+
 class FingerPrint(TimeBaseModel):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="user_bio")
     template_data = models.BinaryField(null=True, blank=True)
@@ -213,6 +281,7 @@ class FingerPrint(TimeBaseModel):
 
     def __str__(self):
         return f"FingerPrint: {self.user.username}"
+
 
 class TradeInfo(TimeBaseModel):
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
@@ -225,6 +294,30 @@ class TradeInfo(TimeBaseModel):
     def __str__(self):
         return f"Trade Info for {self.trade_position.symbol}"
 
+
+class ReferalCode(TimeBaseModel):
+    name = models.CharField(max_length=100, null=True, blank=True)
+    code = models.CharField(max_length=100, null=True, blank=True)
+    is_expired = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"Name: {self.name} Code: {self.code}"
+
+    def save(self, *args, **kwargs):
+        if not self.code:
+            unique_code = uuid.uuid4().hex[:8].upper()
+
+            while ReferalCode.objects.filter(code=unique_code).exists():
+                unique_code = uuid.uuid4().hex[:8].upper()
+
+            self.code = unique_code
+
+        super().save(*args, **kwargs)
+
+
+
+
+
 class SupportTicket(TimeBaseModel):
     STATUS_CHOICES = [
         ("OPEN", "Open"),
@@ -232,76 +325,57 @@ class SupportTicket(TimeBaseModel):
         ("RESOLVED", "Resolved"),
         ("CLOSED", "Closed"),
     ]
-    PRIORITY_CHOICES = [
-        ("LOW", "Low"),
-        ("MEDIUM", "Medium"),
-        ("HIGH", "High"),
-        ("URGENT", "Urgent"),
-    ]
 
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="tickets")
     subject = models.CharField(max_length=200)
+    priority = models.CharField(max_length=100, default="Medium")
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="OPEN")
-    priority = models.CharField(max_length=20, choices=PRIORITY_CHOICES, default="MEDIUM")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        ordering = ['-updated_at']
-
-    def get_conversation_with_admin(self):
-        """Get all messages between user and admin for this ticket"""
-        return self.messages.all().order_by('created_at') 
+        ordering = ["-updated_at"]
 
     def __str__(self):
         return f"{self.subject} ({self.get_status_display()})"
 
 
-class SupportChat(TimeBaseModel):
-    ticket = models.ForeignKey(SupportTicket, on_delete=models.CASCADE, related_name="messages", null=True, blank=True)
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="support_chats")  # Changed from 'chats' to 'support_chats'
-    message = models.TextField(blank=True, null=True)
-    image = models.ImageField(upload_to="support_images/", blank=True, null=True)
-    file = models.FileField(upload_to="support_files/", blank=True, null=True)
-
-    is_read = models.BooleanField(default=False)  
+class SupportMessage(TimeBaseModel):
+    ticket = models.ForeignKey(
+        SupportTicket, on_delete=models.CASCADE, related_name="messages"
+    )
+    sender = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="sent_messages"
+    )
+    receiver = models.ForeignKey(
+        PrestigeSettings, on_delete=models.CASCADE, null=True, blank=True
+    )
+    message = models.TextField()
+    image = models.ImageField(blank=True, null=True)
+    file = models.FileField(null=True, blank=True)
+    is_read = models.BooleanField(default=False)
 
     class Meta:
-        ordering = ['created_at']
-        verbose_name = 'Support Chat Message'
-        verbose_name_plural = 'Support Chat Messages'
-
+        ordering = ["created_at"]
 
     def __str__(self):
-        return f"Message by {self.user.username}"
-    
-    def save(self, *args, **kwargs):
-        """Ensure ticket is created if doesn't exist"""
-        if not self.ticket and self.user:
-            self.ticket = SupportTicket.objects.create(
-                user=self.user,
-                subject='General Support',
-                status='IN_PROGRESS'
-            )
-        super().save(*args, **kwargs)
+        return f"Message from {self.sender.username} for ticket #{self.ticket.id}"
 
 
-class ReferalCode(TimeBaseModel):
-    name=models.CharField(max_length=100, null=True, blank=True)
-    code  = models.CharField(max_length=100, null=True, blank=True)
-    is_expired = models.BooleanField(default=False)
+class UserStatus(TimeBaseModel):
+    STATUS_CHOICES = [
+        ("ONLINE", "Online"),
+        ("OFFLINE", "Offline"),
+        ("AWAY", "Away"),
+    ]
 
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="status")
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="OFFLINE")
+    last_seen = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"Name: {self.name} Code: {self.code}"
-    
-    def save(self, *args, **kwargs):
-        if not self.code:
-            unique_code = uuid.uuid4().hex[:8].upper()
-            
-            while ReferalCode.objects.filter(code=unique_code).exists():
-                unique_code = uuid.uuid4().hex[:8].upper()
-            
-            self.code = unique_code
+        return f"{self.user.username} is {self.get_status_display()}"
 
-        super().save(*args, **kwargs)
+    @classmethod
+    async def update_user_status(cls, user, status):
+        await cls.objects.aupdate_or_create(user=user, defaults={"status": status})

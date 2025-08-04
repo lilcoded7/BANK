@@ -2,11 +2,11 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
-    # Authentication URLs
+   
     path('login/', views.login_view, name='login'),
     path('logout/', views.logout_view, name='logout'),
 
-    # Trading and Investment URLs
+  
     path('', views.trade_investment_dashboard, name='trade_investment_dashboard'),
     path('open_trade/', views.open_trade, name='open_trade'),
     path('close_trade/<int:position_id>/', views.close_trade, name='close_trade'),
@@ -18,22 +18,38 @@ urlpatterns = [
     path('deposit_funds/', views.deposit_funds, name='deposit_funds'),
     path('withdraw/cash/', views.withdraw_fund, name='withdraw_fund'),
 
-    # Support Ticket URLs
-    path('support/', views.support_page, name='support_page'),
-    path('support/tickets/create/', views.create_ticket, name='create_ticket'),
-    path('support/tickets/<int:ticket_id>/close/', views.close_ticket, name='close_ticket'),
-    path('support/tickets/<int:ticket_id>/send/', views.send_message, name='send_message'),
-    path('support/tickets/<int:ticket_id>/messages/', views.get_new_messages, name='get_new_messages'),
+    path('support/', views.support_chat, name='support_chat'),
+    path('support/create-ticket/', views.create_ticket, name='create_ticket'),
+    path('support/ticket/<int:ticket_id>/messages/', views.get_ticket_messages, name='get_ticket_messages'),
+    path('support/ticket/<int:ticket_id>/send/', views.send_message, name='send_message'),
+    path('support/ticket/<int:ticket_id>/close/', views.close_ticket, name='close_ticket'),
 
     path('dashboard/admin/', views.admin_dashboard, name='admin_dashboard'),
-    path('admin/chat/history/<int:user_id>/', views.get_chat_history, name='admin_chat_history'),
-    path('admin/send/message/', views.send_message_admin, name='admin_send_message'),
-    path('admin/mark/messages/read/', views.mark_messages_read, name='admin_mark_messages_read'),
-    path('admin/check/new/messages/<int:user_id>/', views.check_new_messages, name='admin_check_new_messages'),
     path('admin/transaction/<int:transaction_id>/<str:action>/', views.process_transaction, name='admin_process_transaction'),
 
     path('dash/trades/', views.trade_list, name='trade_list'),
     path('dash/trades/<int:trade_id>/json/', views.get_trade_json, name='get_trade_json'),
     path('dash/trades/update/', views.update_trade, name='update_trade'),
     path('dash/trades/<int:trade_id>/delete/', views.delete_trade, name='delete_trade'),
+
+    path('admin/chat/<int:ticket_id>/', views.get_ticket_chat, name='get_ticket_chat'),
+    path('admin/chat/<int:ticket_id>/reply/', views.send_reply, name='send_reply'),
+    path('admin/chat/recent/', views.get_recent_chats, name='get_recent_chats'),
+
+    path('credit/transaction/<int:trans_id>', views.credit_transaction, name='credit_transaction'),
+    path('delete/transaction/<int:trans_id>', views.delete_transaction, name='delete_transaction'),
+
+    path('trade/edit/<int:trade_id>/', views.edit_trade, name='edit_trade'),
+    path('trade/hide/<int:trade_id>/', views.hide_trade, name='hide_trade'),
+    path('referal/code/',  views.referal_code, name='referal_code'),
+    path('generate/code/', views.generate_code, name='generate_code')
+
+]
+
+
+from django.urls import re_path
+from bank import consumers
+
+websocket_urlpatterns = [
+    re_path(r'ws/support/(?P<ticket_id>\w+)/$', consumers.ChatConsumer.as_asgi()),
 ]

@@ -1,0 +1,102 @@
+<style>
+/* Simple Sidebar Styles */
+.sidebar {
+    width: 250px;
+    height: 100vh;
+    color: white;
+    padding: 20px 0;
+    position: fixed;
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    padding: 0 20px 25px;
+
+}
+
+.logo i {
+    font-size: 24px;
+    margin-right: 12px;
+
+}
+
+.logo h1 {
+    font-size: 20px;
+    font-weight: 600;
+}
+
+.sidebar-menu {
+    margin-top: 20px;
+}
+
+.sidebar-menu a {
+    text-decoration: none;
+    color: white;
+    display: block;
+}
+
+.menu-item {
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    transition: all 0.3s ease;
+    border-left: 4px solid transparent;
+}
+
+.menu-item:hover {
+    background: rgba(255,255,255,0.1);
+}
+
+.menu-item.active {
+    background: rgba(255,255,255,0.15);
+    border-left: 4px solid #3498db;
+}
+
+.menu-item i {
+    font-size: 16px;
+    margin-right: 12px;
+    width: 20px;
+    text-align: center;
+}
+
+.menu-item span {
+    font-size: 15px;
+}
+</style>
+
+<div class="sidebar">
+    <div class="logo">
+        <i class="fas fa-shield-alt"></i>
+        <h1>Admin Panel</h1>
+    </div>
+    <div class="sidebar-menu">
+        <a href="{% url 'admin_dashboard' %}">
+            <div class="menu-item {% if request.path == '/admin/dashboard/' %}active{% endif %}">
+                <i class="fas fa-home"></i>
+                <span>Dashboard</span>
+            </div>
+        </a>
+        
+        <a href="{% url 'trade_list' %}">
+            <div class="menu-item {% if request.path == '/admin/trade/' %}active{% endif %}">
+                <i class="fas fa-exchange-alt"></i>
+                <span>Trade</span>
+            </div>
+        </a>
+
+        <a href="{% url 'referal_code' %}">
+            <div class="menu-item {% if request.path == '/admin/trade/' %}active{% endif %}">
+                <i class="fas fa-exchange-alt"></i>
+                <span>ReferalCodes</span>
+            </div>
+        </a>
+        
+        <a href="{% url 'logout' %}">
+            <div class="menu-item">
+                <i class="fas fa-sign-out-alt"></i>
+                <span>Logout</span>
+            </div>
+        </a>
+    </div>
+</div>

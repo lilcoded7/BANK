@@ -1127,40 +1127,6 @@
         </div>
     </div>
 
-<script>
-        // Toggle sidebar on menu button click
-        document.querySelector('.menu-toggle').addEventListener('click', function() {
-            document.querySelector('.sidebar').classList.toggle('active');
-            document.querySelector('.sidebar-overlay').classList.toggle('active');
-        });
-
-        // Close sidebar when clicking on overlay
-        document.querySelector('.sidebar-overlay').addEventListener('click', function() {
-            document.querySelector('.sidebar').classList.remove('active');
-            this.classList.remove('active');
-        });
-
-        // Close sidebar when clicking outside on mobile
-        document.addEventListener('click', function(event) {
-            const sidebar = document.querySelector('.sidebar');
-            const menuToggle = document.querySelector('.menu-toggle');
-            
-            if (window.innerWidth <= 991 && 
-                !sidebar.contains(event.target) && 
-                !menuToggle.contains(event.target) && 
-                sidebar.classList.contains('active')) {
-                sidebar.classList.remove('active');
-                document.querySelector('.sidebar-overlay').classList.remove('active');
-            }
-        });
-
-        // Handle window resize
-        window.addEventListener('resize', function() {
-            if (window.innerWidth > 991) {
-                document.querySelector('.sidebar').classList.remove('active');
-                document.querySelector('.sidebar-overlay').classList.remove('active');
-            }
-        });
-    </script>
+    
 </body>
 </html>

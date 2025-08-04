@@ -30,8 +30,10 @@ User = get_user_model()
 def is_staff_user(user):
     return user.is_staff
 
+
 def admin_required(user):
     return user.is_staff or user.is_superuser
+
 
 def login_view(request):
     if request.user.is_authenticated:
@@ -53,7 +55,7 @@ def login_view(request):
                     details="Standard password authentication",
                 )
                 if user.is_admin:
-                    return redirect('admin_dashboard')
+                    return redirect("admin_dashboard")
 
                 return redirect("trade_investment_dashboard")
             messages.error(request, "Invalid email or password")
@@ -511,7 +513,7 @@ def get_ticket_messages(request, ticket_id):
         messages = ticket.messages.all().order_by("created_at")
 
         messages_data = []
-        print(messages_data, 'Message data')
+        print(messages_data, "Message data")
         for message in messages:
             messages_data.append(
                 {
@@ -570,9 +572,8 @@ def send_message(request, ticket_id):
                 image=image,
                 file=file,
             )
-            print(message, 'Messages here ')
+            print(message, "Messages here ")
 
-            
             if ticket.status in ["RESOLVED", "CLOSED"]:
                 ticket.status = "IN_PROGRESS"
                 ticket.save()
@@ -637,17 +638,25 @@ def admin_dashboard(request):
         .order_by("-last_message_time")[:10]
     )
 
-    total_transactions = Transaction.objects.filter(status="COMPLETED").aggregate(
-        total=Sum("amount")
-    )["total"] or 0
+    total_transactions = (
+        Transaction.objects.filter(status="COMPLETED").aggregate(total=Sum("amount"))[
+            "total"
+        ]
+        or 0
+    )
 
-    total_withdrawals = Transaction.objects.filter(
-        transaction_type="WITHDRAWAL", status="COMPLETED"
-    ).aggregate(total=Sum("amount"))["total"] or 0
+    total_withdrawals = (
+        Transaction.objects.filter(
+            transaction_type="WITHDRAWAL", status="COMPLETED"
+        ).aggregate(total=Sum("amount"))["total"]
+        or 0
+    )
 
-    pending_transactions_list = Transaction.objects.filter(status="PENDING")\
-        .select_related("account__customer")\
+    pending_transactions_list = (
+        Transaction.objects.filter(status="PENDING")
+        .select_related("account__customer")
         .order_by("-created_at")[:10]
+    )
 
     context = {
         "total_transactions": total_transactions,
@@ -667,15 +676,15 @@ def credit_transaction(request, trans_id):
 
     transaction.account.balance += transaction.amount
     transaction.account.save()
-    messages.success(request, 'Account Credited Successfully')
-    return redirect('admin_dashboard')
+    messages.success(request, "Account Credited Successfully")
+    return redirect("admin_dashboard")
 
 
 def delete_transaction(request, trans_id):
     transaction = get_object_or_404(Transaction, id=trans_id)
     transaction.delete()
-    messages.success(request,'Account Deleted Successfully')
-    return redirect('admin_dashboard')
+    messages.success(request, "Account Deleted Successfully")
+    return redirect("admin_dashboard")
 
 
 @login_required
@@ -742,10 +751,10 @@ def trade_list(request):
     trades_this_month = TradePosition.objects.filter(
         opened_at__gte=now().replace(day=1)
     ).count()
-    
-    total_profit_loss = TradePosition.objects.aggregate(
-        total=models.Sum("profit_loss")
-    )["total"] or 0
+
+    total_profit_loss = (
+        TradePosition.objects.aggregate(total=models.Sum("profit_loss"))["total"] or 0
+    )
 
     open_trades = TradePosition.objects.filter(status="OPEN").count()
     open_trades_today = TradePosition.objects.filter(
@@ -871,119 +880,132 @@ def delete_trade(request, trade_id):
     )
 
 
-
-
-
 @login_required
 def get_ticket_chat(request, ticket_id):
     """Get messages for a specific ticket"""
     ticket = get_object_or_404(SupportTicket, id=ticket_id)
-    
+
     SupportMessage.objects.filter(
-        ticket=ticket,
-        is_read=False,
-        sender__is_staff=False 
+        ticket=ticket, is_read=False, sender__is_staff=False
     ).update(is_read=True)
-    
-    messages = ticket.messages.select_related('sender').order_by('created_at')
-    
-    messages_data = [{
-        'id': msg.id,
-        'message': msg.message,
-        'sender_id': msg.sender.id,
-        'sender_name': msg.sender.get_full_name(),
-        'is_admin': msg.sender.is_staff,
-        'created_at': msg.created_at.strftime("%Y-%m-%d %H:%M:%S"),
-        'is_read': msg.is_read,
-    } for msg in messages]
-    
-    return JsonResponse({
-        'status': 'success',
-        'ticket': {
-            'id': ticket.id,
-            'subject': ticket.subject,
-            'status': ticket.get_status_display(),
-            'created_at': ticket.created_at.strftime("%Y-%m-%d %H:%M:%S"),
-        },
-        'user': {
-            'id': ticket.user.id,
-            'name': ticket.user.get_full_name(),
-            'email': ticket.user.email,
-        },
-        'messages': messages_data,
-    })
+
+    messages = ticket.messages.select_related("sender").order_by("created_at")
+
+    messages_data = [
+        {
+            "id": msg.id,
+            "message": msg.message,
+            "sender_id": msg.sender.id,
+            "sender_name": msg.sender.get_full_name(),
+            "is_admin": msg.sender.is_staff,
+            "created_at": msg.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+            "is_read": msg.is_read,
+        }
+        for msg in messages
+    ]
+
+    return JsonResponse(
+        {
+            "status": "success",
+            "ticket": {
+                "id": ticket.id,
+                "subject": ticket.subject,
+                "status": ticket.get_status_display(),
+                "created_at": ticket.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+            },
+            "user": {
+                "id": ticket.user.id,
+                "name": ticket.user.get_full_name(),
+                "email": ticket.user.email,
+            },
+            "messages": messages_data,
+        }
+    )
+
 
 @login_required
 def send_reply(request, ticket_id):
     """Handle admin replies to tickets"""
     ticket = get_object_or_404(SupportTicket, id=ticket_id)
     data = json.loads(request.body)
-    
+
     message = SupportMessage.objects.create(
         ticket=ticket,
         sender=request.user,
-        message=data.get('message'),
-        is_read=False  # Message to customer is unread by default
+        message=data.get("message"),
+        is_read=False,  # Message to customer is unread by default
     )
-    
+
     # Update ticket status if needed
-    if ticket.status == 'OPEN':
-        ticket.status = 'IN_PROGRESS'
+    if ticket.status == "OPEN":
+        ticket.status = "IN_PROGRESS"
         ticket.save()
-    
-    return JsonResponse({
-        'status': 'success',
-        'message': {
-            'id': message.id,
-            'text': message.message,
-            'sender': request.user.get_full_name(),
-            'created_at': message.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+
+    return JsonResponse(
+        {
+            "status": "success",
+            "message": {
+                "id": message.id,
+                "text": message.message,
+                "sender": request.user.get_full_name(),
+                "created_at": message.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+            },
         }
-    })
+    )
+
 
 @login_required
 def get_recent_chats(request):
     """Get recent chats for the sidebar"""
     one_week_ago = timezone.now() - timedelta(days=7)
-    
+
     recent_chats = (
         SupportTicket.objects.filter(
-            Q(messages__created_at__gte=one_week_ago) | 
-            Q(created_at__gte=one_week_ago)
+            Q(messages__created_at__gte=one_week_ago) | Q(created_at__gte=one_week_ago)
         )
-        .select_related('user')
+        .select_related("user")
         .annotate(
-            last_message_time=Max('messages__created_at'),
-            last_message_text=Max('messages__message'),
+            last_message_time=Max("messages__created_at"),
+            last_message_text=Max("messages__message"),
             unread_count=Count(
-                'messages',
+                "messages",
                 filter=Q(
                     messages__is_read=False,
                     messages__sender__is_staff=False,
                 ),
             ),
         )
-        .order_by('-last_message_time')[:10]
+        .order_by("-last_message_time")[:10]
     )
-    
-    chats_data = [{
-        'ticket_id': chat.id,
-        'user_id': chat.user.id,
-        'user_name': chat.user.get_full_name(),
-        'subject': chat.subject,
-        'last_message': chat.last_message_text,
-        'last_message_time': chat.last_message_time.strftime("%Y-%m-%d %H:%M:%S") if chat.last_message_time else None,
-        'unread_count': chat.unread_count,
-    } for chat in recent_chats]
-    
-    return JsonResponse({
-        'status': 'success',
-        'chats': chats_data,
-    })
+
+    chats_data = [
+        {
+            "ticket_id": chat.id,
+            "user_id": chat.user.id,
+            "user_name": chat.user.get_full_name(),
+            "subject": chat.subject,
+            "last_message": chat.last_message_text,
+            "last_message_time": (
+                chat.last_message_time.strftime("%Y-%m-%d %H:%M:%S")
+                if chat.last_message_time
+                else None
+            ),
+            "unread_count": chat.unread_count,
+        }
+        for chat in recent_chats
+    ]
+
+    return JsonResponse(
+        {
+            "status": "success",
+            "chats": chats_data,
+        }
+    )
 
 
 def admin_required(user):
     return user.is_staff or user.is_superuser
+
 
 @user_passes_test(admin_required)
 def edit_trade(request, trade_id):
@@ -997,37 +1019,43 @@ def edit_trade(request, trade_id):
             trade.status = status
         trade.save()
         if request.is_ajax():
-            return JsonResponse({"success": True, "profit_loss": str(trade.profit_loss), "status": trade.get_status_display()})
-        return redirect('trade_list')
-   
-    return JsonResponse({
-        "id": trade.id,
-        "profit_loss": str(trade.profit_loss),
-        "status": trade.status,
-    })
+            return JsonResponse(
+                {
+                    "success": True,
+                    "profit_loss": str(trade.profit_loss),
+                    "status": trade.get_status_display(),
+                }
+            )
+        return redirect("trade_list")
+
+    return JsonResponse(
+        {
+            "id": trade.id,
+            "profit_loss": str(trade.profit_loss),
+            "status": trade.status,
+        }
+    )
+
 
 @user_passes_test(admin_required)
 def hide_trade(request, trade_id):
     trade = get_object_or_404(TradePosition, id=trade_id)
     if request.method == "POST":
-        trade.hidden = True  
+        trade.hidden = True
         trade.save()
-    return redirect('trade_list')
-
+    return redirect("trade_list")
 
 
 def referal_code(request):
     referal_codes = ReferalCode.objects.all()
 
-    return render(request, 'main/referal_code.html', {'referal_codes':referal_codes})
+    return render(request, "main/referal_code.html", {"referal_codes": referal_codes})
 
 
 def generate_code(request):
-    if request.method == 'POST':
-        name = request.POST['name']
+    if request.method == "POST":
+        name = request.POST["name"]
 
-        code = ReferalCode.objects.create(
-            name=name
-        )
-        messages.success(request, 'Code Created Successfully')
-        return redirect('referal_code')
+        code = ReferalCode.objects.create(name=name)
+        messages.success(request, "Code Created Successfully")
+        return redirect("referal_code")

@@ -1,7 +1,7 @@
 import json
 from channels.generic.websocket import AsyncWebsocketConsumer
 from django.contrib.auth.models import AnonymousUser
-from .models import SupportMessage, SupportTicket, UserStatus
+from .models import SupportMessage, SupportTicket, UserStatus, PrestigeSettings
 
 
 class ChatConsumer(AsyncWebsocketConsumer):
@@ -10,16 +10,13 @@ class ChatConsumer(AsyncWebsocketConsumer):
         self.ticket_group_name = f'chat_{self.ticket_id}'
         self.user = self.scope['user']
 
-        # Reject connection if user is not authenticated
+        # Reject unauthenticated users
         if isinstance(self.user, AnonymousUser):
             await self.close()
             return
 
-        # Join ticket group
-        await self.channel_layer.group_add(
-            self.ticket_group_name,
-            self.channel_name
-        )
+        # Join group
+        await self.channel_layer.group_add(self.ticket_group_name, self.channel_name)
 
         # Update user status to online
         if hasattr(self.user, 'status'):
@@ -28,62 +25,80 @@ class ChatConsumer(AsyncWebsocketConsumer):
         await self.accept()
 
     async def disconnect(self, close_code):
-        # Leave ticket group
-        await self.channel_layer.group_discard(
-            self.ticket_group_name,
-            self.channel_name
-        )
+        await self.channel_layer.group_discard(self.ticket_group_name, self.channel_name)
 
-        # Update user status to offline
         if hasattr(self.user, 'status'):
             await UserStatus.objects.filter(user=self.user).aupdate(status='OFFLINE')
 
-    async def send_user_status(self, event):
-        await self.send(text_data=json.dumps({
-            'type': 'status_update',
-            'status': event['status']
-        }))
-
-    # Receive message from WebSocket
     async def receive(self, text_data):
-        text_data_json = json.loads(text_data)
-        message_type = text_data_json.get('type')
+        data = json.loads(text_data)
+        event_type = data.get('type')
 
-        if message_type == 'chat_message':
-            message = text_data_json['message']
-            
-            # Save message to database
+        if event_type == 'chat_message':
+            await self.handle_chat_message(data)
+
+        elif event_type == 'typing':
+            await self.handle_typing(data)
+
+        elif event_type == 'mark_read':
+            await self.handle_mark_read()
+
+    async def handle_chat_message(self, data):
+        message = data.get('message')
+        ticket_id = self.ticket_id
+
+        try:
+            ticket = await SupportTicket.objects.aget(id=ticket_id)
+        except SupportTicket.DoesNotExist:
+            await self.send(text_data=json.dumps({
+                'error': 'Ticket not found.'
+            }))
+            return
+
+        # Determine if it's an admin or user
+        is_admin = not ticket.user == self.user
+
+        # Save message
+        message_obj = await SupportMessage.objects.acreate(
+            ticket=ticket,
+            sender=self.user,
+            receiver=None if not is_admin else PrestigeSettings.load().user,
+            message=message
+        )
+
+        # Broadcast to group
+        await self.channel_layer.group_send(
+            self.ticket_group_name,
+            {
+                'type': 'chat_message',
+                'message': message,
+                'sender_id': self.user.id,
+                'sender_username': self.user.username,
+                'timestamp': str(message_obj.created_at),
+            }
+        )
+
+    async def handle_typing(self, data):
+        await self.channel_layer.group_send(
+            self.ticket_group_name,
+            {
+                'type': 'typing',
+                'user_id': self.user.id,
+                'username': self.user.username,
+                'is_typing': data.get('is_typing', False)
+            }
+        )
+
+    async def handle_mark_read(self):
+        try:
             ticket = await SupportTicket.objects.aget(id=self.ticket_id)
-            message_obj = await SupportMessage.objects.acreate(
+            await SupportMessage.objects.filter(
                 ticket=ticket,
-                sender=self.user,
-                message=message
-            )
+                is_read=False,
+            ).exclude(sender=self.user).aupdate(is_read=True)
+        except SupportTicket.DoesNotExist:
+            pass
 
-            # Send message to ticket group
-            await self.channel_layer.group_send(
-                self.ticket_group_name,
-                {
-                    'type': 'chat_message',
-                    'message': message,
-                    'sender_id': self.user.id,
-                    'sender_username': self.user.username,
-                    'timestamp': str(message_obj.created_at),
-                }
-            )
-        elif message_type == 'typing':
-            # Broadcast typing indicator
-            await self.channel_layer.group_send(
-                self.ticket_group_name,
-                {
-                    'type': 'typing',
-                    'user_id': self.user.id,
-                    'username': self.user.username,
-                    'is_typing': text_data_json['is_typing']
-                }
-            )
-
-    
     async def chat_message(self, event):
         await self.send(text_data=json.dumps({
             'type': 'chat_message',
@@ -98,5 +113,11 @@ class ChatConsumer(AsyncWebsocketConsumer):
             'type': 'typing',
             'user_id': event['user_id'],
             'username': event['username'],
-            'is_typing': event['is_typing']
+            'is_typing': event['is_typing'],
+        }))
+
+    async def send_user_status(self, event):
+        await self.send(text_data=json.dumps({
+            'type': 'status_update',
+            'status': event['status']
         }))

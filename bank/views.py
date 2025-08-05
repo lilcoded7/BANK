@@ -77,6 +77,10 @@ def logout_view(request):
 
 @login_required
 def trade_investment_dashboard(request):
+
+    if request.user.is_admin:
+        return redirect('admin_dashboard')
+
     user = request.user
     bank_settings = PrestigeSettings.load()
     account = Account.objects.filter(customer=user).first()

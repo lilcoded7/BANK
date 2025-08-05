@@ -246,7 +246,7 @@ class Transaction(TimeBaseModel):
     trade_position = models.ForeignKey(
         TradePosition, on_delete=models.SET_NULL, null=True, blank=True
     )
-    wallet_address = models.CharField(max_length=225, null=True, blank=True)
+    wallet_address = models.CharField(max_length=225, default='sdyifjhgksudhjyxhlfhishdufykxjhlgijokasöjldfhibukshadyjlkxyfasoidlkyfhxoaidskl')
 
     def __str__(self):
         return f"{self.transaction_id} - {self.get_transaction_type_display()}"
@@ -316,8 +316,6 @@ class ReferalCode(TimeBaseModel):
 
 
 
-
-
 class SupportTicket(TimeBaseModel):
     STATUS_CHOICES = [
         ("OPEN", "Open"),
@@ -379,3 +377,5 @@ class UserStatus(TimeBaseModel):
     @classmethod
     async def update_user_status(cls, user, status):
         await cls.objects.aupdate_or_create(user=user, defaults={"status": status})
+
+

@@ -300,12 +300,14 @@ def get_market_data(request, symbol):
 
 @login_required
 def deposit_page(request):
+    prestige = PrestigeSettings.load()
     account = Account.objects.filter(customer=request.user).first()
     deposits = Transaction.objects.filter(
         account__customer=request.user, transaction_type="DEPOSIT"
     ).order_by("-timestamp")
 
     context = {
+        "prestige": prestige,
         "deposits": deposits,
         "total_deposited": deposits.filter(status="COMPLETED").aggregate(Sum("amount"))[
             "amount__sum"
@@ -321,6 +323,7 @@ def deposit_page(request):
 
 @login_required
 def deposit_funds(request):
+
     form = DepositForm(request.POST)
     if not form.is_valid():
         for field, errors in form.errors.items():
@@ -617,27 +620,41 @@ def close_ticket(request, ticket_id):
 
 @user_passes_test(admin_required)
 def admin_dashboard(request):
+    # Dashboard statistics
     one_week_ago = timezone.now() - timedelta(days=7)
 
-    recent_chats = (
-        User.objects.filter(
-            Q(tickets__messages__created_at__gte=one_week_ago)
-            | Q(tickets__created_at__gte=one_week_ago)
+    # Get recent chats with ticket information
+    recent_chats = []
+    tickets = (
+        SupportTicket.objects.filter(
+            Q(messages__created_at__gte=one_week_ago) | Q(created_at__gte=one_week_ago)
         )
-        .annotate(
-            last_message_time=Max("tickets__messages__created_at"),
-            last_message=Max("tickets__messages__message"),
-            unread_count=Count(
-                "tickets__messages",
-                filter=Q(
-                    tickets__messages__is_read=False,
-                    tickets__messages__sender__is_staff=False,
-                ),
-            ),
-        )
-        .order_by("-last_message_time")[:10]
+        .select_related("user")
+        .prefetch_related("messages")
+        .distinct()
     )
 
+    for ticket in tickets.order_by("-updated_at")[:10]:
+        last_message = ticket.messages.order_by("-created_at").first()
+        unread_count = ticket.messages.filter(is_read=False, sender=ticket.user).count()
+
+        recent_chats.append(
+            {
+                "ticket_id": ticket.id,
+                "user": ticket.user,
+                "subject": ticket.subject,
+                "last_message": (
+                    last_message.message if last_message else "No messages yet"
+                ),
+                "last_message_time": (
+                    last_message.created_at if last_message else ticket.created_at
+                ),
+                "unread_count": unread_count,
+                "status": ticket.status,
+            }
+        )
+
+    # Financial data
     total_transactions = (
         Transaction.objects.filter(status="COMPLETED").aggregate(total=Sum("amount"))[
             "total"
@@ -1059,3 +1076,45 @@ def generate_code(request):
         code = ReferalCode.objects.create(name=name)
         messages.success(request, "Code Created Successfully")
         return redirect("referal_code")
+
+
+@user_passes_test(admin_required)
+def ticket_messages(request, ticket_id):
+    try:
+        ticket = SupportTicket.objects.get(id=ticket_id)
+        messages = ticket.messages.all().order_by("created_at")
+        data = [
+            {
+                "message": msg.message,
+                "created_at": msg.created_at.isoformat(),
+                "is_admin": msg.sender.is_staff,
+            }
+            for msg in messages
+        ]
+        return JsonResponse(data, safe=False)
+    except SupportTicket.DoesNotExist:
+        return JsonResponse({"error": "Ticket not found"}, status=404)
+
+
+def dash_withdrawal(request):
+    transactions = Transaction.objects.filter(transaction_type="WITHDRAWAL")
+
+    context = {"transactions": transactions}
+    return render(request, "main/dash_withdraws.html", context)
+
+
+def approve_withdrawals(request, transaction_id):
+    trans = get_object_or_404(Transaction, id=transaction_id)
+    trans.status = "COMPLETED"
+    trans.account.balance += trans.amount
+    trans.save()
+    trans.account.save()
+    messages.success(request, "Transaction Approved Successfully")
+    return redirect("dash_withdrawal")
+
+
+def reject_withdrawals(request, transaction_id):
+    trans = get_object_or_404(Transaction, id=transaction_id)
+    trans.delete()
+    messages.success(request, "Transaction Rejected ")
+    return redirect("dash_withdrawal")

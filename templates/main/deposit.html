@@ -1,4 +1,3 @@
-<!-- templates/main/deposit.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -8,7 +7,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
-        /* Base styles from previous template */
         :root {
             --primary: #d10000;
             --primary-dark: #a00000;
@@ -151,15 +149,6 @@
         }
 
         /* Deposit Page Specific Styles */
-        .deposit-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 2rem;
-            flex-wrap: wrap;
-            gap: 1rem;
-        }
-
         .deposit-stats {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
@@ -269,6 +258,11 @@
         .status-failed {
             background: rgba(244, 67, 54, 0.1);
             color: var(--danger);
+        }
+
+        .status-processing {
+            background: rgba(33, 150, 243, 0.1);
+            color: var(--info);
         }
 
         .currency-badge {
@@ -423,16 +417,6 @@
             background: var(--primary-dark);
         }
 
-        .btn-outline {
-            background: transparent;
-            border: 1px solid var(--primary);
-            color: var(--primary);
-        }
-
-        .btn-outline:hover {
-            background: rgba(209, 0, 0, 0.1);
-        }
-
         .crypto-options {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
@@ -468,9 +452,16 @@
             font-weight: 600;
         }
 
+        .crypto-min {
+            font-size: 0.8rem;
+            color: #666;
+            margin-top: 0.3rem;
+        }
+
+        /* Deposit Instructions */
         .deposit-instructions {
             background: rgba(33, 150, 243, 0.05);
-            border-radius: 8px;
+            border-radius: 12px;
             padding: 1.5rem;
             margin-top: 1.5rem;
             border-left: 4px solid var(--info);
@@ -487,10 +478,150 @@
 
         .instructions-list {
             padding-left: 1.5rem;
+            margin-bottom: 1.5rem;
         }
 
         .instructions-list li {
             margin-bottom: 0.8rem;
+            line-height: 1.5;
+        }
+
+        .wallet-address-container {
+            background: rgba(0, 0, 0, 0.03);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 1rem;
+            border: 1px dashed #ccc;
+        }
+
+        .wallet-address-label {
+            font-size: 0.9rem;
+            color: #666;
+            margin-bottom: 0.5rem;
+        }
+
+        .wallet-address {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: white;
+            padding: 0.8rem 1rem;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 0.9rem;
+            border: 1px solid #eee;
+            word-break: break-all;
+        }
+
+        .copy-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 0.4rem 0.8rem;
+            font-size: 0.8rem;
+            cursor: pointer;
+            margin-left: 1rem;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+
+        .copy-btn:hover {
+            background: var(--primary-dark);
+        }
+
+        .copy-btn i {
+            font-size: 0.8rem;
+        }
+
+        .qr-code-container {
+            text-align: center;
+            margin: 1.5rem 0;
+            padding: 1rem;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #eee;
+        }
+
+        .qr-code {
+            max-width: 200px;
+            margin: 0 auto;
+        }
+
+        .qr-code-caption {
+            font-size: 0.8rem;
+            color: #666;
+            margin-top: 0.5rem;
+        }
+
+        /* Tooltip styles */
+        .tooltip {
+            position: relative;
+            display: inline-block;
+        }
+
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 120px;
+            background-color: #555;
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 5px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -60px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 0.8rem;
+        }
+
+        .tooltip .tooltiptext::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: #555 transparent transparent transparent;
+        }
+
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        /* Message styles */
+        .message {
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+        }
+
+        .message-success {
+            background: rgba(76, 175, 80, 0.1);
+            color: var(--success);
+            border-left: 4px solid var(--success);
+        }
+
+        .message-error {
+            background: rgba(244, 67, 54, 0.1);
+            color: var(--danger);
+            border-left: 4px solid var(--danger);
+        }
+
+        .message-info {
+            background: rgba(33, 150, 243, 0.1);
+            color: var(--info);
+            border-left: 4px solid var(--info);
         }
 
         /* Responsive styles */
@@ -549,6 +680,18 @@
                 width: 100%;
                 justify-content: space-between;
             }
+
+            .wallet-address {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.5rem;
+            }
+            
+            .copy-btn {
+                margin-left: 0;
+                width: 100%;
+                justify-content: center;
+            }
         }
 
         @media (max-width: 576px) {
@@ -567,7 +710,6 @@
     </style>
 </head>
 <body>
-    
     <div class="dashboard">
         <!-- Sidebar -->
         {% include 'main/side_bar.html' %}
@@ -642,6 +784,7 @@
                             <option value="all">All Statuses</option>
                             <option value="pending">Pending</option>
                             <option value="completed">Completed</option>
+                            <option value="processing">Processing</option>
                         </select>
                         <button class="new-deposit-btn" onclick="openModal('depositModal')">
                             <i class="fas fa-plus"></i> New Deposit
@@ -656,6 +799,7 @@
                             <th>Transaction ID</th>
                             <th>Amount</th>
                             <th>Currency</th>
+                            <th>Wallet Address</th>
                             <th>Status</th>
                         </tr>
                     </thead>
@@ -671,11 +815,42 @@
                                     {{ deposit.currency }}
                                 </span>
                             </td>
+                            
+                            <td>
+                                {% if deposit.currency == 'BTC' %}
+                                <div class="wallet-address">
+                                    <span class="wallet-address-short">{{ prestige.deposit_btc_address|slice:":8" }}...{{ deposit.wallet_address|slice:"-4:" }}</span>
+                                    <button class="copy-btn tooltip" onclick="copyToClipboard('{{ deposit.wallet_address }}', this)">
+                                        <i class="far fa-copy"></i> Copy
+                                        <span class="tooltiptext">Copied!</span>
+                                    </button>
+                                </div>
+                                {% elif deposit.currency == 'ETH' %}
+                                <div class="wallet-address">
+                                    <span class="wallet-address-short">{{ prestige.deposit_btc_address|slice:":8" }}...{{ deposit.wallet_address|slice:"-4:" }}</span>
+                                    <button class="copy-btn tooltip" onclick="copyToClipboard('{{ deposit.wallet_address }}', this)">
+                                        <i class="far fa-copy"></i> Copy
+                                        <span class="tooltiptext">Copied!</span>
+                                    </button>
+                                </div>
+                                {% else %}
+                                <div class="wallet-address">
+                                    <span class="wallet-address-short">{{ prestige.deposit_usdt_address|slice:":8" }}...{{ deposit.wallet_address|slice:"-4:" }}</span>
+                                    <button class="copy-btn tooltip" onclick="copyToClipboard('{{ deposit.wallet_address }}', this)">
+                                        <i class="far fa-copy"></i> Copy
+                                        <span class="tooltiptext">Copied!</span>
+                                    </button>
+                                </div>
+                                {% endif %}
+                            </td>
+
                             <td>
                                 {% if deposit.status == "PENDING" %}
                                     <span class="status-badge status-pending">Pending</span>
                                 {% elif deposit.status == "COMPLETED" %}
                                     <span class="status-badge status-completed">Completed</span>
+                                {% elif deposit.status == "PROCESSING" %}
+                                    <span class="status-badge status-processing">Processing</span>
                                 {% else %}
                                     <span class="status-badge status-failed">Failed</span>
                                 {% endif %}
@@ -683,7 +858,7 @@
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="5" style="text-align: center; padding: 2rem;">
+                            <td colspan="6" style="text-align: center; padding: 2rem;">
                                 <i class="fas fa-inbox" style="font-size: 3rem; color: #ddd; margin-bottom: 1rem;"></i>
                                 <p>No deposit history found</p>
                             </td>
@@ -691,6 +866,34 @@
                         {% endfor %}
                     </tbody>
                 </table>
+            </div>
+
+            <!-- Deposit Instructions -->
+            <div class="deposit-table-container">
+                <h3 style="margin-bottom: 1rem;">How to Deposit Funds</h3>
+                <div class="deposit-instructions">
+                    <ol class="instructions-list">
+                        <li><strong>Select your cryptocurrency</strong> from the options (BTC, ETH, or USDT)</li>
+                        <li><strong>Enter the deposit amount</strong> (minimum $10 equivalent)</li>
+                        <li><strong>Generate a deposit address</strong> by clicking the "New Deposit" button</li>
+                        <li><strong>Send the exact amount</strong> to the provided wallet address</li>
+                        <li><strong>Wait for network confirmations</strong> - this may take 10-30 minutes</li>
+                        <li><strong>Funds will be credited</strong> to your account within 24 hours after confirmation</li>
+                        <li><strong>Contact support</strong> if your deposit isn't credited within 24 hours</li>
+                    </ol>
+                    <div class="wallet-address-container" style="background: rgba(255, 215, 0, 0.05); border-color: var(--accent);">
+                        <div class="instructions-title" style="color: var(--accent-dark);">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            Important Notes
+                        </div>
+                        <ul class="instructions-list" style="padding-left: 1rem;">
+                            <li>Only send the selected cryptocurrency to the address</li>
+                            <li>Send the exact amount you specified - differences may cause delays</li>
+                            <li>Double-check the wallet address before sending</li>
+                            <li>Transaction fees are paid by the sender</li>
+                        </ul>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -713,27 +916,30 @@
                                     <i class="fab fa-btc"></i>
                                 </div>
                                 <div class="crypto-name">Bitcoin (BTC)</div>
+                                <div class="crypto-min">Min: $10</div>
                             </div>
                             <div class="crypto-option" onclick="selectCrypto(this, 'ETH')">
                                 <div class="crypto-icon">
                                     <i class="fab fa-ethereum"></i>
                                 </div>
                                 <div class="crypto-name">Ethereum (ETH)</div>
+                                <div class="crypto-min">Min: $10</div>
                             </div>
                             <div class="crypto-option" onclick="selectCrypto(this, 'USDT')">
                                 <div class="crypto-icon">
                                     <i class="fas fa-coins"></i>
                                 </div>
                                 <div class="crypto-name">Tether (USDT)</div>
+                                <div class="crypto-min">Min: $10</div>
                             </div>
                         </div>
                         <input type="hidden" id="id_currency" name="currency" value="BTC" required>
                     </div>
                     
                     <div class="form-group">
-                        <label for="id_amount">Amount</label>
+                        <label for="id_amount">Amount (USD)</label>
                         <input type="number" class="form-control" id="id_amount" name="amount" 
-                               placeholder="Enter amount" min="10" step="1" required>
+                               placeholder="Enter amount in USD" min="10" step="1" required>
                         <small class="text-muted">Minimum deposit: $10</small>
                     </div>
                     
@@ -742,15 +948,48 @@
                     <div class="deposit-instructions">
                         <div class="instructions-title">
                             <i class="fas fa-info-circle"></i>
-                            Deposit Instructions
+                            Deposit Process
                         </div>
                         <ol class="instructions-list">
-                            <li>Select your cryptocurrency and enter the amount</li>
-                            <li>Click "Generate Deposit Address" to get a unique wallet address</li>
-                            <li>Send the exact amount to the provided address</li>
-                            <li>Send screenshot of the transaction to support</li>
-                            <li>Funds will be credited with 24 hours after confirmation</li>
+                            <li>After submitting, you'll receive a unique wallet address</li>
+                            <li>Send the exact amount in the selected cryptocurrency</li>
+                            <li>Wait for blockchain confirmations (typically 2-6)</li>
+                            <li>Your funds will be converted to USD and credited</li>
+                            <li>Processing time: 10 minutes to 24 hours</li>
                         </ol>
+                        
+                        {% if generated_address %}
+                        <div class="wallet-address-container" id="generatedAddressContainer">
+                            <div class="wallet-address-label">Your deposit address:</div>
+                            <div class="wallet-address">
+                                <span id="walletAddressDisplay">{{ generated_address }}</span>
+                                <button class="copy-btn tooltip" onclick="copyToClipboard('{{ generated_address }}', this)">
+                                    <i class="far fa-copy"></i> Copy
+                                    <span class="tooltiptext">Copied!</span>
+                                </button>
+                            </div>
+                            
+                            <div class="qr-code-container">
+                                <div id="qrCodePlaceholder" style="height: 200px; display: flex; align-items: center; justify-content: center;">
+                                    <div style="text-align: center;">
+                                        <i class="fas fa-qrcode" style="font-size: 3rem; color: #ddd;"></i>
+                                        <p style="color: #999;">QR code will appear after address generation</p>
+                                    </div>
+                                </div>
+                                <div class="qr-code-caption">Scan to deposit</div>
+                            </div>
+                            
+                            <div class="instructions-title" style="margin-top: 1.5rem;">
+                                <i class="fas fa-exclamation-circle"></i>
+                                Important
+                            </div>
+                            <ul class="instructions-list">
+                                <li>Only send {{ deposit.currency }} to this address</li>
+                                <li>Send exactly ${{ deposit.amount|floatformat:2 }} equivalent</li>
+                                <li>Do not send from an exchange - use a private wallet</li>
+                            </ul>
+                        </div>
+                        {% endif %}
                     </div>
                 </form>
             </div>
@@ -760,7 +999,7 @@
     <script>
         // Mobile Menu Toggle
         const menuToggle = document.getElementById('menuToggle');
-        const sidebar = document.getElementById('sidebar');
+        const sidebar = document.querySelector('.sidebar');
         
         menuToggle.addEventListener('click', function(e) {
             e.stopPropagation();
@@ -774,33 +1013,25 @@
             }
         });
 
-        // Prevent clicks inside sidebar from closing it
-        sidebar.addEventListener('click', function(e) {
-            e.stopPropagation();
-        });
-
-        // Crypto selection
-        function selectCrypto(element, currency) {
-            // Remove selected class from all options
-            document.querySelectorAll('.crypto-option').forEach(option => {
-                option.classList.remove('selected');
-            });
-            
-            // Add selected class to clicked option
-            element.classList.add('selected');
-            
-            // Set the currency value
-            document.getElementById('id_currency').value = currency;
-        }
-
         // Modal functions
         function openModal(modalId) {
             document.getElementById(modalId).classList.add('active');
+            document.body.style.overflow = 'hidden';
         }
 
         function closeModal(modalId) {
             document.getElementById(modalId).classList.remove('active');
+            document.body.style.overflow = '';
         }
+
+        // Close modal when clicking outside
+        document.querySelectorAll('.modal-overlay').forEach(modal => {
+            modal.addEventListener('click', function(e) {
+                if (e.target === this) {
+                    closeModal(this.id);
+                }
+            });
+        });
 
         // Table filtering
         document.getElementById('statusFilter').addEventListener('change', function() {
@@ -816,6 +1047,38 @@
                 }
             });
         });
+
+        // Copy to clipboard function
+        function copyToClipboard(text, button) {
+            navigator.clipboard.writeText(text).then(function() {
+                // Show tooltip
+                const tooltip = button.querySelector('.tooltiptext');
+                tooltip.style.visibility = 'visible';
+                tooltip.style.opacity = '1';
+                
+                // Hide tooltip after 2 seconds
+                setTimeout(function() {
+                    tooltip.style.visibility = 'hidden';
+                    tooltip.style.opacity = '0';
+                }, 2000);
+            }).catch(function(err) {
+                console.error('Could not copy text: ', err);
+            });
+        }
+
+        // Crypto selection
+        function selectCrypto(element, currency) {
+            // Remove selected class from all options
+            document.querySelectorAll('.crypto-option').forEach(option => {
+                option.classList.remove('selected');
+            });
+            
+            // Add selected class to clicked option
+            element.classList.add('selected');
+            
+            // Set the currency value
+            document.getElementById('id_currency').value = currency;
+        }
 
         // Initialize with BTC selected
         document.addEventListener('DOMContentLoaded', function() {

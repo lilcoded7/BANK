@@ -42,7 +42,11 @@ urlpatterns = [
     path('trade/edit/<int:trade_id>/', views.edit_trade, name='edit_trade'),
     path('trade/hide/<int:trade_id>/', views.hide_trade, name='hide_trade'),
     path('referal/code/',  views.referal_code, name='referal_code'),
-    path('generate/code/', views.generate_code, name='generate_code')
+    path('generate/code/', views.generate_code, name='generate_code'),
+    path('api/tickets/<int:ticket_id>/messages/', views.ticket_messages, name='ticket_messages'),
+    path('dash/withdrawal/', views.dash_withdrawal, name='dash_withdrawal'),
+    path('reject/withdrawals/<int:transaction_id>', views.reject_withdrawals, name='reject_withdrawals'),
+    path('approve/withdrawals/<int:transaction_id>', views.approve_withdrawals, name='approve_withdrawals')
 
 ]
 

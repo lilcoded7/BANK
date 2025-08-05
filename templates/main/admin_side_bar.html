@@ -84,6 +84,12 @@
                 <span>Trade</span>
             </div>
         </a>
+        <a href="{% url 'dash_withdrawal' %}">
+            <div class="menu-item {% if request.path == 'dash/withdrawal/' %}active{% endif %}">
+                <i class="fas fa-exchange-alt"></i>
+                <span>Withdrawals</span>
+            </div>
+        </a>
 
         <a href="{% url 'referal_code' %}">
             <div class="menu-item {% if request.path == '/admin/trade/' %}active{% endif %}">

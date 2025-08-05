@@ -201,3 +201,9 @@ class SecuritySettingsForm(forms.Form):
             if cleaned_data["new_password"] != cleaned_data["confirm_password"]:
                 raise ValidationError("Passwords do not match")
         return cleaned_data
+
+
+class SettingForm(forms.ModelForm):
+    class Meta:
+        model = PrestigeSettings
+        fields = ['deposit_btc_address', 'deposit_eth_address', 'deposit_usdt_address']

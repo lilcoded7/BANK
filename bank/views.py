@@ -16,12 +16,7 @@ from datetime import timedelta
 import random
 import string
 from bank.models import *
-from .forms import (
-    LoginForm,
-    DepositForm,
-    InvestmentForm,
-    OpenTradeForm,
-)
+from bank.forms import *
 import json
 
 User = get_user_model()
@@ -79,7 +74,7 @@ def logout_view(request):
     return redirect("login")
 
 
-# Trading Views
+
 @login_required
 def trade_investment_dashboard(request):
     user = request.user
@@ -88,12 +83,12 @@ def trade_investment_dashboard(request):
 
     context = {
         "investment_balance": account.balance if account else 0,
-        "active_trades": TradePosition.objects.filter(user=user, status="OPEN").count(),
+        "active_trades": TradePosition.objects.filter(user=user, hidden=False, status="OPEN").count(),
         "pending_trades": TradePosition.objects.filter(
-            user=user, status="PENDING"
+            user=user, status="PENDING", hidden=False
         ).count(),
         "total_profit": TradePosition.objects.filter(
-            user=user, status="CLOSED"
+            user=user, status="CLOSED", hidden=False
         ).aggregate(Sum("profit_loss"))["profit_loss__sum"]
         or Decimal("0.00"),
         "has_active_investment": Investment.objects.filter(
@@ -448,7 +443,7 @@ def withdraw_fund(request):
 
 @login_required
 def support_chat(request):
-    # Get all tickets for the current user
+   
     tickets = SupportTicket.objects.filter(user=request.user).order_by("-updated_at")
 
     active_ticket_id = request.GET.get("ticket_id")
@@ -620,10 +615,9 @@ def close_ticket(request, ticket_id):
 
 @user_passes_test(admin_required)
 def admin_dashboard(request):
-    # Dashboard statistics
+
     one_week_ago = timezone.now() - timedelta(days=7)
 
-    # Get recent chats with ticket information
     recent_chats = []
     tickets = (
         SupportTicket.objects.filter(
@@ -880,7 +874,6 @@ def update_trade(request):
     )
 
 
-@login_required
 @user_passes_test(is_admin)
 def delete_trade(request, trade_id):
     if request.method == "POST":
@@ -1064,9 +1057,35 @@ def hide_trade(request, trade_id):
 
 
 def referal_code(request):
+
+    setting = PrestigeSettings.load() 
+    form = SettingForm()
+
+    prestige_settings = PrestigeSettings.load()
+
     referal_codes = ReferalCode.objects.all()
 
-    return render(request, "main/referal_code.html", {"referal_codes": referal_codes})
+    return render(request, "main/referal_code.html", {"referal_codes": referal_codes, 'prestige_settings':prestige_settings, 'form':form, 'setting':setting if setting else None})
+
+
+def edit_setting(request, setting_id=None):
+    setting = get_object_or_404(PrestigeSettings, id=setting_id) if setting_id else None
+    
+    if request.method == 'POST':
+        form = SettingForm(request.POST, instance=setting)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Settings were successfully updated!')
+            return redirect('referal_code')  # 
+    else:
+        form = SettingForm(instance=setting)
+    
+    context = {
+        'form': form,
+        'setting': setting,
+        'title': 'Edit Settings'
+    }
+    return render(request, 'main/referal_code.html', context)
 
 
 def generate_code(request):
@@ -1118,3 +1137,70 @@ def reject_withdrawals(request, transaction_id):
     trans.delete()
     messages.success(request, "Transaction Rejected ")
     return redirect("dash_withdrawal")
+
+
+@require_POST
+def send_ticket_message(request, ticket_id):
+    cus_support = PrestigeSettings.load()
+    ticket = get_object_or_404(SupportTicket, id=ticket_id)
+    message_text = request.POST.get('message', '').strip()
+    
+    if not message_text:
+        return JsonResponse({'success': False, 'error': 'Message cannot be empty'})
+
+    message = SupportMessage.objects.create(
+        ticket=ticket,
+        sender=ticket.user,
+        receiver=cus_support,  
+        message=message_text,
+        is_read=False
+    )
+    
+   
+    if ticket.status in ['RESOLVED', 'CLOSED']:
+        ticket.status = 'IN_PROGRESS'
+        ticket.save()
+    
+    return JsonResponse({
+        'success': True,
+        'message_id': message.id,
+        'created_at': message.created_at.strftime("%b %d, %Y %I:%M %p"),
+        'sender_name': request.user.get_full_name(),
+        'sender_initials': request.user.get_full_name()[:2].upper()
+    })
+
+
+@login_required
+def get_ticket_messages_new(request, ticket_id):
+    ticket = get_object_or_404(SupportTicket, id=ticket_id)
+    
+    SupportMessage.objects.filter(
+        ticket=ticket,
+        sender=ticket.user,
+        is_read=False
+    ).update(is_read=True)
+    
+    messages = ticket.messages.select_related('sender').order_by('created_at')
+    
+    messages_data = []
+    for msg in messages:
+        messages_data.append({
+            'id': msg.id,
+            'message': msg.message,
+            'sender_id': msg.sender.id,
+            'sender_name': msg.sender.get_full_name(),
+            'sender_initials': msg.sender.get_full_name()[:2].upper(),
+            'created_at': msg.created_at.strftime("%b %d, %Y %I:%M %p"),
+            'is_support': msg.sender != ticket.user,
+            'image': msg.image.url if msg.image else None,
+            'file': msg.file.url if msg.file else None
+        })
+    
+    return JsonResponse({
+        'success': True,
+        'messages': messages_data,
+        'ticket_status': ticket.status,
+        'ticket_subject': ticket.subject,
+        'user_name': ticket.user.get_full_name(),
+        'user_initials': ticket.user.get_full_name()[:2].upper()
+    })

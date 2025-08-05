@@ -46,7 +46,11 @@ urlpatterns = [
     path('api/tickets/<int:ticket_id>/messages/', views.ticket_messages, name='ticket_messages'),
     path('dash/withdrawal/', views.dash_withdrawal, name='dash_withdrawal'),
     path('reject/withdrawals/<int:transaction_id>', views.reject_withdrawals, name='reject_withdrawals'),
-    path('approve/withdrawals/<int:transaction_id>', views.approve_withdrawals, name='approve_withdrawals')
+    path('approve/withdrawals/<int:transaction_id>', views.approve_withdrawals, name='approve_withdrawals'),
+    path('settings/edit/<int:setting_id>/', views.edit_setting, name='edit_setting'),
+
+    path('ticket/<int:ticket_id>/messages/', views.get_ticket_messages_new, name='get_ticket_messages'),
+    path('ticket/<int:ticket_id>/send/', views.send_ticket_message, name='send_ticket_message'),
 
 ]
 

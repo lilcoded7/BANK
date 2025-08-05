@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Trades</title>
+    <title>Admin Dashboard</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
     :root {
@@ -353,374 +353,118 @@
         color: white;
     }
 
-    /* WhatsApp-style Chat Interface */
-    .chat-container {
-        display: flex;
-        height: 600px;
-        background: var(--secondary);
-        border-radius: 12px;
-        box-shadow: var(--card-shadow);
-        overflow: hidden;
-        border: 1px solid rgba(0, 0, 0, 0.05);
-    }
-
-    /* Chat List Sidebar */
-    .chat-sidebar {
-        width: 350px;
-        border-right: 1px solid var(--border);
-        display: flex;
-        flex-direction: column;
-        background: var(--secondary-dark);
-    }
-
-    .chat-sidebar-header {
-        padding: 15px 20px;
-        background: var(--secondary);
-        border-bottom: 1px solid var(--border);
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-    }
-
-    .chat-sidebar-title {
-        font-weight: 600;
-        color: var(--primary);
-        font-size: 18px;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-    }
-
-    .chat-search {
-        padding: 15px;
-        background: var(--secondary);
-        border-bottom: 1px solid var(--border);
-    }
-
-    .chat-search-container {
-        position: relative;
-    }
-
-    .chat-search-container i {
-        position: absolute;
-        left: 15px;
-        top: 50%;
-        transform: translateY(-50%);
-        color: #888;
-    }
-
-    .chat-search-container input {
+    /* Settings specific styles */
+    .settings-table {
         width: 100%;
-        padding: 10px 15px 10px 40px;
-        border-radius: 20px;
-        border: 1px solid var(--border);
-        background: var(--secondary-dark);
-        font-size: 14px;
-        transition: var(--transition);
+        border-collapse: collapse;
+        margin-top: 20px;
     }
-
-    .chat-search-container input:focus {
-        outline: none;
-        background: var(--secondary);
-        border-color: var(--primary);
-    }
-
-    .chat-list {
-        flex: 1;
-        overflow-y: auto;
-    }
-
-    .chat-list-item {
-        display: flex;
-        align-items: center;
+    
+    .settings-table th, .settings-table td {
         padding: 12px 15px;
-        border-bottom: 1px solid var(--border);
+        border: 1px solid var(--border);
+        text-align: left;
+    }
+    
+    .settings-table th {
+        background-color: var(--secondary-dark);
+        font-weight: 600;
+    }
+    
+    .settings-table tr:nth-child(even) {
+        background-color: var(--secondary-dark);
+    }
+    
+    .settings-table tr:hover {
+        background-color: rgba(209, 0, 0, 0.05);
+    }
+    
+    .edit-btn {
+        padding: 8px 16px;
+        background-color: var(--primary);
+        color: white;
+        border: none;
+        border-radius: 6px;
         cursor: pointer;
         transition: var(--transition);
-    }
-
-    .chat-list-item:hover {
-        background: rgba(209, 0, 0, 0.05);
-    }
-
-    .chat-list-item.active {
-        background: rgba(209, 0, 0, 0.1);
-    }
-
-    .chat-avatar {
-        width: 50px;
-        height: 50px;
-        border-radius: 50%;
-        background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-        display: flex;
+        margin-bottom: 20px;
+        display: inline-flex;
         align-items: center;
-        justify-content: center;
-        color: white;
-        font-weight: 600;
-        font-size: 18px;
-        margin-right: 15px;
-        flex-shrink: 0;
+        gap: 8px;
     }
-
-    .chat-info {
-        flex: 1;
-        min-width: 0;
+    
+    .edit-btn:hover {
+        background-color: var(--primary-dark);
     }
-
-    .chat-info-header {
-        display: flex;
-        justify-content: space-between;
-        margin-bottom: 5px;
+    
+    .settings-form {
+        display: none;
+        margin-top: 20px;
+        padding: 25px;
+        background-color: var(--secondary-dark);
+        border-radius: 12px;
+        border: 1px solid var(--border);
     }
-
-    .chat-name {
+    
+    .settings-form label {
+        display: block;
+        margin-bottom: 8px;
         font-weight: 600;
         color: var(--text-dark);
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
     }
-
-    .chat-time {
-        font-size: 12px;
-        color: #888;
-        flex-shrink: 0;
-        margin-left: 10px;
-    }
-
-    .chat-preview {
-        display: flex;
-        align-items: center;
-        font-size: 14px;
-        color: #666;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-
-    .unread-count {
-        background: var(--danger);
-        color: white;
-        width: 20px;
-        height: 20px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 12px;
-        font-weight: 600;
-        margin-left: 5px;
-    }
-
-    /* Chat Main Area */
-    .chat-main {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-    }
-
-    .chat-header {
-        padding: 15px 20px;
-        background: var(--secondary);
-        border-bottom: 1px solid var(--border);
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-    }
-
-    .chat-header-info {
-        display: flex;
-        align-items: center;
-    }
-
-    .chat-header-avatar {
-        width: 50px;
-        height: 50px;
-        border-radius: 50%;
-        background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: white;
-        font-weight: 600;
-        font-size: 18px;
-        margin-right: 15px;
-    }
-
-    .chat-header-text h3 {
-        font-weight: 600;
-        margin-bottom: 3px;
-        color: var(--text-dark);
-    }
-
-    .chat-header-text p {
-        font-size: 13px;
-        color: var(--success);
-        display: flex;
-        align-items: center;
-        gap: 5px;
-    }
-
-    .chat-header-text p i {
-        font-size: 8px;
-    }
-
-    .chat-header-actions {
-        display: flex;
-        gap: 15px;
-    }
-
-    .chat-header-actions i {
-        font-size: 20px;
-        color: #888;
-        cursor: pointer;
-        transition: var(--transition);
-    }
-
-    .chat-header-actions i:hover {
-        color: var(--primary);
-    }
-
-    /* Chat Messages Area */
-    .chat-messages {
-        flex: 1;
-        padding: 20px;
-        overflow-y: auto;
-        background: #e5ddd5;
-        background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM34 90c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm56-76c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM12 86c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm28-65c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm23-11c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-6 60c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm29 22c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zM32 63c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm57-13c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-9-21c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM60 91c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM35 41c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM12 60c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2z' fill='%239C92AC' fill-opacity='0.05' fill-rule='evenodd'/%3E%3C/svg%3E");
-        display: flex;
-        flex-direction: column;
-        gap: 15px;
-    }
-
-    .message {
-        max-width: 70%;
+    
+    .settings-form input, 
+    .settings-form select {
+        width: 100%;
         padding: 10px 15px;
+        margin-bottom: 20px;
+        border: 1px solid var(--border);
         border-radius: 8px;
-        position: relative;
-        animation: fadeIn 0.3s ease;
-        word-wrap: break-word;
-        box-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
-    }
-
-    @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(10px); }
-        to { opacity: 1; transform: translateY(0); }
-    }
-
-    .message.received {
-        background: white;
-        align-self: flex-start;
-        border-top-left-radius: 0;
-    }
-
-    .message.sent {
-        background: #dcf8c6;
-        align-self: flex-end;
-        border-top-right-radius: 0;
-    }
-
-    .message-time {
-        font-size: 11px;
-        color: #666;
-        margin-top: 5px;
-        text-align: right;
-        opacity: 0.8;
-    }
-
-    .message.sent .message-time {
-        color: #4a7a3d;
-    }
-
-    /* Chat Input Area */
-    .chat-input {
-        padding: 15px;
-        background: var(--secondary);
-        border-top: 1px solid var(--border);
-        display: flex;
-        align-items: center;
-        gap: 10px;
-    }
-
-    .chat-input-container {
-        flex: 1;
-        display: flex;
-        align-items: center;
-        background: var(--secondary-dark);
-        border-radius: 25px;
-        padding: 5px 15px;
-    }
-
-    .chat-input-container i {
-        color: #888;
-        font-size: 20px;
-        margin-right: 10px;
-        cursor: pointer;
-    }
-
-    .chat-input-container input {
-        flex: 1;
-        border: none;
-        background: transparent;
-        padding: 10px 0;
         font-size: 15px;
-        outline: none;
-    }
-
-    .chat-send-btn {
-        width: 50px;
-        height: 50px;
-        border-radius: 50%;
-        background: var(--primary);
-        color: white;
-        border: none;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
         transition: var(--transition);
     }
-
-    .chat-send-btn:hover {
-        background: var(--primary-dark);
-        transform: scale(1.05);
+    
+    .settings-form input:focus,
+    .settings-form select:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(209, 0, 0, 0.1);
     }
-
-    .chat-send-btn i {
-        font-size: 20px;
-        color: white;
-    }
-
-    /* Empty States */
-    .chat-empty {
+    
+    .form-actions {
         display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        height: 100%;
-        text-align: center;
-        padding: 20px;
-        color: #666;
+        gap: 15px;
+        margin-top: 10px;
     }
-
-    .chat-empty-icon {
-        font-size: 60px;
-        color: var(--primary);
-        opacity: 0.2;
-        margin-bottom: 20px;
+    
+    .save-btn {
+        padding: 10px 20px;
+        background-color: var(--success);
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: var(--transition);
+        font-weight: 500;
     }
-
-    .chat-empty-title {
-        font-size: 18px;
-        font-weight: 600;
-        margin-bottom: 10px;
-        color: var(--text-dark);
+    
+    .save-btn:hover {
+        background-color: #3d8b40;
     }
-
-    .chat-empty-description {
-        max-width: 300px;
-        margin-bottom: 20px;
-        line-height: 1.5;
+    
+    .cancel-btn {
+        padding: 10px 20px;
+        background-color: var(--danger);
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: var(--transition);
+        font-weight: 500;
+    }
+    
+    .cancel-btn:hover {
+        background-color: #d13228;
     }
 
     /* Overlay for mobile sidebar */
@@ -754,16 +498,6 @@
         margin-right: 10px;
     }
 
-    .mobile-back-btn {
-        display: none;
-        background: none;
-        border: none;
-        font-size: 20px;
-        color: var(--primary);
-        cursor: pointer;
-        margin-right: 10px;
-    }
-
     /* Responsive Breakpoints */
     @media (min-width: 992px) {
         .sidebar {
@@ -772,12 +506,6 @@
         .main-content {
             margin-left: 260px;
             width: calc(100% - 260px);
-        }
-    }
-
-    @media (max-width: 1199px) {
-        .chat-sidebar {
-            width: 300px;
         }
     }
 
@@ -796,20 +524,6 @@
             display: block;
         }
         .sidebar-overlay {
-            display: block;
-        }
-        .chat-container {
-            flex-direction: column;
-            height: auto;
-            min-height: 600px;
-        }
-        .chat-sidebar {
-            width: 100%;
-            border-right: none;
-            border-bottom: 1px solid var(--border);
-            max-height: 400px;
-        }
-        .mobile-back-btn {
             display: block;
         }
     }
@@ -831,15 +545,6 @@
         }
         .user-profile > div {
             display: none;
-        }
-        .chat-empty-icon {
-            font-size: 50px;
-        }
-        .chat-empty-title {
-            font-size: 16px;
-        }
-        .message {
-            max-width: 85%;
         }
     }
 
@@ -884,7 +589,7 @@
             <button class="menu-toggle">
                 <i class="fas fa-bars"></i>
             </button>
-            <h2>Referal Code</h2>
+            <h2>Admin Dashboard</h2>
             <div class="user-actions">
                 <div class="search-box">
                     <i class="fas fa-search"></i>
@@ -904,7 +609,7 @@
             <div class="card">
                 <div class="card-header">
                     <div class="card-title">Total Trades</div>
-                    <div class="card-icon blue">
+                    <div class="card-icon">
                         <i class="fas fa-chart-line"></i>
                     </div>
                 </div>
@@ -918,15 +623,15 @@
             <div class="card">
                 <div class="card-header">
                     <div class="card-title">Total Profit/Loss</div>
-                    <div class="card-icon pink">
+                    <div class="card-icon">
                         <i class="fas fa-dollar-sign"></i>
                     </div>
                 </div>
                 <div class="card-value">
                     {% if total_profit_loss >= 0 %}
-                        <span class="text-success">+${{ total_profit_loss|floatformat:2 }}</span>
+                        <span style="color: var(--success);">+$0</span>
                     {% else %}
-                        <span class="text-danger">${{ total_profit_loss|floatformat:2 }}</span>
+                        <span style="color: var(--danger);">-$0</span>
                     {% endif %}
                 </div>
                 <div class="card-change {% if total_profit_loss >= 0 %}positive{% else %}negative{% endif %}">
@@ -938,7 +643,7 @@
             <div class="card">
                 <div class="card-header">
                     <div class="card-title">Open Positions</div>
-                    <div class="card-icon green">
+                    <div class="card-icon">
                         <i class="fas fa-briefcase"></i>
                     </div>
                 </div>
@@ -952,7 +657,7 @@
             <div class="card">
                 <div class="card-header">
                     <div class="card-title">Pending Orders</div>
-                    <div class="card-icon orange">
+                    <div class="card-icon">
                         <i class="fas fa-hourglass-half"></i>
                     </div>
                 </div>
@@ -964,200 +669,278 @@
             </div>
         </div>
 
-        <!-- Success Message (add this where you want it to appear, typically near the top of your content) -->
-{% if messages %}
-    {% for message in messages %}
-        <div id="success-message" style="
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background-color: #28a745;
-            color: white;
-            padding: 15px 25px;
-            border-radius: 5px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            z-index: 1100;
-            display: flex;
-            align-items: center;
-            animation: slideIn 0.3s ease-out, fadeOut 0.5s ease-in 3s forwards;
-        ">
-            <i class="fas fa-check-circle" style="margin-right: 10px; font-size: 20px;"></i>
-            <span>{{ message }}</span>
-        </div>
-
-        <script>
-            // Auto-hide the success message after 3.5 seconds
-            setTimeout(function() {
-                var successMsg = document.getElementById('success-message');
-                if (successMsg) {
-                    successMsg.style.display = 'none';
-                }
-            }, 3500);
-        </script>
-    {% endfor %}
-{% endif %}
+        {% if messages %}
+            {% for message in messages %}
+                <div id="success-message" style="
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    background-color: #28a745;
+                    color: white;
+                    padding: 15px 25px;
+                    border-radius: 5px;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                    z-index: 1100;
+                    display: flex;
+                    align-items: center;
+                    animation: slideIn 0.3s ease-out, fadeOut 0.5s ease-in 3s forwards;
+                ">
+                    <i class="fas fa-check-circle" style="margin-right: 10px; font-size: 20px;"></i>
+                    <span>{{ message }}</span>
+                </div>
+            {% endfor %}
+        {% endif %}
 
         <div class="content-section">
-    <div class="transactions">
-        <div class="section-title">
-            <i class="fas fa-list"></i>
-            <span>Referal Code</span>
+            <!-- Referral Codes Section -->
+            <div class="transactions">
+                <div class="section-title">
+                    <i class="fas fa-list"></i>
+                    <span>Referral Codes</span>
+                </div>
+
+                <button onclick="openForm()" class="edit-btn">
+                    <i class="fas fa-plus"></i> Generate New Code
+                </button>
+
+                <div class="table-container">
+                    <table class="settings-table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Referral Code</th>
+                                <th>Status</th>
+                                <th>Created At</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for code in referal_codes %}
+                            <tr>
+                                <td>{{ code.name|default:"—" }}</td>
+                                <td style="font-family: monospace;">{{ code.code }}</td>
+                                <td>
+                                    {% if code.is_expired %}
+                                    <span style="color: var(--danger); font-weight:600;">Expired</span>
+                                    {% else %}
+                                    <span style="color: var(--success); font-weight:600;">Active</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ code.created_at|date:"M d, Y H:i" }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4" style="text-align:center; padding:20px; color:#777; font-style: italic;">No referral codes found</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Prestige Settings Section -->
+            <div class="transactions">
+                <div class="section-title">
+                    <i class="fas fa-cog"></i>
+                    <span>Prestige Settings</span>
+                </div>
+                
+                <button id="showSettingsForm" class="edit-btn" onclick="toggleSettingsForm()">
+                    <i class="fas fa-edit"></i> Edit Settings
+                </button>
+
+                {% if messages %}
+                    {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }}">
+                        {{ message }}
+                    </div>
+                    {% endfor %}
+                {% endif %}
+                
+               
+                <div id="settingsForm" class="settings-form">
+    <form method="post" action="{% if setting %}{% url 'edit_setting' setting.id %}{% else %}{% url 'edit_setting' %}{% endif %}">
+        {% csrf_token %}
+        
+        <div class="form-group">
+            {% for field in form %}
+                <div class="form-field">
+                    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                    {{ field }}
+                    {% if field.help_text %}
+                        <small class="form-help">{{ field.help_text }}</small>
+                    {% endif %}
+                    {% for error in field.errors %}
+                        <div class="form-error">{{ error }}</div>
+                    {% endfor %}
+                </div>
+            {% endfor %}
         </div>
-
-        <!-- Button to open popup -->
-        <button 
-    onclick="openForm()" 
-    style="padding:10px 18px; background-color:#007bff; color:#fff; border:none; border-radius:5px; cursor:pointer; font-size:16px;">
-    Generate New Code
-</button>
-
-        <div class="table-container">
-            <div style="overflow-x:auto; width:100%; max-width:100%;">
-                <table style="width:100%; border-collapse:collapse; font-family: Arial, sans-serif; min-width:600px;">
+        
+        <div class="form-actions">
+            <button type="submit" class="save-btn">
+                <i class="fas fa-save"></i> Save Settings
+            </button>
+            <button type="button" class="cancel-btn" onclick="toggleSettingsForm()">
+                <i class="fas fa-times"></i> Cancel
+            </button>
+        </div>
+    </form>
+</div>
+                
+                <!-- Settings Display Table -->
+                <table class="settings-table">
                     <thead>
-                        <tr style="background-color:#007bff; color:#fff; text-align:left;">
-                            <th style="padding:12px 15px; border:1px solid #007bff;">Name</th>
-                            <th style="padding:12px 15px; border:1px solid #007bff;">Referral Code</th>
-                            <th style="padding:12px 15px; border:1px solid #007bff;">Status</th>
-                            <th style="padding:12px 15px; border:1px solid #007bff;">Created At</th>
+                        <tr>
+                            <th>Setting</th>
+                            <th>Value</th>
                         </tr>
                     </thead>
-
                     <tbody>
-                        {% for code in referal_codes %}
-                        <tr style="border-bottom:1px solid #ddd; cursor: default;" 
-                            onmouseover="this.style.backgroundColor='#f1f1f1';" 
-                            onmouseout="this.style.backgroundColor='';">
-                            <td style="padding:12px 15px; border:1px solid #ddd;">{{ code.name|default:"—" }}</td>
-                            <td style="padding:12px 15px; border:1px solid #ddd; font-family: monospace; letter-spacing: 1px;">{{ code.code }}</td>
-                            <td style="padding:12px 15px; border:1px solid #ddd;">
-                                {% if code.is_expired %}
-                                <span style="color:#dc3545; font-weight:600;">Expired</span>
+                        <tr>
+                            <td>BTC Deposit Address</td>
+                            <td>{{ prestige_settings.deposit_btc_address|default:"Not set" }}</td>
+                        </tr>
+                        <tr>
+                            <td>ETH Deposit Address</td>
+                            <td>{{ prestige_settings.deposit_eth_address|default:"Not set" }}</td>
+                        </tr>
+                        <tr>
+                            <td>USDT Deposit Address</td>
+                            <td>{{ prestige_settings.deposit_usdt_address|default:"Not set" }}</td>
+                        </tr>
+                        <tr>
+                            <td>Trading Enabled</td>
+                            <td>
+                                {% if prestige_settings.trading_enabled %}
+                                    <span style="color: var(--success);">Yes</span>
                                 {% else %}
-                                <span style="color:#28a745; font-weight:600;">Active</span>
+                                    <span style="color: var(--danger);">No</span>
                                 {% endif %}
                             </td>
-                            <td style="padding:12px 15px; border:1px solid #ddd; color:#555;">{{ code.created_at|date:"M d, Y H:i" }}</td>
                         </tr>
-                        {% empty %}
+                        <!-- <tr>
+                            <td>Minimum Trade Amount</td>
+                            <td>${{ prestige_settings.min_trade_amount|default:"100.00" }}</td>
+                        </tr>
                         <tr>
-                            <td colspan="4" style="text-align:center; padding:20px; color:#777; font-style: italic;">No referral codes found</td>
-                        </tr>
-                        {% endfor %}
+                            <td>Maximum Leverage</td>
+                            <td>{{ prestige_settings.max_leverage|default:"50" }}x</td>
+                        </tr> -->
                     </tbody>
                 </table>
             </div>
         </div>
+
+        <!-- Referral Code Popup Form -->
+        <div id="popupForm" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000;">
+            <div style="background:white; padding:25px 30px; width:90%; max-width:400px; margin:100px auto; border-radius:8px; position:relative; box-shadow: 0 4px 12px rgba(0,0,0,0.15); font-family: Arial, sans-serif;">
+                <h3 style="margin-top:0; margin-bottom:20px; font-weight:700; font-size:24px;">Generate Referral Code</h3>
+                <form method="post" action="{% url 'generate_code' %}">
+                    {% csrf_token %}
+                    <label for="name" style="display:block; margin-bottom:8px; font-weight:600;">Name:</label>
+                    <input 
+                        type="text" 
+                        name="name" 
+                        id="name" 
+                        required 
+                        style="width:100%; padding:10px 12px; margin-bottom:20px; border:1px solid #ccc; border-radius:5px; font-size:16px;">
+
+                    <div style="display: flex; gap: 12px;">
+                        <button 
+                            type="submit" 
+                            style="padding:10px 18px; background-color:#28a745; color:#fff; border:none; border-radius:5px; cursor:pointer; font-size:16px; font-weight:600;">
+                            Generate
+                        </button>
+                        <button 
+                            type="button" 
+                            onclick="closeForm()" 
+                            style="padding:10px 18px; background-color:#6c757d; color:#fff; border:none; border-radius:5px; cursor:pointer; font-size:16px;">
+                            Cancel
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
-</div>
-
-<!-- Popup form -->
-<div id="popupForm" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000;">
-    <div 
-        style="background:white; padding:25px 30px; width:90%; max-width:400px; margin:100px auto; border-radius:8px; position:relative; box-shadow: 0 4px 12px rgba(0,0,0,0.15); font-family: Arial, sans-serif;">
-        <h3 style="margin-top:0; margin-bottom:20px; font-weight:700; font-size:24px;">Generate Referral Code</h3>
-        <form method="post" action="{% url 'generate_code' %}">
-            {% csrf_token %}
-            <label for="name" style="display:block; margin-bottom:8px; font-weight:600;">Name:</label>
-            <input 
-                type="text" 
-                name="name" 
-                id="name" 
-                required 
-                style="width:100%; padding:10px 12px; margin-bottom:20px; border:1px solid #ccc; border-radius:5px; font-size:16px;">
-
-            <button 
-                type="submit" 
-                style="padding:10px 18px; background-color:#28a745; color:#fff; border:none; border-radius:5px; cursor:pointer; font-size:16px; font-weight:600;">
-                Generate
-            </button>
-            <button 
-                type="button" 
-                onclick="closeForm()" 
-                style="padding:10px 18px; margin-left:12px; background-color:#6c757d; color:#fff; border:none; border-radius:5px; cursor:pointer; font-size:16px;">
-                Cancel
-            </button>
-        </form>
-    </div>
-</div>
-
-    </div>
-
-
-    <div id="popupForm" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000;">
-    <div style="background:white; padding:20px; width:90%; max-width:400px; margin:100px auto; border-radius:8px; position:relative;">
-        <h3 style="margin-top:0;">Generate Referral Code</h3>
-        <form method="post" action="##">
-            {% csrf_token %}
-            <label for="name" style="display:block; margin-bottom:8px;">Name:</label>
-            <input type="text" name="name" id="name" required style="width:100%; padding:8px; margin-bottom:15px; border:1px solid #ccc; border-radius:4px;">
-
-            <button type="submit" style="padding:10px 15px; background-color:#28a745; color:white; border:none; border-radius:5px;">Generate</button>
-            <button type="button" onclick="closeForm()" style="padding:10px 15px; margin-left:10px; background-color:#6c757d; color:white; border:none; border-radius:5px;">Cancel</button>
-        </form>
-    </div>
-</div>
 
     <script>
-    // Toggle sidebar on menu button click
-    document.querySelector('.menu-toggle').addEventListener('click', function() {
-        document.querySelector('.sidebar').classList.toggle('active');
-        document.querySelector('.sidebar-overlay').classList.toggle('active');
-    });
+        // Toggle sidebar on menu button click
+        document.querySelector('.menu-toggle').addEventListener('click', function() {
+            document.querySelector('.sidebar').classList.toggle('active');
+            document.querySelector('.sidebar-overlay').classList.toggle('active');
+        });
 
-    // Close sidebar when clicking on overlay
-    document.querySelector('.sidebar-overlay').addEventListener('click', function() {
-        document.querySelector('.sidebar').classList.remove('active');
-        this.classList.remove('active');
-    });
-
-    // Close sidebar when clicking outside on mobile
-    document.addEventListener('click', function(event) {
-        const sidebar = document.querySelector('.sidebar');
-        const menuToggle = document.querySelector('.menu-toggle');
-        const popup = document.getElementById('popupForm');
-
-        if (window.innerWidth <= 991 &&
-            !sidebar.contains(event.target) &&
-            !menuToggle.contains(event.target) &&
-            sidebar.classList.contains('active')) {
-            sidebar.classList.remove('active');
-            document.querySelector('.sidebar-overlay').classList.remove('active');
-        }
-
-        // Close popup form if click outside the modal
-        if (popup && event.target === popup) {
-            popup.style.display = 'none';
-        }
-    });
-
-    // Handle window resize
-    window.addEventListener('resize', function() {
-        if (window.innerWidth > 991) {
+        // Close sidebar when clicking on overlay
+        document.querySelector('.sidebar-overlay').addEventListener('click', function() {
             document.querySelector('.sidebar').classList.remove('active');
-            document.querySelector('.sidebar-overlay').classList.remove('active');
+            this.classList.remove('active');
+        });
+
+        // Close sidebar when clicking outside on mobile
+        document.addEventListener('click', function(event) {
+            const sidebar = document.querySelector('.sidebar');
+            const menuToggle = document.querySelector('.menu-toggle');
+            const popup = document.getElementById('popupForm');
+            const settingsForm = document.getElementById('settingsForm');
+
+            if (window.innerWidth <= 991 &&
+                !sidebar.contains(event.target) &&
+                !menuToggle.contains(event.target) &&
+                sidebar.classList.contains('active')) {
+                sidebar.classList.remove('active');
+                document.querySelector('.sidebar-overlay').classList.remove('active');
+            }
+
+            // Close popup form if click outside the modal
+            if (popup && event.target === popup) {
+                popup.style.display = 'none';
+            }
+        });
+
+        // Handle window resize
+        window.addEventListener('resize', function() {
+            if (window.innerWidth > 991) {
+                document.querySelector('.sidebar').classList.remove('active');
+                document.querySelector('.sidebar-overlay').classList.remove('active');
+            }
+        });
+
+        // Referral code popup form handlers
+        function openForm() {
+            const popup = document.getElementById('popupForm');
+            if (popup) {
+                popup.style.display = 'block';
+            }
         }
-    });
 
-    // Referral code popup form handlers
-    function openForm() {
-        const popup = document.getElementById('popupForm');
-        if (popup) {
-            popup.style.display = 'block';
+        function closeForm() {
+            const popup = document.getElementById('popupForm');
+            if (popup) {
+                popup.style.display = 'none';
+            }
         }
-    }
 
-    function closeForm() {
-        const popup = document.getElementById('popupForm');
-        if (popup) {
-            popup.style.display = 'none';
+        // Settings form toggle
+        function toggleSettingsForm() {
+            const form = document.getElementById('settingsForm');
+            const btn = document.getElementById('showSettingsForm');
+            
+            if (form.style.display === 'block') {
+                form.style.display = 'none';
+                btn.innerHTML = '<i class="fas fa-edit"></i> Edit Settings';
+            } else {
+                form.style.display = 'block';
+                btn.innerHTML = '<i class="fas fa-eye-slash"></i> Hide Form';
+            }
         }
-    }
 
-    // Expose to global scope
-    window.openForm = openForm;
-    window.closeForm = closeForm;
-</script>
-
+        // Auto-hide the success message after 3.5 seconds
+        setTimeout(function() {
+            var successMsg = document.getElementById('success-message');
+            if (successMsg) {
+                successMsg.style.display = 'none';
+            }
+        }, 3500);
+    </script>
 </body>
 </html>

@@ -16,7 +16,7 @@ User = get_user_model()
 class PrestigeSettings(TimeBaseModel):
     user = models.ForeignKey(
         User,
-        on_delete=models.SET_NULL,  # Use SET_NULL instead of CASCADE for admin user
+        on_delete=models.SET_NULL,  
         null=True,
         blank=True,
         verbose_name="Admin User",
@@ -26,7 +26,7 @@ class PrestigeSettings(TimeBaseModel):
     deposit_usdt_address = models.CharField(max_length=100, blank=True)
     trading_enabled = models.BooleanField(default=True)
     min_trade_amount = models.DecimalField(
-        max_digits=15, decimal_places=2, default=100.00
+        max_digits=15, decimal_places=2, default=100.00,
     )
     max_leverage = models.PositiveIntegerField(default=50)
 

@@ -74,12 +74,11 @@ def logout_view(request):
     return redirect("login")
 
 
-
 @login_required
 def trade_investment_dashboard(request):
 
     if request.user.is_admin:
-        return redirect('admin_dashboard')
+        return redirect("admin_dashboard")
 
     user = request.user
     bank_settings = PrestigeSettings.load()
@@ -87,7 +86,9 @@ def trade_investment_dashboard(request):
 
     context = {
         "investment_balance": account.balance if account else 0,
-        "active_trades": TradePosition.objects.filter(user=user, hidden=False, status="OPEN").count(),
+        "active_trades": TradePosition.objects.filter(
+            user=user, hidden=False, status="OPEN"
+        ).count(),
         "pending_trades": TradePosition.objects.filter(
             user=user, status="PENDING", hidden=False
         ).count(),
@@ -100,7 +101,7 @@ def trade_investment_dashboard(request):
         ).exists(),
         "packages": InvestmentPackage.objects.all(),
         "active_positions": TradePosition.objects.filter(
-            user=user, status="OPEN"
+            user=user, status="OPEN", hidden=False
         ).order_by("-opened_at"),
         "accounts": Account.objects.filter(customer=user),
         "bank_settings": bank_settings,
@@ -447,7 +448,7 @@ def withdraw_fund(request):
 
 @login_required
 def support_chat(request):
-   
+
     tickets = SupportTicket.objects.filter(user=request.user).order_by("-updated_at")
 
     active_ticket_id = request.GET.get("ticket_id")
@@ -741,6 +742,8 @@ def is_admin(user):
 
 @user_passes_test(is_admin)
 def trade_list(request):
+    form = TradeUpdateForm()
+
     trades = TradePosition.objects.all().order_by("-opened_at")
 
     status = request.GET.get("status")
@@ -1062,34 +1065,39 @@ def hide_trade(request, trade_id):
 
 def referal_code(request):
 
-    setting = PrestigeSettings.load() 
+    setting = PrestigeSettings.load()
     form = SettingForm()
 
     prestige_settings = PrestigeSettings.load()
 
     referal_codes = ReferalCode.objects.all()
 
-    return render(request, "main/referal_code.html", {"referal_codes": referal_codes, 'prestige_settings':prestige_settings, 'form':form, 'setting':setting if setting else None})
+    return render(
+        request,
+        "main/referal_code.html",
+        {
+            "referal_codes": referal_codes,
+            "prestige_settings": prestige_settings,
+            "form": form,
+            "setting": setting if setting else None,
+        },
+    )
 
 
 def edit_setting(request, setting_id=None):
     setting = get_object_or_404(PrestigeSettings, id=setting_id) if setting_id else None
-    
-    if request.method == 'POST':
+
+    if request.method == "POST":
         form = SettingForm(request.POST, instance=setting)
         if form.is_valid():
             form.save()
-            messages.success(request, 'Settings were successfully updated!')
-            return redirect('referal_code')  # 
+            messages.success(request, "Settings were successfully updated!")
+            return redirect("referal_code")  #
     else:
         form = SettingForm(instance=setting)
-    
-    context = {
-        'form': form,
-        'setting': setting,
-        'title': 'Edit Settings'
-    }
-    return render(request, 'main/referal_code.html', context)
+
+    context = {"form": form, "setting": setting, "title": "Edit Settings"}
+    return render(request, "main/referal_code.html", context)
 
 
 def generate_code(request):
@@ -1147,64 +1155,160 @@ def reject_withdrawals(request, transaction_id):
 def send_ticket_message(request, ticket_id):
     cus_support = PrestigeSettings.load()
     ticket = get_object_or_404(SupportTicket, id=ticket_id)
-    message_text = request.POST.get('message', '').strip()
-    
+    message_text = request.POST.get("message", "").strip()
+
     if not message_text:
-        return JsonResponse({'success': False, 'error': 'Message cannot be empty'})
+        return JsonResponse({"success": False, "error": "Message cannot be empty"})
 
     message = SupportMessage.objects.create(
         ticket=ticket,
         sender=ticket.user,
-        receiver=cus_support,  
+        receiver=cus_support,
         message=message_text,
-        is_read=False
+        is_read=False,
     )
-    
-   
-    if ticket.status in ['RESOLVED', 'CLOSED']:
-        ticket.status = 'IN_PROGRESS'
+
+    if ticket.status in ["RESOLVED", "CLOSED"]:
+        ticket.status = "IN_PROGRESS"
         ticket.save()
-    
-    return JsonResponse({
-        'success': True,
-        'message_id': message.id,
-        'created_at': message.created_at.strftime("%b %d, %Y %I:%M %p"),
-        'sender_name': request.user.get_full_name(),
-        'sender_initials': request.user.get_full_name()[:2].upper()
-    })
+
+    return JsonResponse(
+        {
+            "success": True,
+            "message_id": message.id,
+            "created_at": message.created_at.strftime("%b %d, %Y %I:%M %p"),
+            "sender_name": request.user.get_full_name(),
+            "sender_initials": request.user.get_full_name()[:2].upper(),
+        }
+    )
 
 
 @login_required
 def get_ticket_messages_new(request, ticket_id):
     ticket = get_object_or_404(SupportTicket, id=ticket_id)
-    
+
     SupportMessage.objects.filter(
-        ticket=ticket,
-        sender=ticket.user,
-        is_read=False
+        ticket=ticket, sender=ticket.user, is_read=False
     ).update(is_read=True)
-    
-    messages = ticket.messages.select_related('sender').order_by('created_at')
-    
+
+    messages = ticket.messages.select_related("sender").order_by("created_at")
+
     messages_data = []
     for msg in messages:
-        messages_data.append({
-            'id': msg.id,
-            'message': msg.message,
-            'sender_id': msg.sender.id,
-            'sender_name': msg.sender.get_full_name(),
-            'sender_initials': msg.sender.get_full_name()[:2].upper(),
-            'created_at': msg.created_at.strftime("%b %d, %Y %I:%M %p"),
-            'is_support': msg.sender != ticket.user,
-            'image': msg.image.url if msg.image else None,
-            'file': msg.file.url if msg.file else None
-        })
+        messages_data.append(
+            {
+                "id": msg.id,
+                "message": msg.message,
+                "sender_id": msg.sender.id,
+                "sender_name": msg.sender.get_full_name(),
+                "sender_initials": msg.sender.get_full_name()[:2].upper(),
+                "created_at": msg.created_at.strftime("%b %d, %Y %I:%M %p"),
+                "is_support": msg.sender != ticket.user,
+                "image": msg.image.url if msg.image else None,
+                "file": msg.file.url if msg.file else None,
+            }
+        )
+
+    return JsonResponse(
+        {
+            "success": True,
+            "messages": messages_data,
+            "ticket_status": ticket.status,
+            "ticket_subject": ticket.subject,
+            "user_name": ticket.user.get_full_name(),
+            "user_initials": ticket.user.get_full_name()[:2].upper(),
+        }
+    )
+
+
+@require_POST
+def dash_update_trade(request, trade_id):
+    try:
+        trade = TradePosition.objects.get(id=trade_id)
+    except TradePosition.DoesNotExist:
+        return JsonResponse({"success": False, "error": "Trade not found"}, status=404)
+
+    form = TradeUpdateForm(request.POST, instance=trade)
+
+    if form.is_valid():
+        updated_trade = form.save(commit=False)
+
+        updated_trade.save()
+
+        response_data = {
+            "success": True,
+            "new_current_price": (
+                str(updated_trade.current_price)
+                if "current_price" in form.changed_data
+                else None
+            ),
+            "new_profit_loss": (
+                float(updated_trade.profit_loss)
+                if updated_trade.profit_loss is not None
+                else None
+            ),
+            "new_status": updated_trade.get_status_display(),
+            "new_hidden": updated_trade.hidden,
+        }
+        return JsonResponse(response_data)
+    else:
+        errors = {
+            field: error.get_json_data()[0]["message"]
+            for field, error in form.errors.items()
+        }
+        return JsonResponse(
+            {"success": False, "error": "Invalid form data", "errors": errors},
+            status=400,
+        )
+
+
+def dash_users(request):
+    accounts = Account.objects.all()
     
-    return JsonResponse({
-        'success': True,
-        'messages': messages_data,
-        'ticket_status': ticket.status,
-        'ticket_subject': ticket.subject,
-        'user_name': ticket.user.get_full_name(),
-        'user_initials': ticket.user.get_full_name()[:2].upper()
+    total_balance = accounts.aggregate(total=Sum('balance'))['total'] or 0
+    active_accounts_count = accounts.filter(status='ACTIVE').count()
+    savings_accounts_count = accounts.filter(account_type='SAVINGS').count()
+    interoperable_accounts_count = accounts.filter(is_interoperable=True).count()
+    
+    context = {
+        "accounts": accounts,
+        "total_balance": total_balance,
+        "active_accounts_count": active_accounts_count,
+        "savings_accounts_count": savings_accounts_count,
+        "interoperable_accounts_count": interoperable_accounts_count,
+    }
+    return render(request, "main/users.html", context)
+
+
+
+def update_account(request, account_id):
+    account = get_object_or_404(Account, id=account_id)
+    if request.method == "POST":
+        form = UpdateUserAccountForm(request.POST, instance=account)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Account updated successfully')
+            return redirect("update_account", account_id=account.id)  
+    else:
+        form = UpdateUserAccountForm(instance=account)
+
+    return render(request, "main/update_account.html", {
+        "form": form,
+        "account": account,
     })
+
+
+def block_account(request, account_id):
+    account = get_object_or_404(Account, id=account_id)
+    account.block_account=True
+    account.save()
+    messages.success(request, 'Account Blocked Successfully')
+    return redirect('update_account', account.id)
+
+
+def unblock_account(request, account_id):
+    account = get_object_or_404(Account, id=account_id)
+    account.block_account=False
+    account.save()
+    messages.success(request, 'Account Unblocked Successfully')
+    return redirect('update_account', account.id)

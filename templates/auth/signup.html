@@ -1,10 +1,33 @@
-<!-- templates/signup.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Prestige Bank | Sign Up</title>
+    <title>Sign Up | Prestige Wealth - Premium Trading & Investment Platform</title>
+    <meta name="description" content="Create your Prestige Wealth account to access premium trading tools, investment portfolios, and wealth management services. Start your investment journey today.">
+    <meta name="keywords" content="trading platform signup, investment account, wealth management, stock trading registration, forex trading account, cryptocurrency investment">
+    <meta name="robots" content="index, follow">
+    <meta property="og:title" content="Sign Up | Prestige Wealth Trading Platform">
+    <meta property="og:description" content="Join Prestige Wealth today to access premium investment tools and services">
+    <meta property="og:type" content="website">
+    <link rel="canonical" href="https://www.prestigewealth.com/signup">
+    
+    <!-- Structured Data for Financial Service -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FinancialService",
+      "name": "Prestige Wealth",
+      "description": "Premium trading and investment platform offering wealth management services",
+      "url": "https://www.prestigewealth.com"
+      "offers": {
+        "@type": "Service",
+        "name": "Online Trading Platform",
+        "description": "Create an account to access our investment services"
+      }
+    }
+    </script>
+
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
@@ -210,93 +233,91 @@
     <div class="auth-container">
         <div class="auth-card">
             <div class="auth-header">
-    <div class="auth-logo">
-        <i class="fas fa-university"></i>
-        <span>Prestige</span>Wealth
-    </div>
-    <h2 class="auth-title">Create Your Account</h2>
-    <p class="auth-subtitle">Join Prestige Wealth today</p>
-    <p class="auth-tagline" style="font-style: italic; color: hsla(0, 0%, 95%, 0.677); margin-top: 10px;">
-        Invest today, become tomorrow’s success.<br>
-        The legitimate investment platform you can trust.
-    </p>
-</div>
-
+                <div class="auth-logo">
+                    <i class="fas fa-university" aria-hidden="true"></i>
+                    <span>Prestige</span>Wealth
+                </div>
+                <h1 class="auth-title">Start Your Investment Journey Today</h1>
+                <p class="auth-subtitle">Join thousands of investors growing their wealth with Prestige Wealth</p>
+                <p class="auth-tagline" style="font-style: italic; color: hsla(0, 0%, 95%, 0.677); margin-top: 10px;">
+                    Invest today, become tomorrow's success.<br>
+                    The legitimate investment platform you can trust.
+                </p>
+            </div>
             
             <div class="auth-body">
                 {% if form.errors %}
                 <div class="message message-error">
-                    <i class="fas fa-exclamation-circle"></i>
+                    <i class="fas fa-exclamation-circle" aria-hidden="true"></i>
                     Please correct the errors below.
                 </div>
                 {% endif %}
 
                 <form method="POST" novalidate>
-    {% csrf_token %}
+                    {% csrf_token %}
 
-    {% if form.non_field_errors %}
-    <div class="message message-error">
-        <i class="fas fa-exclamation-circle"></i>
-        {{ form.non_field_errors }}
-    </div>
-    {% endif %}
+                    {% if form.non_field_errors %}
+                    <div class="message message-error">
+                        <i class="fas fa-exclamation-circle" aria-hidden="true"></i>
+                        {{ form.non_field_errors }}
+                    </div>
+                    {% endif %}
 
-    <div class="form-group">
-        <label for="{{ form.username.id_for_label }}">Username</label>
-        <div class="input-icon">
-            <i class="fas fa-user"></i>
-            {{ form.username }}
-            {% if form.username.errors %}
-                <div class="message message-error">{{ form.username.errors.0 }}</div>
-            {% endif %}
-        </div>
-    </div>
+                    <div class="form-group">
+                        <label for="{{ form.username.id_for_label }}">Username</label>
+                        <div class="input-icon">
+                            <i class="fas fa-user" aria-hidden="true"></i>
+                            {{ form.username }}
+                            {% if form.username.errors %}
+                                <div class="message message-error">{{ form.username.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
 
-    <div class="form-group">
-        <label for="{{ form.referal_code.id_for_label }}">Referral Code</label>
-        <div class="input-icon">
-            <i class="fas fa-code"></i>
-            {{ form.referal_code }}
-            {% if form.referal_code.errors %}
-                <div class="message message-error">{{ form.referal_code.errors.0 }}</div>
-            {% endif %}
-        </div>
-    </div>
+                    <div class="form-group">
+                        <label for="{{ form.referal_code.id_for_label }}">Referral Code (Optional)</label>
+                        <div class="input-icon">
+                            <i class="fas fa-code" aria-hidden="true"></i>
+                            {{ form.referal_code }}
+                            {% if form.referal_code.errors %}
+                                <div class="message message-error">{{ form.referal_code.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
 
-    <div class="form-group">
-        <label for="{{ form.email.id_for_label }}">Email</label>
-        <div class="input-icon">
-            <i class="fas fa-envelope"></i>
-            {{ form.email }}
-            {% if form.email.errors %}
-                <div class="message message-error">{{ form.email.errors.0 }}</div>
-            {% endif %}
-        </div>
-    </div>
+                    <div class="form-group">
+                        <label for="{{ form.email.id_for_label }}">Email Address</label>
+                        <div class="input-icon">
+                            <i class="fas fa-envelope" aria-hidden="true"></i>
+                            {{ form.email }}
+                            {% if form.email.errors %}
+                                <div class="message message-error">{{ form.email.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
 
-    <div class="form-group">
-        <label for="{{ form.password.id_for_label }}">Password</label>
-        {{ form.password }}
-        <div class="password-strength">
-            <div class="strength-meter" id="strengthMeter"></div>
-        </div>
-        <div class="password-hint">
-            Use 8+ characters with a mix of letters, numbers & symbols
-        </div>
-        {% if form.password.errors %}
-            <div class="message message-error">{{ form.password.errors.0 }}</div>
-        {% endif %}
-    </div>
+                    <div class="form-group">
+                        <label for="{{ form.password.id_for_label }}">Create Secure Password</label>
+                        {{ form.password }}
+                        <div class="password-strength">
+                            <div class="strength-meter" id="strengthMeter"></div>
+                        </div>
+                        <div class="password-hint">
+                            Use 8+ characters with a mix of letters, numbers & symbols
+                        </div>
+                        {% if form.password.errors %}
+                            <div class="message message-error">{{ form.password.errors.0 }}</div>
+                        {% endif %}
+                    </div>
 
-    <div class="form-group">
-        <button type="submit" class="btn">Create Account</button>
-    </div>
-</form>
-
+                    <div class="form-group">
+                        <button type="submit" class="btn">Start Investing Now</button>
+                    </div>
+                </form>
 
                 <div class="auth-footer">
-                    <p>Already have an account? <a href="{% url 'login' %}">Sign in</a></p>
-                    <p>By signing up, you agree to our <a href="#">Terms</a> and <a href="#">Privacy Policy</a></p>
+                    <p>Already have an account? <a href="{% url 'login' %}" aria-label="Sign in to existing account">Sign in</a></p>
+                    <p>By signing up, you agree to our <a href="/terms" aria-label="Terms of Service">Terms</a> and <a href="/privacy" aria-label="Privacy Policy">Privacy Policy</a></p>
                 </div>
             </div>
         </div>
@@ -307,32 +328,34 @@
         const passwordInput = document.getElementById('password1');
         const strengthMeter = document.getElementById('strengthMeter');
         
-        passwordInput.addEventListener('input', function() {
-            const password = this.value;
-            let strength = 0;
-            
-            // Length check
-            if (password.length >= 8) strength += 1;
-            if (password.length >= 12) strength += 1;
-            
-            // Character type checks
-            if (/[A-Z]/.test(password)) strength += 1;
-            if (/[0-9]/.test(password)) strength += 1;
-            if (/[^A-Za-z0-9]/.test(password)) strength += 1;
-            
-            // Update meter
-            const width = (strength / 5) * 100;
-            strengthMeter.style.width = width + '%';
-            
-            // Update color
-            if (strength <= 2) {
-                strengthMeter.style.backgroundColor = '#ff5252'; // Red
-            } else if (strength <= 4) {
-                strengthMeter.style.backgroundColor = '#ffab00'; // Yellow
-            } else {
-                strengthMeter.style.backgroundColor = '#4caf50'; // Green
-            }
-        });
+        if (passwordInput && strengthMeter) {
+            passwordInput.addEventListener('input', function() {
+                const password = this.value;
+                let strength = 0;
+                
+                // Length check
+                if (password.length >= 8) strength += 1;
+                if (password.length >= 12) strength += 1;
+                
+                // Character type checks
+                if (/[A-Z]/.test(password)) strength += 1;
+                if (/[0-9]/.test(password)) strength += 1;
+                if (/[^A-Za-z0-9]/.test(password)) strength += 1;
+                
+                // Update meter
+                const width = (strength / 5) * 100;
+                strengthMeter.style.width = width + '%';
+                
+                // Update color
+                if (strength <= 2) {
+                    strengthMeter.style.backgroundColor = '#ff5252'; // Red
+                } else if (strength <= 4) {
+                    strengthMeter.style.backgroundColor = '#ffab00'; // Yellow
+                } else {
+                    strengthMeter.style.backgroundColor = '#4caf50'; // Green
+                }
+            });
+        }
     </script>
 </body>
 </html>

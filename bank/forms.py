@@ -4,10 +4,9 @@ from django.core.exceptions import ValidationError
 from django.contrib.auth import get_user_model
 from .models import (
     Account,
-    InvestmentPackage,
     Investment,
     PrestigeSettings,
-    SupportTicket,
+    TradePosition
     
 )
 
@@ -207,3 +206,55 @@ class SettingForm(forms.ModelForm):
     class Meta:
         model = PrestigeSettings
         fields = ['deposit_btc_address', 'deposit_eth_address', 'deposit_usdt_address']
+
+
+class TradeUpdateForm(forms.ModelForm):
+    class Meta:
+        model = TradePosition
+        fields = ['current_price', 'take_profit', 'profit_loss', 'status', 'hidden']
+        widgets = {
+            'current_price': forms.NumberInput(attrs={
+                'step': '0.000001',
+                'min': '0',
+                'class':'form.control'
+            }),
+            'take_profit': forms.NumberInput(attrs={
+                'step': '0.000001',
+                'min': '0',
+                'class':'form.control'
+            }),
+            'profit_loss': forms.NumberInput(attrs={
+                'step': '0.01',
+                'class':'form.control'
+            }),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['current_price'].required = False
+        self.fields['take_profit'].required=False
+        self.fields['profit_loss'].required = False
+        self.fields['status'].required = True
+        self.fields['hidden'].required = False
+
+
+
+class UpdateUserAccountForm(forms.ModelForm):
+    class Meta:
+        model = Account
+        fields = [
+            "account_number",
+            "customer",
+            "balance",
+            "status",
+            "date_opened",
+            "is_interoperable",
+        ]
+        widgets = {
+            "account_number": forms.TextInput(attrs={"class": "form-control", "readonly": "readonly"}),
+            "customer": forms.TextInput(attrs={"class": "form-control", "readonly": "readonly"}),
+            "balance": forms.NumberInput(attrs={"class": "form-control", "step": "0.01", "min": "0"}),
+            "status": forms.Select(attrs={"class": "form-control"}),
+            "date_opened": forms.TextInput(attrs={"class": "form-control", "readonly": "readonly"}),
+            "is_interoperable": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+        }

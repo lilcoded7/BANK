@@ -4,11 +4,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Prestige Bank | Trade Investment</title>
+    <title>Prestige Wealth | Online Trading & Investment Platform</title>
+    <meta name="description" content="Trade cryptocurrencies, stocks, and commodities with Prestige Wealth. Advanced trading tools, investment packages, and 24/7 support for your wealth growth.">
+    <meta name="keywords" content="online trading, cryptocurrency trading, investment platform, wealth management, stock trading, forex trading">
+    <meta name="author" content="Prestige Wealth">
+    <meta property="og:title" content="Prestige Wealth | Trading & Investment Platform">
+    <meta property="og:description" content="Advanced trading tools and investment packages for wealth growth">
+    <meta property="og:type" content="website">
+    <link rel="canonical" href="https://www.prestigewealth.com/trade">
+    
+    <!-- Favicon -->
+    <link rel="icon" href="/static/favicon.ico" type="image/x-icon">
+    
+    <!-- Fonts and Icons -->
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    
     <!-- TradingView Widget -->
     <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+    
     <style>
         :root {
             --primary: #d10000;
@@ -738,6 +752,11 @@
             right: 1rem;
         }
 
+        /* Schema.org structured data */
+        .structured-data {
+            display: none;
+        }
+
         /* Responsive styles */
         @media (max-width: 992px) {
             .dashboard {
@@ -803,6 +822,28 @@
             }
         }
     </style>
+    
+    <!-- Schema.org markup for Google -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FinancialService",
+      "name": "Prestige Wealth",
+      "description": "Online trading and investment platform offering cryptocurrency, stock, and commodity trading with advanced tools.",
+      "url": "https://www.prestigewealth.com",
+      "logo": "https://www.prestigewealth.com/static/images/logo.png",
+      "sameAs": [
+        "https://www.facebook.com/prestigewealth",
+        "https://www.twitter.com/prestigewealth",
+        "https://www.linkedin.com/company/prestigewealth"
+      ],
+      "offers": {
+        "@type": "Offer",
+        "category": "FinancialProduct",
+        "name": "Trading Platform"
+      }
+    }
+    </script>
 </head>
 <body>
     
@@ -913,7 +954,6 @@
                 <div class="tradingview-chart" id="tradingview-chart"></div>
             </div>
             
-                {% csrf_token %}
             {% if not has_active_investment %}
                 <div class="section">
                     <div class="section-header">
@@ -941,7 +981,6 @@
                     </div>
                 </div>
             {% endif %}
-            </form>
 
             <!-- Trade Panel -->
             <div class="section">
@@ -1010,6 +1049,7 @@
                                 <th>Current Price</th>
                                 <th>Amount</th>
                                 <th>Profit/Loss</th>
+                                <th>Take Profit</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -1023,6 +1063,9 @@
                                 <td>${{ position.amount|floatformat:2 }}</td>
                                 <td class="{% if position.profit_loss >= 0 %}profit-positive{% else %}profit-negative{% endif %}">
                                     ${{ position.profit_loss|floatformat:2 }}
+                                </td>
+                                 <td class="{% if position.take_profit >= 0 %}profit-positive{% else %}profit-negative{% endif %}">
+                                    ${{ position.take_profit|floatformat:2 }}
                                 </td>
                                 <td>
                                     <form method="post" action="{% url 'close_trade' position.id %}" style="display:inline;">
@@ -1045,8 +1088,8 @@
         </div>
     </div>
 
-    <!-- AI Assistant Floating Button -->
-    <div class="assistant" onclick="alert('AI Trading Assistant coming soon!')">
+    <!-- Support Assistant Floating Button -->
+    <div class="assistant" onclick="window.location.href='{% url 'support_chat' %}'">
         <i class="fas fa-robot"></i>
     </div>
 
@@ -1106,7 +1149,7 @@
     <script>
         // Mobile Menu Toggle
         const menuToggle = document.getElementById('menuToggle');
-        const sidebar = document.getElementById('sidebar');
+        const sidebar = document.querySelector('.sidebar');
         
         menuToggle.addEventListener('click', function(e) {
             e.stopPropagation();
@@ -1273,7 +1316,23 @@
             document.getElementById('id_leverage').addEventListener('change', updateTradeCalculations);
             document.getElementById('id_take_profit').addEventListener('input', updateTradeCalculations);
             document.getElementById('id_stop_loss').addEventListener('input', updateTradeCalculations);
+            
+            // Track assistant click for analytics
+            document.querySelector('.assistant').addEventListener('click', function() {
+                if (typeof gtag !== 'undefined') {
+                    gtag('event', 'click', {
+                        'event_category': 'Support',
+                        'event_label': 'Assistant Button Click'
+                    });
+                }
+            });
         });
     </script>
+    
+    <!-- Structured data for SEO -->
+    <div class="structured-data" itemscope itemtype="https://schema.org/WebPage">
+        <h1 itemprop="name">Prestige Wealth Trading Platform</h1>
+        <p itemprop="description">Advanced online trading and investment platform for cryptocurrencies, stocks, and commodities.</p>
+    </div>
 </body>
 </html>

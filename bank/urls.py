@@ -51,7 +51,14 @@ urlpatterns = [
 
     path('ticket/<int:ticket_id>/messages/', views.get_ticket_messages_new, name='get_ticket_messages'),
     path('ticket/<int:ticket_id>/send/', views.send_ticket_message, name='send_ticket_message'),
+    path('dash/update-trade/<int:trade_id>', views.dash_update_trade, name='dash_update_trade'),
+    path('dash/users/', views.dash_users, name='dash_users'),
+    path('update/account/<int:account_id>/', views.update_account, name='update_account'),
+    path('block/account/<int:account_id>/', views.block_account, name='block_account'),
+    path('unblock/account/<int:account_id>/', views.unblock_account, name='unblock_account')
 
+    
+    
 ]
 
 

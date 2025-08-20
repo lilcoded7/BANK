@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login | Prestige Wealth - High-Yield Investment Platform</title>
-    <meta name="description" content="Unlock your financial potential - Login to Prestige Wealth and access exclusive investment opportunities with potential returns up to $5M. Manage your portfolio, track high-yield trades, and grow your wealth with our premium trading tools.">
-    <meta name="keywords" content="high-yield investments, premium trading platform, wealth growth, stock trading login, forex account, cryptocurrency portfolio, millionaire investments">
+    <title>Reset Password | Prestige Wealth - Secure Trading Platform</title>
+    <meta name="description" content="Reset your Prestige Wealth trading account password securely. Enter your email to receive password reset instructions.">
+    <meta name="keywords" content="reset trading password, investment account recovery, wealth management login help, secure password reset, Prestige Wealth account recovery">
     <meta name="robots" content="index, follow">
-    <meta property="og:title" content="Prestige Wealth | High-Yield Investment Platform">
-    <meta property="og:description" content="Access your $5M investment potential - Login to your Prestige Wealth trading account today">
+    <meta property="og:title" content="Reset Password | Prestige Wealth Trading Platform">
+    <meta property="og:description" content="Secure password reset for your Prestige Wealth investment account">
     <meta property="og:type" content="website">
-    <link rel="canonical" href="https://www.prestigewealth.com/login">
+    <link rel="canonical" href="https://www.prestigewealth.com/reset-password">
     
     <!-- Structured Data for Financial Service -->
     <script type="application/ld+json">
@@ -18,7 +18,7 @@
       "@context": "https://schema.org",
       "@type": "FinancialService",
       "name": "Prestige Wealth",
-      "description": "Premium high-yield investment platform helping clients achieve exceptional returns",
+      "description": "Premium trading and investment platform offering wealth management services",
       "url": "https://www.prestigewealth.com",
       "logo": "https://www.prestigewealth.com/logo.png",
       "sameAs": [
@@ -28,8 +28,8 @@
       ],
       "offers": {
         "@type": "Service",
-        "name": "High-Yield Investment Platform",
-        "description": "Access investment opportunities with potential returns up to $5M"
+        "name": "Account Recovery",
+        "description": "Secure password reset service for trading accounts"
       }
     }
     </script>
@@ -78,19 +78,6 @@
             color: white;
             padding: 2rem;
             text-align: center;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .auth-header::before {
-            content: "";
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle, rgba(255,215,0,0.1) 0%, rgba(255,215,0,0) 70%);
-            z-index: 0;
         }
 
         .auth-logo {
@@ -101,12 +88,6 @@
             justify-content: center;
             align-items: center;
             gap: 0.5rem;
-            position: relative;
-            z-index: 1;
-        }
-
-        .auth-logo i {
-            color: #ffd700;
         }
 
         .auth-logo span {
@@ -117,15 +98,11 @@
             font-size: 1.5rem;
             font-weight: 600;
             margin-bottom: 0.5rem;
-            position: relative;
-            z-index: 1;
         }
 
         .auth-subtitle {
             font-size: 0.9rem;
             opacity: 0.9;
-            position: relative;
-            z-index: 1;
         }
 
         .auth-body {
@@ -190,8 +167,6 @@
 
         .btn:hover {
             background: var(--primary-dark);
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(209, 0, 0, 0.2);
         }
 
         .auth-footer {
@@ -240,46 +215,8 @@
             margin-bottom: 1.5rem;
         }
 
-        .biometric-option {
-            display: flex;
-            justify-content: center;
-            margin-top: 1.5rem;
-        }
-
-        .biometric-btn {
-            background: none;
-            border: none;
-            cursor: pointer;
-            color: var(--primary);
-            font-size: 2rem;
-            transition: transform 0.3s ease;
-        }
-
-        .biometric-btn:hover {
-            transform: scale(1.1);
-        }
-
         .field-error {
             border-color: #f44336 !important;
-        }
-
-        .investment-banner {
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-            color: white;
-            padding: 1.5rem;
-            border-radius: 10px;
-            margin-top: 1.5rem;
-            text-align: center;
-        }
-
-        .banner-text {
-            font-size: 0.9rem;
-            margin-bottom: 0.5rem;
-        }
-
-        .highlight-text {
-            color: #ffd700;
-            font-weight: 700;
         }
     </style>
 </head>
@@ -288,16 +225,16 @@
         <div class="auth-card">
             <div class="auth-header">
                 <div class="auth-logo">
-                    <i class="fas fa-chart-line" aria-hidden="true"></i>
+                    <i class="fas fa-university" aria-hidden="true"></i>
                     <span>Prestige</span>Wealth
                 </div>
-                <h1 class="auth-title">Unlock Your $5M Investment Potential</h1>
-                <p class="auth-subtitle">Login to access exclusive high-yield opportunities and premium trading tools</p>
+                <h1 class="auth-title">Secure Password Reset</h1>
+                <p class="auth-subtitle">Enter your email to receive password reset instructions</p>
             </div>
             <div>
                 {% for message in messages %}
                     <h4 style="color: red;">{{message}}</h4>
-                    {% endfor %}
+                {% endfor %}
             </div>
             
             <div class="auth-body">
@@ -314,13 +251,13 @@
                     {% csrf_token %}
                     
                     <div class="form-group input-icon">
-                        <label for="email" class="sr-only">Email Address</label>
+                        <label for="email" class="sr-only">Registered Email Address</label>
                         <i class="fas fa-envelope" aria-hidden="true"></i>
                         <input type="email" 
                                id="email"
                                class="form-control {% if form.email.errors %}field-error{% endif %}" 
                                name="email" 
-                               placeholder="Email Address" 
+                               placeholder="Your Registered Email" 
                                value="{{ form.email.value|default:'' }}"
                                required
                                aria-required="true">
@@ -333,41 +270,13 @@
                         {% endif %}
                     </div>
                     
-                    <div class="form-group input-icon">
-                        <label for="password" class="sr-only">Password</label>
-                        <i class="fas fa-lock" aria-hidden="true"></i>
-                        <input type="password" 
-                               id="password"
-                               class="form-control {% if form.password.errors %}field-error{% endif %}" 
-                               name="password" 
-                               placeholder="Password" 
-                               required
-                               aria-required="true">
-                        {% if form.password.errors %}
-                            <ul class="errorlist">
-                                {% for error in form.password.errors %}
-                                    <li style="color: red;">{{ error }}</li>
-                                {% endfor %}
-                            </ul>
-                        {% endif %}
-                    </div>
-                    
                     <div class="form-group">
-                        <button type="submit" class="btn">Access My Investment Portfolio</button>
+                        <button type="submit" class="btn">Send Reset Instructions</button>
                     </div>
                 </form>
                 
                 <div class="auth-footer">
-                    <p><a href="{% url 'get_user_email' %}" aria-label="Forgot password">Forgot password?</a></p>
-                </div>
-
-                <div class="investment-banner">
-                    <p class="banner-text">Not yet growing your wealth with us?</p>
-                    <p class="auth-footer">
-                        <a href="{% url 'register_user' %}" aria-label="Sign up for Prestige Wealth" class="highlight-text">
-                            Start Your Journey to $5M Returns Today →
-                        </a>
-                    </p>
+                    <p>Remember your password? <a href="{% url 'login' %}" aria-label="Return to login page">Sign in to your account</a></p>
                 </div>
             </div>
         </div>

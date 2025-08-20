@@ -77,7 +77,6 @@ class TradePositionAdmin(admin.ModelAdmin):
         "symbol",
         "user",
         "trade_type",
-        "amount",
         "entry_price",
         "current_price",
         "profit_loss",

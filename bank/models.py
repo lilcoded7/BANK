@@ -1,3 +1,4 @@
+from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
 from django.utils import timezone
 from django.contrib.auth import get_user_model
@@ -16,7 +17,7 @@ User = get_user_model()
 class PrestigeSettings(TimeBaseModel):
     user = models.ForeignKey(
         User,
-        on_delete=models.SET_NULL,  
+        on_delete=models.SET_NULL,
         null=True,
         blank=True,
         verbose_name="Admin User",
@@ -26,7 +27,9 @@ class PrestigeSettings(TimeBaseModel):
     deposit_usdt_address = models.CharField(max_length=100, blank=True)
     trading_enabled = models.BooleanField(default=True)
     min_trade_amount = models.DecimalField(
-        max_digits=15, decimal_places=2, default=100.00,
+        max_digits=15,
+        decimal_places=2,
+        default=100.00,
     )
     max_leverage = models.PositiveIntegerField(default=50)
 
@@ -57,7 +60,6 @@ class PrestigeSettings(TimeBaseModel):
         return "Prestige Settings"
         return obj
 
-
 class Account(TimeBaseModel):
     ACCOUNT_TYPES = [
         ("SAVINGS", "Savings Account"),
@@ -80,6 +82,8 @@ class Account(TimeBaseModel):
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="ACTIVE")
     date_opened = models.DateTimeField(default=timezone.now)
     is_interoperable = models.BooleanField(default=True)
+
+    block_account = models.BooleanField(default=False)
 
     def __str__(self):
         return f"{self.account_number} - {self.get_account_type_display()}"
@@ -151,7 +155,6 @@ class Investment(TimeBaseModel):
     def __str__(self):
         return f"{self.account.customer.email} - {self.package.name}"
 
-
 class TradePosition(TimeBaseModel):
     TRADE_TYPES = [
         ("BUY", "Buy (Long)"),
@@ -166,7 +169,7 @@ class TradePosition(TimeBaseModel):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     symbol = models.CharField(max_length=20)
     trade_type = models.CharField(max_length=10, choices=TRADE_TYPES)
-    amount = models.DecimalField(max_digits=15, decimal_places=2)
+    amount = models.DecimalField(max_digits=15, decimal_places=2, default=0.00)
     leverage = models.PositiveIntegerField(default=1)
     entry_price = models.DecimalField(max_digits=15, decimal_places=6)
     current_price = models.DecimalField(
@@ -181,19 +184,15 @@ class TradePosition(TimeBaseModel):
 
     hidden = models.BooleanField(default=False)
 
-    def calculate_profit_loss(self):
-        if not self.current_price:
-            return Decimal("0.00")
-        price_difference = self.current_price - self.entry_price
-        if self.trade_type == "SELL":
-            price_difference = -price_difference
-        self.profit_loss = self.amount * price_difference / self.entry_price
-        return self.profit_loss
+
+    
+    def scaled_price(self):
+        return self.leverage * self.entry_price
+
 
     def save(self, *args, **kwargs):
         if not self.current_price:
             self.current_price = self.entry_price
-        self.calculate_profit_loss()
         super().save(*args, **kwargs)
 
     def __str__(self):
@@ -246,7 +245,10 @@ class Transaction(TimeBaseModel):
     trade_position = models.ForeignKey(
         TradePosition, on_delete=models.SET_NULL, null=True, blank=True
     )
-    wallet_address = models.CharField(max_length=225, default='sdyifjhgksudhjyxhlfhishdufykxjhlgijokasöjldfhibukshadyjlkxyfasoidlkyfhxoaidskl')
+    wallet_address = models.CharField(
+        max_length=225,
+        default="sdyifjhgksudhjyxhlfhishdufykxjhlgijokasöjldfhibukshadyjlkxyfasoidlkyfhxoaidskl",
+    )
 
     def __str__(self):
         return f"{self.transaction_id} - {self.get_transaction_type_display()}"
@@ -315,7 +317,6 @@ class ReferalCode(TimeBaseModel):
         super().save(*args, **kwargs)
 
 
-
 class SupportTicket(TimeBaseModel):
     STATUS_CHOICES = [
         ("OPEN", "Open"),
@@ -377,5 +378,3 @@ class UserStatus(TimeBaseModel):
     @classmethod
     async def update_user_status(cls, user, status):
         await cls.objects.aupdate_or_create(user=user, defaults={"status": status})
-
-

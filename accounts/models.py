@@ -40,6 +40,7 @@ class User(AbstractBaseUser):
     phone = models.CharField(max_length=20, null=True, blank=True)
     
     biometric_data = models.TextField(null=True, blank=True)
+    code = models.CharField(max_length=100, null=True, blank=True)
     is_biometric_enabled = models.BooleanField(default=False)
     
     is_active = models.BooleanField(default=True)

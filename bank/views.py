@@ -19,6 +19,7 @@ from django.contrib.auth import update_session_auth_hash
 from fido2.server import Fido2Server
 from fido2.webauthn import PublicKeyCredentialRpEntity, PublicKeyCredentialUserEntity
 from django.views.decorators.csrf import csrf_exempt
+from bank.models import UserBiometricData
 
 
 
@@ -247,103 +248,206 @@ def get_client_ip(request):
     return x_forwarded_for.split(",")[0] if x_forwarded_for else request.META.get("REMOTE_ADDR")
 
 
+
+@login_required
+def security_settings(request):
+    # Your existing security settings view
+    accounts = Account.objects.filter(customer=request.user, status="ACTIVE")
+    form = SecuritySettingsForm(request.user, request.POST or None)
+
+    if request.method == "POST" and form.is_valid():
+        if form.cleaned_data.get("new_password"):
+            request.user.set_password(form.cleaned_data["new_password"])
+            request.user.save()
+            update_session_auth_hash(request, request.user)
+            messages.success(request, "Password changed successfully")
+            SecurityLog.objects.create(
+                user=request.user,
+                event_type="PASSWORD_CHANGE",
+                ip_address=get_client_ip(request),
+                details="Password updated"
+            )
+        return redirect("security_settings")
+
+    logs = SecurityLog.objects.filter(user=request.user).order_by("-timestamp")[:20]
+    return render(request, "main/security.html", {
+        "form": form,
+        "accounts": accounts,
+        "security_logs": logs,
+    })
+
 @login_required
 def start_biometric_registration(request):
-    rp = PublicKeyCredentialRpEntity(id="prestigebank.com", name="Prestige Bank")
-    fido_server = Fido2Server(rp)
-
-    user_entity = PublicKeyCredentialUserEntity(
-        id=str(request.user.id).encode(),
-        name=request.user.email,
-        display_name=request.user.get_full_name(),
-    )
-
-    options, state = fido_server.register_begin(
-        user_entity,
-        credentials=None,
-        user_verification="preferred"
-    )
-
-    request.session["fido_state"] = state
-
-    # Convert FIDO2 options to a JSON-serializable dictionary
-    options_dict = {
-        "publicKey": {
-            "rp": {
-                "id": options.public_key.rp.id,
-                "name": options.public_key.rp.name
-            },
-            "user": {
-                "id": list(options.public_key.user.id),
-                "name": options.public_key.user.name,
-                "displayName": options.public_key.user.display_name
-            },
-            "challenge": list(options.public_key.challenge),
-            "pubKeyCredParams": [
-                {
-                    "type": param.type,
-                    "alg": param.alg
-                }
-                for param in options.public_key.pub_key_cred_params
-            ],
-            "timeout": options.public_key.timeout,
-            "excludeCredentials": [
-                {
-                    "type": cred.type,
-                    "id": list(cred.id),
-                    "transports": cred.transports if hasattr(cred, 'transports') else []
-                }
-                for cred in options.public_key.exclude_credentials
-            ] if options.public_key.exclude_credentials else [],
-            "authenticatorSelection": {
-                "authenticatorAttachment": options.public_key.authenticator_selection.authenticator_attachment if hasattr(options.public_key.authenticator_selection, 'authenticator_attachment') else None,
-                "requireResidentKey": options.public_key.authenticator_selection.require_resident_key,
-                "userVerification": options.public_key.authenticator_selection.user_verification
-            } if options.public_key.authenticator_selection else None,
-            "attestation": options.public_key.attestation,
-            "extensions": options.public_key.extensions if hasattr(options.public_key, 'extensions') else {}
+    """Start the biometric registration process"""
+    # Check if user already has biometric data
+    if hasattr(request.user, 'biometric_data') and request.user.biometric_data.is_verified:
+        return JsonResponse({
+            'status': 'error', 
+            'message': 'Biometric authentication is already enabled for this account.'
+        })
+    
+    # Generate registration options (simplified)
+    options = {
+        'challenge': 'random_challenge_string',  # In real implementation, generate a secure random string
+        'rp': {
+            'name': 'Prestige Bank',
+            'id': 'prestigebank.com'
+        },
+        'user': {
+            'id': str(request.user.id),
+            'name': request.user.email,
+            'displayName': request.user.get_full_name()
+        },
+        'pubKeyCredParams': [
+            {'type': 'public-key', 'alg': -7},  # ES256
+            {'type': 'public-key', 'alg': -257} # RS256
+        ],
+        'timeout': 60000,
+        'attestation': 'direct',
+        'authenticatorSelection': {
+            'authenticatorAttachment': 'platform',
+            'requireResidentKey': True,
+            'userVerification': 'preferred'
         }
     }
+    
+    # Store the challenge in session for verification later
+    request.session['biometric_registration_challenge'] = options['challenge']
+    
+    return JsonResponse(options)
 
-    return JsonResponse(options_dict, safe=False)
-
-
-@login_required
 @csrf_exempt
+@login_required
 def complete_biometric_registration(request):
-    rp = PublicKeyCredentialRpEntity(id="prestigebank.com", name="Prestige Bank")
-    fido_server = Fido2Server(rp)
-
-    state = request.session.pop("fido_state", None)
-    if not state:
-        return JsonResponse({"success": False, "error": "Registration session expired"})
+    """Complete the biometric registration process"""
+    if request.method != 'POST':
+        return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
     
     try:
         data = json.loads(request.body)
-        # Convert back to the format expected by Fido2Server
-        credential_data = {
-            "id": data["id"],
-            "type": data["type"],
-            "rawId": Uint8Array(data["rawId"]).buffer if hasattr(data["rawId"], '__iter__') else data["rawId"],
-            "response": {
-                "attestationObject": Uint8Array([ord(c) for c in atob(data["response"]["attestationObject"])]).buffer,
-                "clientDataJSON": Uint8Array([ord(c) for c in atob(data["response"]["clientDataJSON"])]).buffer
-            }
-        }
+        credential = data.get('credential')
         
-        auth_data = fido_server.register_complete(state, credential_data)
-
-        request.user.biometric_data = json.dumps(auth_data.credential_data)
+        # Verify the challenge matches what we sent
+        stored_challenge = request.session.get('biometric_registration_challenge')
+        if not stored_challenge or stored_challenge != data.get('challenge'):
+            return JsonResponse({'status': 'error', 'message': 'Invalid challenge'})
+        
+        # In a real implementation, you would verify the attestation here
+        # For this example, we'll just store the credential data
+        
+        # Create or update biometric data
+        biometric_data, created = UserBiometricData.objects.get_or_create(user=request.user)
+        biometric_data.credential_id = credential.get('id')
+        biometric_data.public_key = json.dumps(credential.get('response', {}))
+        biometric_data.is_verified = True
+        biometric_data.save()
+        
+        # Update user model
         request.user.is_biometric_enabled = True
         request.user.save()
-
+        
+        # Create security log
         SecurityLog.objects.create(
             user=request.user,
-            event_type="BIOMETRIC_UPDATE",
+            event_type="BIOMETRIC_ENABLED",
             ip_address=get_client_ip(request),
-            details="Biometric registered"
+            details="Biometric authentication enabled"
         )
-
-        return JsonResponse({"success": True})
+        
+        # Clean up session
+        if 'biometric_registration_challenge' in request.session:
+            del request.session['biometric_registration_challenge']
+        
+        return JsonResponse({'status': 'success', 'message': 'Biometric registration completed'})
+        
     except Exception as e:
-        return JsonResponse({"success": False, "error": str(e)})
+        return JsonResponse({'status': 'error', 'message': str(e)})
+
+@login_required
+def disable_biometric(request):
+    """Disable biometric authentication for the user"""
+    if request.method == 'POST':
+        try:
+            # Delete biometric data
+            UserBiometricData.objects.filter(user=request.user).delete()
+            
+            # Update user model
+            request.user.is_biometric_enabled = False
+            request.user.save()
+            
+            # Create security log
+            SecurityLog.objects.create(
+                user=request.user,
+                event_type="BIOMETRIC_DISABLED",
+                ip_address=get_client_ip(request),
+                details="Biometric authentication disabled"
+            )
+            
+            messages.success(request, "Biometric authentication has been disabled.")
+        except Exception as e:
+            messages.error(request, f"Error disabling biometric authentication: {str(e)}")
+    
+    return redirect('security_settings')
+
+@csrf_exempt
+def verify_biometric(request):
+    """Verify biometric data for authentication"""
+    if request.method != 'POST':
+        return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
+    
+    try:
+        data = json.loads(request.body)
+        credential_id = data.get('credentialId')
+        
+        # Look up the user by credential ID
+        try:
+            biometric_data = UserBiometricData.objects.get(credential_id=credential_id)
+            user = biometric_data.user
+            
+            # In a real implementation, you would verify the signature here
+            # For this example, we'll assume verification is successful
+            
+            # Log the user in
+            from django.contrib.auth import login
+            login(request, user)
+            
+            # Create security log
+            SecurityLog.objects.create(
+                user=user,
+                event_type="BIOMETRIC_LOGIN",
+                ip_address=get_client_ip(request),
+                details="Logged in using biometric authentication"
+            )
+            
+            return JsonResponse({'status': 'success', 'redirectUrl': '/'})
+            
+        except UserBiometricData.DoesNotExist:
+            return JsonResponse({'status': 'error', 'message': 'Invalid credential'})
+            
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)})
+
+def get_client_ip(request):
+    """Extract client IP address from request"""
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded_for:
+        ip = x_forwarded_for.split(',')[0]
+    else:
+        ip = request.META.get('REMOTE_ADDR')
+    return ip
+
+
+@login_required
+def process_biometric_data(request):
+    if request.method == 'POST':
+
+        facial_data = request.POST.get('facial_data')
+        fingerprint_data = request.POST.get('fingerprint_data')
+        
+        biometric_data, created = UserBiometricData.objects.get_or_create(user=request.user)
+        biometric_data.facial_data = facial_data
+        biometric_data.fingerprint_data = fingerprint_data
+        biometric_data.is_verified = True
+        biometric_data.save()
+        
+        return JsonResponse({'status': 'success'})

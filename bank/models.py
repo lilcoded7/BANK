@@ -118,3 +118,13 @@ class SecurityLog(TimeBaseModel):
 
     def __str__(self):
         return f"{self.user.email} - {self.get_event_type_display()}"
+
+
+
+class UserBiometricData(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    fingerprint_data = models.BinaryField(null=True, blank=True)
+    facial_data = models.BinaryField(null=True, blank=True)  # Store facial embeddings
+    is_verified = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)

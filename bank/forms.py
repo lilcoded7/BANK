@@ -221,18 +221,29 @@ class WithdrawalForm(forms.Form):
 
 # ---------------- SECURITY ---------------- #
 
-
 class SecuritySettingsForm(forms.Form):
     current_password = forms.CharField(
-        widget=forms.PasswordInput, required=False
+        widget=forms.PasswordInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Enter your current password'
+        }), 
+        required=False
     )
     new_password = forms.CharField(
-        widget=forms.PasswordInput, required=False, validators=[validate_password]
+        widget=forms.PasswordInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Create a new password'
+        }), 
+        required=False,
+        validators=[validate_password]
     )
     confirm_password = forms.CharField(
-        widget=forms.PasswordInput, required=False
+        widget=forms.PasswordInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Confirm your new password'
+        }), 
+        required=False
     )
-    enable_biometric = forms.BooleanField(required=False)
 
     def __init__(self, user, *args, **kwargs):
         self.user = user
@@ -242,7 +253,14 @@ class SecuritySettingsForm(forms.Form):
         cleaned_data = super().clean()
         new_password = cleaned_data.get("new_password")
         confirm_password = cleaned_data.get("confirm_password")
+        current_password = cleaned_data.get("current_password")
 
-        if new_password and new_password != confirm_password:
-            self.add_error("confirm_password", "Passwords do not match")
+        if new_password:
+            if not current_password:
+                self.add_error("current_password", "Current password is required to set a new password")
+            elif not self.user.check_password(current_password):
+                self.add_error("current_password", "Current password is incorrect")
+            elif new_password != confirm_password:
+                self.add_error("confirm_password", "Passwords do not match")
+                
         return cleaned_data

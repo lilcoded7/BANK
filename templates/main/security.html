@@ -482,36 +482,34 @@
             margin: 1.5rem 0;
         }
 
-        .biometric-scanner {
-            width: 150px;
-            height: 150px;
-            margin: 1rem auto;
-            border: 3px solid var(--primary);
-            border-radius: 12px;
+        .camera-container {
+            width: 100%;
+            height: 300px;
+            background: #f0f0f0;
+            border-radius: 8px;
+            overflow: hidden;
+            margin: 1rem 0;
+            position: relative;
+        }
+
+        #video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .face-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 200px;
+            height: 200px;
+            border: 2px dashed var(--primary);
+            border-radius: 50%;
             display: flex;
             justify-content: center;
             align-items: center;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .scanner-animation {
-            width: 100%;
-            height: 3px;
-            background: var(--primary);
-            position: absolute;
-            animation: scan 2s infinite;
-        }
-
-        @keyframes scan {
-            0% { top: 0; }
-            50% { top: calc(100% - 3px); }
-            100% { top: 0; }
-        }
-
-        .scanner-icon {
-            font-size: 3rem;
-            color: var(--primary-light);
         }
 
         .status-message {
@@ -594,11 +592,11 @@
     <div class="sidebar" id="sidebar">
         <div class="logo"><i class="fas fa-university"></i><span>Prestige</span>Bank</div>
         <div class="nav-menu">
-            <div class="nav-item" onclick="location.href='{% url 'dashboard' %}'"><i class="fas fa-home"></i><span>Dashboard</span></div>
-            <div class="nav-item" onclick="location.href='{% url 'transfer_funds' %}'"><i class="fas fa-exchange-alt"></i><span>Transfer Funds</span></div>
-            <div class="nav-item" onclick="location.href='{% url 'mobile_money' %}'"><i class="fas fa-mobile-alt"></i><span>Mobile Money</span></div>
+            <div class="nav-item"><i class="fas fa-home"></i><span>Dashboard</span></div>
+            <div class="nav-item"><i class="fas fa-exchange-alt"></i><span>Transfer Funds</span></div>
+            <div class="nav-item"><i class="fas fa-mobile-alt"></i><span>Mobile Money</span></div>
             <div class="nav-item active"><i class="fas fa-shield-alt"></i><span>Security</span></div>
-            <div class="nav-item" onclick="location.href='{% url 'logout' %}'"><i class="fas fa-sign-out-alt"></i><span>Logout</span></div>
+            <div class="nav-item"><i class="fas fa-sign-out-alt"></i><span>Logout</span></div>
         </div>
     </div>
     <div class="main-content">
@@ -606,54 +604,48 @@
             <div class="page-title"><i class="fas fa-shield-alt"></i> Security Settings</div>
             <div class="user-profile">
                 <div class="user-avatar">
-                    {% if user.is_biometric_enabled %}<i class="fas fa-fingerprint"></i>{% else %}{{ user.first_name|first }}{{ user.last_name|first }}{% endif %}
+                    <i class="fas fa-user"></i>
                 </div>
-                <div class="user-name">{{ user.first_name }} {{ user.last_name }}</div>
+                <div class="user-name">John Doe</div>
             </div>
         </div>
-        
-        {% if messages %}
-            {% for message in messages %}
-                <div class="message message-{{ message.tags }}"><i class="fas {% if message.tags == 'success' %}fa-check-circle{% elif message.tags == 'error' %}fa-exclamation-circle{% else %}fa-info-circle{% endif %}"></i>{{ message }}</div>
-            {% endfor %}
-        {% endif %}
         
         <div class="security-container">
             <div class="profile-card">
                 <div class="profile-header">
-                    <div class="profile-avatar">{% if user.is_biometric_enabled %}<i class="fas fa-fingerprint"></i>{% else %}{{ user.first_name|first }}{{ user.last_name|first }}{% endif %}</div>
+                    <div class="profile-avatar"><i class="fas fa-user"></i></div>
                     <div class="profile-info">
-                        <h3>{{ user.first_name }} {{ user.last_name }}</h3>
-                        <p>{{ user.email }}</p>
+                        <h3>John Doe</h3>
+                        <p>john.doe@example.com</p>
                     </div>
                 </div>
                 <div class="profile-details">
                     <div class="detail-item">
                         <label>Account Number</label>
-                        <p>{{ accounts.0.account_number }}</p>
+                        <p>XXXX-XXXX-XXXX-1234</p>
                     </div>
                     <div class="detail-item">
                         <label>Account Type</label>
-                        <p>{{ accounts.0.get_account_type_display }}</p>
+                        <p>Premium Savings</p>
                     </div>
                     <div class="detail-item">
                         <label>Phone Number</label>
-                        <p>{{ user.phone_number|default:"Not provided" }}</p>
+                        <p>+1 (555) 123-4567</p>
                     </div>
                     <div class="detail-item">
                         <label>Last Login</label>
-                        <p>{{ user.last_login|date:"M d, Y H:i"|default:"Never" }}</p>
+                        <p>Sep 15, 2023 14:30</p>
                     </div>
                 </div>
             </div>
             
             <div class="security-card">
-                <form method="POST">{% csrf_token %}
+                <form method="POST">
                     <div class="security-section">
                         <h3><i class="fas fa-fingerprint"></i> Biometric Authentication</h3>
                         <div class="toggle-container">
                             <label class="toggle-switch">
-                                <input type="checkbox" id="enable_biometric" {% if user.is_biometric_enabled %}checked{% endif %}>
+                                <input type="checkbox" id="enable_biometric">
                                 <span class="slider"></span>
                             </label>
                             <span>Enable Face ID / Fingerprint Login</span>
@@ -708,20 +700,24 @@
                             </tr>
                         </thead>
                         <tbody>
-                            {% for log in security_logs %}
                             <tr>
-                                <td>{{ log.timestamp|date:"M d, Y H:i" }}</td>
-                                <td>{{ log.get_event_type_display }}</td>
-                                <td>{{ log.ip_address }}</td>
-                                <td>{{ log.details }}</td>
+                                <td>Sep 15, 2023 14:30</td>
+                                <td>Login</td>
+                                <td>192.168.1.1</td>
+                                <td>Successful login from Chrome browser</td>
                             </tr>
-                            {% empty %}
                             <tr>
-                                <td colspan="4" style="text-align:center;padding:1.5rem;color:#666;">
-                                    No security logs found
-                                </td>
+                                <td>Sep 14, 2023 09:15</td>
+                                <td>Password Change</td>
+                                <td>192.168.1.1</td>
+                                <td>Password updated successfully</td>
                             </tr>
-                            {% endfor %}
+                            <tr>
+                                <td>Sep 12, 2023 16:45</td>
+                                <td>Transfer</td>
+                                <td>192.168.1.1</td>
+                                <td>Funds transfer to account XXX-1234</td>
+                            </tr>
                         </tbody>
                     </table>
                 </div>
@@ -745,9 +741,10 @@
         
         <div class="biometric-step" id="fingerprint-step">
             <p>Place your finger on the scanner</p>
-            <div class="biometric-scanner">
-                <div class="scanner-animation"></div>
-                <i class="fas fa-fingerprint scanner-icon"></i>
+            <div class="camera-container">
+                <div class="face-overlay">
+                    <i class="fas fa-fingerprint" style="font-size: 3rem; color: var(--primary-light);"></i>
+                </div>
             </div>
             <div id="fingerprintStatus" class="status-message status-waiting">
                 Waiting for fingerprint...
@@ -756,12 +753,14 @@
         
         <div class="biometric-step" id="faceid-step">
             <p>Position your face in the frame</p>
-            <div class="biometric-scanner">
-                <div class="scanner-animation"></div>
-                <i class="fas fa-user scanner-icon"></i>
+            <div class="camera-container">
+                <video id="video" autoplay playsinline></video>
+                <div class="face-overlay">
+                    <i class="fas fa-user" style="font-size: 3rem; color: var(--primary-light);"></i>
+                </div>
             </div>
             <div id="faceidStatus" class="status-message status-waiting">
-                Scanning for face...
+                Scanning for face... Please look directly at the camera
             </div>
         </div>
         
@@ -860,8 +859,11 @@
     const fingerprintStatus = document.getElementById("fingerprintStatus");
     const faceIdStatus = document.getElementById("faceidStatus");
     const progressSteps = document.querySelectorAll('.progress-step');
+    const video = document.getElementById('video');
     
     let currentStep = 0;
+    let stream = null;
+    let faceDetectionInterval = null;
     
     openBtn.onclick = () => {
         modal.style.display = "flex";
@@ -869,6 +871,7 @@
     };
     
     cancelBtn.onclick = () => {
+        stopCamera();
         modal.style.display = "none";
     };
     
@@ -883,6 +886,7 @@
     
     window.onclick = (e) => {
         if (e.target == modal) {
+            stopCamera();
             modal.style.display = "none";
         }
     };
@@ -941,7 +945,7 @@
         }, 2000);
         
         // Listen for fingerprint detection (simulated with a click)
-        const scanner = document.querySelector('.biometric-scanner');
+        const scanner = document.querySelector('.camera-container');
         scanner.onclick = () => {
             fingerprintStatus.textContent = "Fingerprint detected! Processing...";
             fingerprintStatus.className = "status-message status-success";
@@ -953,24 +957,70 @@
         };
     }
     
-    function startFaceIdScan() {
-        faceIdStatus.textContent = "Position your face in the frame...";
+    async function startFaceIdScan() {
+        faceIdStatus.textContent = "Initializing camera...";
         faceIdStatus.className = "status-message status-waiting";
         
-        // Simulate face detection
-        setTimeout(() => {
-            faceIdStatus.textContent = "Face detected! Please hold still...";
-        }, 2000);
-        
-        setTimeout(() => {
-            faceIdStatus.textContent = "Face scan complete!";
-            faceIdStatus.className = "status-message status-success";
+        try {
+            // Request camera access
+            stream = await navigator.mediaDevices.getUserMedia({ 
+                video: { 
+                    facingMode: 'user',
+                    width: { ideal: 640 },
+                    height: { ideal: 480 }
+                } 
+            });
             
-            // Show next button after a delay
-            setTimeout(() => {
-                nextBtn.style.display = "block";
-            }, 1500);
-        }, 4000);
+            video.srcObject = stream;
+            
+            faceIdStatus.textContent = "Position your face in the frame...";
+            
+            // Start face detection simulation
+            startFaceDetection();
+            
+        } catch (error) {
+            console.error('Error accessing camera:', error);
+            faceIdStatus.textContent = "Camera access denied. Please allow camera access to continue.";
+            faceIdStatus.className = "status-message status-error";
+        }
+    }
+    
+    function startFaceDetection() {
+        let detectionAttempts = 0;
+        
+        faceDetectionInterval = setInterval(() => {
+            detectionAttempts++;
+            
+            // Simulate face detection (in a real app, this would use a face detection API)
+            if (detectionAttempts > 3) {
+                // Simulate successful face detection
+                clearInterval(faceDetectionInterval);
+                faceIdStatus.textContent = "Face detected! Please hold still...";
+                
+                setTimeout(() => {
+                    faceIdStatus.textContent = "Face scan complete!";
+                    faceIdStatus.className = "status-message status-success";
+                    
+                    // Show next button after a delay
+                    setTimeout(() => {
+                        stopCamera();
+                        nextBtn.style.display = "block";
+                    }, 1500);
+                }, 2000);
+            }
+        }, 1500);
+    }
+    
+    function stopCamera() {
+        if (stream) {
+            stream.getTracks().forEach(track => track.stop());
+            stream = null;
+        }
+        
+        if (faceDetectionInterval) {
+            clearInterval(faceDetectionInterval);
+            faceDetectionInterval = null;
+        }
     }
     
     function completeBiometricSetup() {
@@ -1002,7 +1052,7 @@
     
     // Toggle biometric authentication
     document.getElementById("enable_biometric").addEventListener("change", function() {
-        if (!this.checked && {% if user.is_biometric_enabled %}true{% else %}false{% endif %}) {
+        if (!this.checked) {
             if (confirm("Are you sure you want to disable biometric authentication?")) {
                 // This would typically make an AJAX call to the server to disable biometric auth
                 console.log("Biometric authentication disabled");

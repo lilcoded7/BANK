@@ -10,3 +10,4 @@ admin.site.register(Account)
 admin.site.register(Transaction)
 
 admin.site.register(SecurityLog)
+admin.site.register(UserBiometricData)

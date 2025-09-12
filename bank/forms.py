@@ -28,34 +28,25 @@ class LoginForm(forms.Form):
     )
 
 
-# ---------------- TRANSFER ---------------- #
+# ---------------- BANK TRANSFER ---------------- #
 
 class TransferForm(forms.Form):
     from_account = forms.ModelChoiceField(
         queryset=Account.objects.none(),
         label="From Account",
-        widget=Select2Widget(attrs={
-            "class": "form-control",
-            "data-placeholder": "Select source account"
-        })
+        widget=Select2Widget(attrs={"class": "form-control"})
     )
     to_account_number = forms.CharField(
         max_length=20,
-        label="To Account Number",
-        widget=forms.TextInput(attrs={
-            "class": "form-control",
-            "placeholder": "Enter recipient account number"
-        })
+        label="Recipient Account Number",
+        widget=forms.TextInput(attrs={"class": "form-control"})
     )
     amount = forms.DecimalField(
         max_digits=15,
         decimal_places=2,
         label="Amount (GHS)",
         validators=[MinValueValidator(0.01)],
-        widget=forms.NumberInput(attrs={
-            "class": "form-control",
-            "placeholder": "0.00"
-        })
+        widget=forms.NumberInput(attrs={"class": "form-control"})
     )
 
     def __init__(self, user, *args, **kwargs):
@@ -67,13 +58,13 @@ class TransferForm(forms.Form):
         try:
             return Account.objects.get(account_number=number, status="ACTIVE")
         except Account.DoesNotExist:
-            raise forms.ValidationError("Recipient account not found or inactive.")
+            raise forms.ValidationError("Recipient account not found.")
 
     def clean_amount(self):
-        amount = self.cleaned_data.get("amount")
+        amount = self.cleaned_data["amount"]
         from_account = self.cleaned_data.get("from_account")
         if from_account and amount and from_account.balance < amount:
-            raise forms.ValidationError("Insufficient balance in the selected account.")
+            raise forms.ValidationError("Insufficient balance.")
         return amount
 
 
@@ -89,22 +80,16 @@ class MobileMoneyForm(forms.Form):
     from_account = forms.ModelChoiceField(
         queryset=Account.objects.none(),
         label="From Account",
-        widget=Select2Widget(attrs={
-            "class": "form-control",
-            "data-placeholder": "Select source account"
-        })
+        widget=Select2Widget(attrs={"class": "form-control"})
     )
     mobile_number = forms.CharField(
         max_length=15,
         label="Mobile Number",
-        widget=forms.TextInput(attrs={
-            "class": "form-control",
-            "placeholder": "0244123456"
-        })
+        widget=forms.TextInput(attrs={"class": "form-control"})
     )
     network = forms.ChoiceField(
         choices=NETWORK_CHOICES,
-        label="Mobile Network",
+        label="Network",
         widget=forms.Select(attrs={"class": "form-control"})
     )
     amount = forms.DecimalField(
@@ -112,10 +97,7 @@ class MobileMoneyForm(forms.Form):
         decimal_places=2,
         label="Amount (GHS)",
         validators=[MinValueValidator(0.01)],
-        widget=forms.NumberInput(attrs={
-            "class": "form-control",
-            "placeholder": "0.00"
-        })
+        widget=forms.NumberInput(attrs={"class": "form-control"})
     )
 
     def __init__(self, user, *args, **kwargs):
@@ -123,10 +105,10 @@ class MobileMoneyForm(forms.Form):
         self.fields["from_account"].queryset = Account.objects.filter(customer=user, status="ACTIVE")
 
     def clean_amount(self):
-        amount = self.cleaned_data.get("amount")
+        amount = self.cleaned_data["amount"]
         from_account = self.cleaned_data.get("from_account")
         if from_account and amount and from_account.balance < amount:
-            raise forms.ValidationError("Insufficient balance in the selected account.")
+            raise forms.ValidationError("Insufficient balance.")
         return amount
 
 
@@ -143,10 +125,7 @@ class BillPaymentForm(forms.Form):
     from_account = forms.ModelChoiceField(
         queryset=Account.objects.none(),
         label="From Account",
-        widget=Select2Widget(attrs={
-            "class": "form-control",
-            "data-placeholder": "Select source account"
-        })
+        widget=Select2Widget(attrs={"class": "form-control"})
     )
     bill_type = forms.ChoiceField(
         choices=BILL_TYPES,
@@ -155,30 +134,20 @@ class BillPaymentForm(forms.Form):
     )
     account_number = forms.CharField(
         max_length=20,
-        label="Account Number",
-        widget=forms.TextInput(attrs={
-            "class": "form-control",
-            "placeholder": "Enter bill account number"
-        })
+        label="Bill Account Number",
+        widget=forms.TextInput(attrs={"class": "form-control"})
     )
     amount = forms.DecimalField(
         max_digits=15,
         decimal_places=2,
         label="Amount (GHS)",
         validators=[MinValueValidator(0.01)],
-        widget=forms.NumberInput(attrs={
-            "class": "form-control",
-            "placeholder": "0.00"
-        })
+        widget=forms.NumberInput(attrs={"class": "form-control"})
     )
     description = forms.CharField(
         required=False,
         label="Description",
-        widget=forms.Textarea(attrs={
-            "class": "form-control",
-            "rows": 2,
-            "placeholder": "Optional description"
-        })
+        widget=forms.Textarea(attrs={"class": "form-control", "rows": 2})
     )
 
     def __init__(self, user, *args, **kwargs):
@@ -186,10 +155,67 @@ class BillPaymentForm(forms.Form):
         self.fields["from_account"].queryset = Account.objects.filter(customer=user, status="ACTIVE")
 
     def clean_amount(self):
-        amount = self.cleaned_data.get("amount")
+        amount = self.cleaned_data["amount"]
         from_account = self.cleaned_data.get("from_account")
         if from_account and amount and from_account.balance < amount:
-            raise forms.ValidationError("Insufficient balance in the selected account.")
+            raise forms.ValidationError("Insufficient balance.")
+        return amount
+
+
+# ---------------- DEPOSIT ---------------- #
+
+class DepositForm(forms.Form):
+    to_account = forms.ModelChoiceField(
+        queryset=Account.objects.none(),
+        label="To Account",
+        widget=Select2Widget(attrs={"class": "form-control"})
+    )
+    amount = forms.DecimalField(
+        max_digits=15,
+        decimal_places=2,
+        validators=[MinValueValidator(0.01)],
+        label="Amount (GHS)",
+        widget=forms.NumberInput(attrs={"class": "form-control"})
+    )
+    description = forms.CharField(
+        required=False,
+        widget=forms.Textarea(attrs={"class": "form-control", "rows": 2})
+    )
+
+    def __init__(self, user, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["to_account"].queryset = Account.objects.filter(customer=user, status="ACTIVE")
+
+
+# ---------------- WITHDRAWAL ---------------- #
+
+class WithdrawalForm(forms.Form):
+    from_account = forms.ModelChoiceField(
+        queryset=Account.objects.none(),
+        label="From Account",
+        widget=Select2Widget(attrs={"class": "form-control"})
+    )
+    amount = forms.DecimalField(
+        max_digits=15,
+        decimal_places=2,
+        validators=[MinValueValidator(0.01)],
+        label="Amount (GHS)",
+        widget=forms.NumberInput(attrs={"class": "form-control"})
+    )
+    description = forms.CharField(
+        required=False,
+        widget=forms.Textarea(attrs={"class": "form-control", "rows": 2})
+    )
+
+    def __init__(self, user, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["from_account"].queryset = Account.objects.filter(customer=user, status="ACTIVE")
+
+    def clean_amount(self):
+        amount = self.cleaned_data["amount"]
+        from_account = self.cleaned_data.get("from_account")
+        if from_account and amount and from_account.balance < amount:
+            raise forms.ValidationError("Insufficient balance.")
         return amount
 
 
@@ -198,36 +224,21 @@ class BillPaymentForm(forms.Form):
 class SecuritySettingsForm(forms.Form):
     enable_biometric = forms.BooleanField(
         required=False,
-        label="Enable Biometric Authentication",
-        widget=forms.CheckboxInput(attrs={"class": "form-check-input"})
+        label="Enable Biometric",
+        widget=forms.CheckboxInput()
     )
     current_password = forms.CharField(
         required=False,
-        label="Current Password",
-        widget=forms.PasswordInput(attrs={
-            "class": "form-control",
-            "placeholder": "Current password",
-            "autocomplete": "current-password"
-        })
+        widget=forms.PasswordInput(attrs={"class": "form-control"})
     )
     new_password = forms.CharField(
         required=False,
         min_length=8,
-        label="New Password",
-        widget=forms.PasswordInput(attrs={
-            "class": "form-control",
-            "placeholder": "New password (min 8 characters)",
-            "autocomplete": "new-password"
-        })
+        widget=forms.PasswordInput(attrs={"class": "form-control"})
     )
     confirm_password = forms.CharField(
         required=False,
-        label="Confirm Password",
-        widget=forms.PasswordInput(attrs={
-            "class": "form-control",
-            "placeholder": "Confirm new password",
-            "autocomplete": "new-password"
-        })
+        widget=forms.PasswordInput(attrs={"class": "form-control"})
     )
 
     def __init__(self, user, *args, **kwargs):
@@ -249,7 +260,7 @@ class SecuritySettingsForm(forms.Form):
             if not self.user.check_password(current_pw):
                 raise forms.ValidationError("Current password is incorrect.")
             if new_pw != confirm_pw:
-                raise forms.ValidationError("New passwords do not match.")
+                raise forms.ValidationError("Passwords do not match.")
             try:
                 validate_password(new_pw, self.user)
             except ValidationError as e:

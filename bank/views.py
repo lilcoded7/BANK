@@ -9,17 +9,14 @@ from django.db import transaction as db_transaction
 from .models import Account, Transaction, SecurityLog
 from .forms import (
     LoginForm, TransferForm, MobileMoneyForm,
-    BillPaymentForm, SecuritySettingsForm
+    BillPaymentForm, DepositForm, WithdrawalForm,
+    SecuritySettingsForm
 )
 
 
-# ---------------- AUTH ---------------- #
-
 def login_view(request):
-    """Handle user login with security logging."""
     if request.user.is_authenticated:
         return redirect("dashboard")
-
     form = LoginForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
         user = authenticate(
@@ -33,42 +30,35 @@ def login_view(request):
                 event_type="LOGIN",
                 ip_address=get_client_ip(request),
                 device_info={"user_agent": request.META.get("HTTP_USER_AGENT")},
-                details="Standard password authentication",
+                details="Login successful",
             )
-            messages.success(request, "Login successful!")
+            messages.success(request, "Login successful")
             return redirect("dashboard")
-        messages.error(request, "Invalid email or password")
-
+        messages.error(request, "Invalid credentials")
     return render(request, "auth/login.html", {"form": form})
 
 
 @login_required
 def logout_view(request):
-    """Logout the user and log the event."""
     SecurityLog.objects.create(
         user=request.user,
         event_type="LOGOUT",
         ip_address=get_client_ip(request),
-        details="User initiated logout",
+        details="User logged out",
     )
     logout(request)
-    messages.success(request, "You have been logged out successfully.")
+    messages.success(request, "You have been logged out")
     return redirect("login")
 
 
-# ---------------- DASHBOARD ---------------- #
-
 @login_required
 def dashboard(request):
-    """Show account summary and recent transactions."""
     accounts = Account.objects.filter(customer=request.user, status="ACTIVE")
     total_balance = accounts.aggregate(total=Sum("balance"))["total"] or 0
-
     recent_transactions = Transaction.objects.filter(
-        Q(sender_account__customer=request.user)
-        | Q(recipient_account__customer=request.user)
+        Q(sender_account__customer=request.user) |
+        Q(recipient_account__customer=request.user)
     ).select_related("sender_account", "recipient_account")[:10]
-
     return render(request, "main/dashboard.html", {
         "accounts": accounts,
         "total_balance": total_balance,
@@ -77,65 +67,54 @@ def dashboard(request):
     })
 
 
-# ---------------- TRANSFERS ---------------- #
-
 @login_required
 def transfer_funds(request):
-    """Render transfer form page (bank transfer, mobile money, bills)."""
     return render(request, "main/transfer.html", {
         "accounts": Account.objects.filter(customer=request.user),
         "transfer_form": TransferForm(user=request.user),
         "mobile_money_form": MobileMoneyForm(user=request.user),
-        "bill_form": BillPaymentForm(user=request.user),
+        "bill_payment_form": BillPaymentForm(user=request.user),
+        "deposit_form": DepositForm(user=request.user),
+        "withdrawal_form": WithdrawalForm(user=request.user),
+        "recent_transactions": Transaction.objects.filter(
+            Q(sender_account__customer=request.user) |
+            Q(recipient_account__customer=request.user)
+        ).order_by("-timestamp")[:10],
     })
 
 
 @login_required
 @db_transaction.atomic
 def bank_transfer(request):
-    """Process direct account-to-account transfers."""
     form = TransferForm(user=request.user, data=request.POST or None)
     if request.method == "POST" and form.is_valid():
         from_account = form.cleaned_data["from_account"]
         to_account = form.cleaned_data["to_account_number"]
         amount = form.cleaned_data["amount"]
-
         from_account.balance -= amount
         to_account.balance += amount
         from_account.save()
         to_account.save()
-
-        transaction = Transaction.objects.create(
+        Transaction.objects.create(
             sender_account=from_account,
             recipient_account=to_account,
             amount=amount,
             transaction_type="TRANSFER",
         )
-
-        messages.success(
-            request,
-            f"Transfer successful to {transaction.recipient_account.customer.full_name}. "
-            f"New balance: GHS {from_account.balance:.2f}",
-        )
+        messages.success(request, f"Transfer of GHS {amount:.2f} successful")
         return redirect("transfer_funds")
-
     return render(request, "main/transfer.html", {"transfer_form": form})
 
-
-# ---------------- MOBILE MONEY ---------------- #
 
 @login_required
 @db_transaction.atomic
 def mobile_money(request):
-    """Handle Mobile Money transfers."""
     form = MobileMoneyForm(user=request.user, data=request.POST or None)
     if request.method == "POST" and form.is_valid():
         from_account = form.cleaned_data["from_account"]
         amount = form.cleaned_data["amount"]
-
         from_account.balance -= amount
         from_account.save()
-
         Transaction.objects.create(
             sender_account=from_account,
             recipient_mobile=form.cleaned_data["mobile_number"],
@@ -143,31 +122,20 @@ def mobile_money(request):
             amount=amount,
             transaction_type="MOBILE_MONEY",
         )
-
-        messages.success(
-            request,
-            f"Mobile Money transfer of GHS {amount:.2f} successful. "
-            f"New balance: GHS {from_account.balance:.2f}",
-        )
+        messages.success(request, f"Mobile Money transfer of GHS {amount:.2f} successful")
         return redirect("transfer_funds")
-
     return render(request, "main/transfer.html", {"mobile_money_form": form})
 
-
-# ---------------- BILL PAYMENTS ---------------- #
 
 @login_required
 @db_transaction.atomic
 def bill_payment(request):
-    """Handle bill payments."""
     form = BillPaymentForm(user=request.user, data=request.POST or None)
     if request.method == "POST" and form.is_valid():
         from_account = form.cleaned_data["from_account"]
         amount = form.cleaned_data["amount"]
-
         from_account.balance -= amount
         from_account.save()
-
         Transaction.objects.create(
             sender_account=from_account,
             bill_type=form.cleaned_data["bill_type"],
@@ -176,55 +144,80 @@ def bill_payment(request):
             transaction_type="BILL_PAYMENT",
             description=form.cleaned_data.get("description", ""),
         )
-
-        messages.success(
-            request,
-            f"Bill payment of GHS {amount:.2f} successful. "
-            f"New balance: GHS {from_account.balance:.2f}",
-        )
+        messages.success(request, f"Bill payment of GHS {amount:.2f} successful")
         return redirect("transfer_funds")
+    return render(request, "main/transfer.html", {"bill_payment_form": form})
 
-    return render(request, "main/transfer.html", {"bill_form": form})
+
+@login_required
+@db_transaction.atomic
+def deposit(request):
+    form = DepositForm(user=request.user, data=request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        to_account = form.cleaned_data["to_account"]
+        amount = form.cleaned_data["amount"]
+        to_account.balance += amount
+        to_account.save()
+        Transaction.objects.create(
+            recipient_account=to_account,
+            amount=amount,
+            transaction_type="DEPOSIT",
+            description=form.cleaned_data.get("description", ""),
+        )
+        messages.success(request, f"Deposit of GHS {amount:.2f} successful")
+        return redirect("transfer_funds")
+    return render(request, "main/transfer.html", {"deposit_form": form})
 
 
-# ---------------- SECURITY SETTINGS ---------------- #
+@login_required
+@db_transaction.atomic
+def withdrawal(request):
+    form = WithdrawalForm(user=request.user, data=request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        from_account = form.cleaned_data["from_account"]
+        amount = form.cleaned_data["amount"]
+        from_account.balance -= amount
+        from_account.save()
+        Transaction.objects.create(
+            sender_account=from_account,
+            amount=amount,
+            transaction_type="WITHDRAWAL",
+            description=form.cleaned_data.get("description", ""),
+        )
+        messages.success(request, f"Withdrawal of GHS {amount:.2f} successful")
+        return redirect("transfer_funds")
+    return render(request, "main/transfer.html", {"withdrawal_form": form})
+
 
 @login_required
 def security_settings(request):
-    """Manage password changes and biometric preferences."""
     accounts = Account.objects.filter(customer=request.user, status="ACTIVE")
     form = SecuritySettingsForm(request.user, request.POST or None)
-
     if request.method == "POST" and form.is_valid():
-        # Password update
         if form.cleaned_data.get("new_password"):
             request.user.set_password(form.cleaned_data["new_password"])
             request.user.save()
             update_session_auth_hash(request, request.user)
-            messages.success(request, "Password changed successfully!")
+            messages.success(request, "Password changed successfully")
             SecurityLog.objects.create(
                 user=request.user,
                 event_type="PASSWORD_CHANGE",
                 ip_address=get_client_ip(request),
-                details="Password changed successfully",
+                details="Password updated",
             )
-
-        # Biometric toggle
-        new_biometric = form.cleaned_data.get("enable_biometric", False)
-        if request.user.is_biometric_enabled != new_biometric:
-            request.user.is_biometric_enabled = new_biometric
+        new_bio = form.cleaned_data.get("enable_biometric", False)
+        if request.user.is_biometric_enabled != new_bio:
+            request.user.is_biometric_enabled = new_bio
             request.user.save()
-            status = "enabled" if new_biometric else "disabled"
-            messages.success(request, f"Biometric authentication {status}!")
+            status = "enabled" if new_bio else "disabled"
+            messages.success(request, f"Biometric {status}")
             SecurityLog.objects.create(
                 user=request.user,
                 event_type="BIOMETRIC_UPDATE",
                 ip_address=get_client_ip(request),
-                details=f"Biometric authentication {status}",
+                details=f"Biometric {status}",
             )
-
         return redirect("security_settings")
-
     logs = SecurityLog.objects.filter(user=request.user).order_by("-timestamp")[:20]
     return render(request, "main/security.html", {
         "form": form,
@@ -233,12 +226,9 @@ def security_settings(request):
     })
 
 
-# ---------------- UTILITIES ---------------- #
-
 @login_required
 @require_POST
 def verify_account(request):
-    """AJAX endpoint to check if account exists."""
     number = request.POST.get("account_number")
     try:
         account = Account.objects.get(account_number=number, status="ACTIVE")
@@ -252,6 +242,5 @@ def verify_account(request):
 
 
 def get_client_ip(request):
-    """Get real client IP (handles proxies)."""
     x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
     return x_forwarded_for.split(",")[0] if x_forwarded_for else request.META.get("REMOTE_ADDR")

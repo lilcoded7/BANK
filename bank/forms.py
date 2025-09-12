@@ -221,49 +221,28 @@ class WithdrawalForm(forms.Form):
 
 # ---------------- SECURITY ---------------- #
 
+
 class SecuritySettingsForm(forms.Form):
-    enable_biometric = forms.BooleanField(
-        required=False,
-        label="Enable Biometric",
-        widget=forms.CheckboxInput()
-    )
     current_password = forms.CharField(
-        required=False,
-        widget=forms.PasswordInput(attrs={"class": "form-control"})
+        widget=forms.PasswordInput, required=False
     )
     new_password = forms.CharField(
-        required=False,
-        min_length=8,
-        widget=forms.PasswordInput(attrs={"class": "form-control"})
+        widget=forms.PasswordInput, required=False, validators=[validate_password]
     )
     confirm_password = forms.CharField(
-        required=False,
-        widget=forms.PasswordInput(attrs={"class": "form-control"})
+        widget=forms.PasswordInput, required=False
     )
+    enable_biometric = forms.BooleanField(required=False)
 
     def __init__(self, user, *args, **kwargs):
         self.user = user
         super().__init__(*args, **kwargs)
-        self.fields["enable_biometric"].initial = user.is_biometric_enabled
 
     def clean(self):
-        data = super().clean()
-        new_pw, current_pw, confirm_pw = (
-            data.get("new_password"),
-            data.get("current_password"),
-            data.get("confirm_password"),
-        )
+        cleaned_data = super().clean()
+        new_password = cleaned_data.get("new_password")
+        confirm_password = cleaned_data.get("confirm_password")
 
-        if new_pw:
-            if not current_pw:
-                raise forms.ValidationError("Current password is required.")
-            if not self.user.check_password(current_pw):
-                raise forms.ValidationError("Current password is incorrect.")
-            if new_pw != confirm_pw:
-                raise forms.ValidationError("Passwords do not match.")
-            try:
-                validate_password(new_pw, self.user)
-            except ValidationError as e:
-                raise forms.ValidationError(e.messages)
-
-        return data
+        if new_password and new_password != confirm_password:
+            self.add_error("confirm_password", "Passwords do not match")
+        return cleaned_data

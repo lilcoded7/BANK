@@ -1,246 +1,288 @@
 {% extends 'main/base.html' %}
 
 {% block content %}
-
-
-        <!-- Main Content -->
-        <div class="main-content">
-            <div class="header">
-                <div style="display: flex; align-items: center; gap: 1rem;">
-                    <button class="mobile-menu-toggle" id="menuToggle">
-                        <i class="fas fa-bars"></i>
-                    </button>
-                    <div class="page-title">Dashboard</div>
-                </div>
-                <div class="user-profile">
-                    <div class="user-avatar">
-                        {% if user.is_biometric_enabled %}
-                            <i class="fas fa-fingerprint"></i>
-                        {% else %}
-                            {{ user.first_name|first }}{{ user.last_name|first }}
-                        {% endif %}
-                    </div>
-                    <div class="user-name">{{ user.first_name }} {{ user.last_name }}</div>
-                </div>
-            </div>
-
-            <!-- Display messages -->
-            {% if messages %}
-                {% for message in messages %}
-                    <div class="message message-{% if message.tags %}{{ message.tags }}{% endif %}">
-                        <i class="fas 
-                            {% if message.tags == 'success' %}fa-check-circle
-                            {% elif message.tags == 'error' %}fa-exclamation-circle
-                            {% else %}fa-info-circle{% endif %}"></i>
-                        {{ message }}
-                    </div>
-                {% endfor %}
-            {% endif %}
-
-            <!-- Account Overview -->
-            <div class="dashboard-grid">
-                <div class="card">
-                    <div class="card-header">
-                        <div class="card-title">Total Balance</div>
-                        <div class="card-icon">
-                            <i class="fas fa-wallet"></i>
-                        </div>
-                    </div>
-                    <div class="card-value">₵{{ total_balance|floatformat:2 }}</div>
-                    <div class="card-change">
-                        <i class="fas fa-arrow-up"></i>
-                        <span>All accounts</span>
-                    </div>
-                    <div class="security-badge">
-                        <i class="fas fa-link"></i>
-                        <span>GhIPSS Interoperable</span>
-                    </div>
-                </div>
-                
-                <div class="card">
-                    <div class="card-header">
-                        <div class="card-title">Security Status</div>
-                        <div class="card-icon">
-                            <i class="fas fa-shield-alt"></i>
-                        </div>
-                    </div>
-                    <div class="card-value">
-                        {% if user.is_biometric_enabled %}
-                            Verified <span class="status-indicator status-active"></span>
-                        {% else %}
-                            Standard <span class="status-indicator status-pending"></span>
-                        {% endif %}
-                    </div>
-                    <div class="card-change">
-                        <i class="fas fa-clock"></i>
-                        <span>Last login: Just now</span>
-                    </div>
-                    <div class="security-badge">
-                        <i class="fas fa-lock"></i>
-                        <span>Zero-Trust Framework</span>
-                    </div>
-                </div>
-                
-                <div class="card">
-                    <div class="card-header">
-                        <div class="card-title">Active Accounts</div>
-                        <div class="card-icon">
-                            <i class="fas fa-credit-card"></i>
-                        </div>
-                    </div>
-                    <div class="card-value">{{ accounts.count }}</div>
-                    <div class="card-change">
-                        <i class="fas fa-check-circle"></i>
-                        <span>All accounts active</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- My Accounts -->
-            <div class="section">
-                <div class="section-header">
-                    <div class="section-title">My Accounts</div>
-                </div>
-                <div class="feature-grid">
-                {% for account in accounts %}
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        {% if account.account_type == 'SAVINGS' %}
-                            <i class="fas fa-piggy-bank"></i>
-                        {% elif account.account_type == 'CHECKING' %}
-                            <i class="fas fa-money-bill-wave"></i>
-                        {% else %}
-                            <i class="fas fa-university"></i>
-                        {% endif %}
-                    </div>
-                    <div class="feature-title">{{ account.get_account_type_display }}</div>
-                    <div class="feature-desc">
-                        {{ account.account_number }}<br>
-                        ₵{{ account.balance|floatformat:2 }}
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
-            </div>
-
-            <!-- Recent Transactions -->
-            <div class="section">
-                <div class="section-header">
-                    <div class="section-title">Recent Transactions</div>
-                    <a href="{% url 'transfer_funds' %}" class="section-link">View All</a>
-                </div>
-                <div class="card">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Date</th>
-                                <th>Description</th>
-                                <th style="text-align: right;">Amount</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for transaction in recent_transactions %}
-                            <tr>
-                                <td>{{ transaction.timestamp|date:"M d, Y" }}</td>
-                                <td>
-                                    {{ transaction.description|default:"No description" }}
-                                    {% if transaction.transaction_type == 'MOBILE_MONEY' %}
-                                        <i class="fas fa-mobile-alt" style="color: var(--primary); margin-left: 0.5rem;"></i>
-                                    {% elif transaction.transaction_type == 'BILL_PAYMENT' %}
-                                        <i class="fas fa-file-invoice" style="color: var(--primary); margin-left: 0.5rem;"></i>
-                                    {% endif %}
-                                </td>
-                                <td style="text-align: right; {% if transaction.sender_account.customer == user %}color: var(--danger){% else %}color: var(--success){% endif %}">
-                                    {% if transaction.sender_account.customer == user %}-{% else %}+{% endif %}
-                                    ₵{{ transaction.amount|floatformat:2 }}
-                                </td>
-                                <td>
-                                    <span class="status-indicator 
-                                        {% if transaction.status == 'COMPLETED' %}status-active
-                                        {% elif transaction.status == 'PENDING' %}status-pending
-                                        {% else %}status-inactive{% endif %}">
-                                    </span>
-                                    {{ transaction.get_status_display }}
-                                </td>
-                            </tr>
-                            {% empty %}
-                            <tr>
-                                <td colspan="4" style="text-align: center; padding: 1rem;">No recent transactions</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <!-- Quick Actions -->
-            <div class="section">
-                <div class="section-header">
-                    <div class="section-title">Quick Actions</div>
-                </div>
-                <div class="feature-grid">
-                    <div class="feature-card" onclick="window.location.href='{% url 'transfer_funds' %}'">
-                        <div class="feature-icon">
-                            <i class="fas fa-exchange-alt"></i>
-                        </div>
-                        <div class="feature-title">Transfer Funds</div>
-                        <div class="feature-desc">Send money to other accounts</div>
-                    </div>
-                    
-                    <div class="feature-card" onclick="window.location.href='{% url 'mobile_money' %}'">
-                        <div class="feature-icon">
-                            <i class="fas fa-mobile-alt"></i>
-                        </div>
-                        <div class="feature-title">Mobile Money</div>
-                        <div class="feature-desc">Send/receive mobile money</div>
-                    </div>
-                    
-                    <div class="feature-card" onclick="window.location.href='{% url 'security_settings' %}'">
-                        <div class="feature-icon">
-                            <i class="fas fa-shield-alt"></i>
-                        </div>
-                        <div class="feature-title">Security Settings</div>
-                        <div class="feature-desc">Manage your security preferences</div>
-                    </div>
-                    
-                    <div class="feature-card" onclick="window.location.href='{% url 'bill_payment' %}'">
-                        <div class="feature-icon">
-                            <i class="fas fa-file-invoice"></i>
-                        </div>
-                        <div class="feature-title">Pay Bills</div>
-                        <div class="feature-desc">Pay utilities and other bills</div>
-                    </div>
-                </div>
-            </div>
+<div class="main-content">
+    <div class="header">
+        <div style="display: flex; align-items: center; gap: 1rem;">
+            <button class="mobile-menu-toggle" id="menuToggle">
+                <i class="fas fa-bars"></i>
+            </button>
+            <div class="page-title">Dashboard</div>
         </div>
-    
-    <!-- AI Assistant Floating Button -->
-    <div class="assistant" onclick="alert('AI Assistant coming soon!')">
-        <i class="fas fa-robot"></i>
+        <div class="user-profile">
+            <div class="user-avatar">
+                {% if user.is_biometric_enabled %}
+                    <i class="fas fa-fingerprint"></i>
+                {% else %}
+                    {{ user.first_name|first }}{{ user.last_name|first }}
+                {% endif %}
+            </div>
+            <div class="user-name">{{ user.first_name }} {{ user.last_name }}</div>
+        </div>
     </div>
 
-    <script>
-        // Mobile Menu Toggle
-        const menuToggle = document.getElementById('menuToggle');
-        const sidebar = document.getElementById('sidebar');
-        
-        menuToggle.addEventListener('click', function(e) {
-            e.stopPropagation();
-            sidebar.classList.toggle('active');
-        });
-        
-        // Close sidebar when clicking outside on mobile
-        document.addEventListener('click', function(e) {
-            if (window.innerWidth <= 992 && !sidebar.contains(e.target)) {
-                sidebar.classList.remove('active');
+    {% if messages %}
+        {% for message in messages %}
+            <div class="message message-{% if message.tags %}{{ message.tags }}{% endif %}">
+                <i class="fas 
+                    {% if message.tags == 'success' %}fa-check-circle
+                    {% elif message.tags == 'error' %}fa-exclamation-circle
+                    {% else %}fa-info-circle{% endif %}"></i>
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="dashboard-grid">
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">Total Balance</div>
+                <div class="card-icon"><i class="fas fa-wallet"></i></div>
+            </div>
+            <div class="card-value">₵{{ total_balance|floatformat:2 }}</div>
+            <div class="card-change"><i class="fas fa-arrow-up"></i><span>All accounts</span></div>
+            <div class="security-badge"><i class="fas fa-link"></i><span>GhIPSS Interoperable</span></div>
+        </div>
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">Security Status</div>
+                <div class="card-icon"><i class="fas fa-shield-alt"></i></div>
+            </div>
+            <div class="card-value">
+                {% if user.is_biometric_enabled %}
+                    Verified <span class="status-indicator status-active"></span>
+                {% else %}
+                    Standard <span class="status-indicator status-pending"></span>
+                {% endif %}
+            </div>
+            <div class="card-change"><i class="fas fa-clock"></i><span>Last login: Just now</span></div>
+            <div class="security-badge"><i class="fas fa-lock"></i><span>Zero-Trust Framework</span></div>
+        </div>
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">Active Accounts</div>
+                <div class="card-icon"><i class="fas fa-credit-card"></i></div>
+            </div>
+            <div class="card-value">{{ accounts.count }}</div>
+            <div class="card-change"><i class="fas fa-check-circle"></i><span>All accounts active</span></div>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="section-header">
+            <div class="section-title">My Accounts</div>
+        </div>
+        <div class="feature-grid">
+            {% for account in accounts %}
+            <div class="feature-card">
+                <div class="feature-icon">
+                    {% if account.account_type == 'SAVINGS' %}
+                        <i class="fas fa-piggy-bank"></i>
+                    {% elif account.account_type == 'CHECKING' %}
+                        <i class="fas fa-money-bill-wave"></i>
+                    {% else %}
+                        <i class="fas fa-university"></i>
+                    {% endif %}
+                </div>
+                <div class="feature-title">{{ account.get_account_type_display }}</div>
+                <div class="feature-desc">{{ account.account_number }}<br>₵{{ account.balance|floatformat:2 }}</div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="section-header">
+            <div class="section-title">Recent Transactions</div>
+            <a href="{% url 'transfer_funds' %}" class="section-link">View All</a>
+        </div>
+        <div class="card">
+            <table class="transactions-table">
+    <thead>
+        <tr>
+            <th>Date</th>
+            <th>Type</th>
+            <th>Description</th>
+            <th style="text-align: right;">Amount (₵)</th>
+            <th>Status</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for transaction in recent_transactions %}
+        <tr>
+            <!-- Date -->
+            <td>{{ transaction.timestamp|date:"M d, Y" }}</td>
+
+            <!-- Transaction Type with Icon -->
+            <td>
+                {% if transaction.transaction_type == "TRANSFER" %}
+                    <i class="fas fa-exchange-alt" style="color:#0984e3;"></i> Bank Transfer
+                {% elif transaction.transaction_type == "MOBILE_MONEY" %}
+                    <i class="fas fa-mobile-alt" style="color:#6c5ce7;"></i> Mobile Money
+                {% elif transaction.transaction_type == "DEPOSIT" %}
+                    <i class="fas fa-arrow-down" style="color:#00b894;"></i> Deposit
+                {% elif transaction.transaction_type == "WITHDRAWAL" %}
+                    <i class="fas fa-arrow-up" style="color:#d63031;"></i> Withdrawal
+                {% elif transaction.transaction_type == "BILL_PAYMENT" %}
+                    <i class="fas fa-file-invoice" style="color:#fdcb6e;"></i> Bill Payment
+                {% else %}
+                    <i class="fas fa-question-circle" style="color:#636e72;"></i> Unknown
+                {% endif %}
+            </td>
+
+            <!-- Description -->
+            <td>{{ transaction.description|default:"Pending transaction" }}</td>
+
+            <!-- Amount -->
+            <td style="text-align:right; {% if transaction.sender_account.customer == user %}color:#d63031;{% else %}color:#00b894;{% endif %}">
+                {% if transaction.sender_account.customer == user %}-{% else %}+{% endif %}
+                {{ transaction.amount|floatformat:2 }}
+            </td>
+
+            <!-- Status Badge -->
+            <td>
+                <span class="badge 
+                    {% if transaction.status == 'COMPLETED' %}badge-success
+                    {% elif transaction.status == 'PENDING' %}badge-warning
+                    {% else %}badge-danger{% endif %}">
+                    {{ transaction.get_status_display }}
+                </span>
+            </td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="5" style="text-align:center; padding:1rem; color:#636e72;">
+                <i class="fas fa-info-circle"></i> No recent transactions
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+<script>
+    .transactions-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+.transactions-table th {
+    text-align: left;
+    padding: 12px 10px;
+    background: #f5f6fa;
+    color: #2d3436;
+    font-weight: 600;
+    border-bottom: 2px solid #dfe6e9;
+}
+
+.transactions-table td {
+    padding: 12px 10px;
+    border-bottom: 1px solid #ecf0f1;
+    vertical-align: middle;
+}
+
+.transactions-table tr:hover {
+    background: #f9f9f9;
+}
+
+.badge {
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+    text-transform: uppercase;
+}
+
+.badge-success {
+    background: #dff9fb;
+    color: #00b894;
+}
+
+.badge-warning {
+    background: #ffeaa7;
+    color: #e17055;
+}
+
+.badge-danger {
+    background: #fab1a0;
+    color: #d63031;
+}
+
+</script>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="section-header">
+            <div class="section-title">Transaction Flow</div>
+        </div>
+        <div class="card">
+            <div id="transactionChart" style="height: 300px;"></div>
+        </div>
+    </div>
+</div>
+
+<div class="assistant" onclick="alert('AI Assistant coming soon!')">
+    <i class="fas fa-robot"></i>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+<script>
+    const options = {
+        chart: {
+            type: 'line',
+            height: 300,
+            toolbar: { show: false },
+            animations: { enabled: true, easing: 'easeinout', speed: 800 }
+        },
+        series: [{
+            name: 'Transaction Amount (₵)',
+            data: [{% for tx in recent_transactions reversed %}{{ tx.amount }},{% endfor %}]
+        }],
+        xaxis: {
+            categories: [{% for tx in recent_transactions reversed %}"{{ tx.timestamp|date:'M d' }}",{% endfor %}],
+            labels: { style: { colors: '#666', fontSize: '12px' } }
+        },
+        yaxis: {
+            labels: { style: { colors: '#666', fontSize: '12px' } }
+        },
+        stroke: {
+            curve: 'smooth',
+            width: 3
+        },
+        colors: ['#00b894'],
+        markers: {
+            size: 5,
+            colors: ['#fff'],
+            strokeColors: '#00b894',
+            hover: { size: 7 }
+        },
+        fill: {
+            type: 'gradient',
+            gradient: {
+                shadeIntensity: 1,
+                opacityFrom: 0.4,
+                opacityTo: 0,
+                stops: [0, 100]
             }
-        });
+        },
+        tooltip: {
+            theme: 'light',
+            y: {
+                formatter: val => "₵" + val.toFixed(2)
+            }
+        }
+    };
+    const chart = new ApexCharts(document.querySelector("#transactionChart"), options);
+    chart.render();
 
-        // Prevent clicks inside sidebar from closing it
-        sidebar.addEventListener('click', function(e) {
-            e.stopPropagation();
-        });
-    </script>
-
+    const sidebar = document.getElementById('sidebar');
+    document.getElementById('menuToggle').addEventListener('click', e => {
+        e.stopPropagation();
+        sidebar.classList.toggle('active');
+    });
+    document.addEventListener('click', e => {
+        if (window.innerWidth <= 992 && !sidebar.contains(e.target)) sidebar.classList.remove('active');
+    });
+    sidebar.addEventListener('click', e => e.stopPropagation());
+</script>
 {% endblock content %}

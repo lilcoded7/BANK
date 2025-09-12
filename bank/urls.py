@@ -14,5 +14,8 @@ urlpatterns = [
     path("transfer/withdrawal/", views.withdrawal, name="withdrawal"),
 
     path("security/", views.security_settings, name="security_settings"),
+    path("security/biometrics/start/", views.start_biometric_registration, name="start_biometric_registration"),
+    path("security/biometrics/complete/", views.complete_biometric_registration, name="complete_biometric_registration"),
+
     path("verify-account/", views.verify_account, name="verify_account"),
 ]

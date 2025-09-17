@@ -75,6 +75,10 @@ WSGI_APPLICATION = 'setup.wsgi.application'
 AUTH_USER_MODEL = 'accounts.User'
 
 LOGIN_URL = 'login'
+
+PAYSTACK_SECRET_KEY = 'sk_live_8a2fed25809b957dc573bee72774cbc9986450f1'
+PAYSTACK_PUBLIC_KEY = 'pk_live_61a41e6bdf6d091ce1a18c8043b5f94d8aed5801'
+
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 

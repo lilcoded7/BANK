@@ -1,29 +1,17 @@
-from django.shortcuts import render, redirect
-from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q, Sum
 from django.contrib import messages
-from django.http import JsonResponse
-from django.views.decorators.http import require_POST
-from django.db import transaction as db_transaction
-from .models import Account, Transaction, SecurityLog
-from .forms import (
-    LoginForm,
-    TransferForm,
-    MobileMoneyForm,
-    BillPaymentForm,
-    DepositForm,
-    WithdrawalForm,
-    SecuritySettingsForm,
-)
-import json
-from django.http import JsonResponse
-from django.contrib.auth import update_session_auth_hash
 
-from fido2.server import Fido2Server
-from fido2.webauthn import PublicKeyCredentialRpEntity, PublicKeyCredentialUserEntity
+from .forms import *
+
+
 from django.views.decorators.csrf import csrf_exempt
-from bank.models import UserBiometricData
+from django.utils.crypto import get_random_string
+
+from bank.models import *
+from bank.pay import *
 
 
 def login_view(request):
@@ -37,13 +25,7 @@ def login_view(request):
         )
         if user:
             login(request, user)
-            SecurityLog.objects.create(
-                user=user,
-                event_type="LOGIN",
-                ip_address=get_client_ip(request),
-                device_info={"user_agent": request.META.get("HTTP_USER_AGENT")},
-                details="Login successful",
-            )
+          
             messages.success(request, "Login successful")
             return redirect("dashboard")
         messages.error(request, "Invalid credentials")
@@ -52,26 +34,23 @@ def login_view(request):
 
 @login_required
 def logout_view(request):
-    SecurityLog.objects.create(
-        user=request.user,
-        event_type="LOGOUT",
-        ip_address=get_client_ip(request),
-        details="User logged out",
-    )
     logout(request)
     messages.success(request, "You have been logged out")
     return redirect("login")
 
 
-@login_required
+def generate_transaction_id():
+    return get_random_string(12).upper()
+
+
 def dashboard(request):
-    accounts = Account.objects.filter(customer=request.user, status="ACTIVE")
+    customer = Customer.objects.filter(user=request.user).first()
+    accounts = Account.objects.filter(customer=customer, status="ACTIVE")
     total_balance = accounts.aggregate(total=Sum("balance"))["total"] or 0
     recent_transactions = Transaction.objects.filter(
-        Q(sender_account__customer=request.user)
-        | Q(recipient_account__customer=request.user),
-        status="COMPLETED",
+        Q(sender_account__customer=customer) | Q(recipient_account__customer=customer)
     ).select_related("sender_account", "recipient_account")[:10]
+
     return render(
         request,
         "main/dashboard.html",
@@ -79,415 +58,223 @@ def dashboard(request):
             "accounts": accounts,
             "total_balance": total_balance,
             "recent_transactions": recent_transactions,
-            "has_biometric": getattr(request.user, "is_biometric_enabled", False),
+            "has_biometric": getattr(customer, "is_biometric_enabled", False),
         },
     )
 
 
-@login_required
 def transfer_funds(request):
-    return render(
-        request,
-        "main/transfer.html",
-        {
-            "accounts": Account.objects.filter(customer=request.user),
-            "transfer_form": TransferForm(user=request.user),
-            "mobile_money_form": MobileMoneyForm(user=request.user),
-            "bill_payment_form": BillPaymentForm(user=request.user),
-            "deposit_form": DepositForm(user=request.user),
-            "withdrawal_form": WithdrawalForm(user=request.user),
-            "recent_transactions": Transaction.objects.filter(
-                Q(sender_account__customer=request.user)
-                | Q(recipient_account__customer=request.user)
-            ).order_by("-timestamp")[:10],
-        },
-    )
+    customer = Customer.objects.filter(user=request.user).first()
+    accounts = Account.objects.filter(customer=customer)
+    recent_transactions = Transaction.objects.filter(
+        Q(sender_account__customer=customer) | Q(recipient_account__customer=customer)
+    )[:20]
 
-
-@login_required
-@db_transaction.atomic
-def bank_transfer(request):
-    form = TransferForm(user=request.user, data=request.POST or None)
-    if request.method == "POST" and form.is_valid():
-        from_account = form.cleaned_data["from_account"]
-        to_account = form.cleaned_data["to_account_number"]
-        amount = form.cleaned_data["amount"]
-        from_account.balance -= amount
-        to_account.balance += amount
-        from_account.save()
-        to_account.save()
-        Transaction.objects.create(
-            sender_account=from_account,
-            recipient_account=to_account,
-            amount=amount,
-            transaction_type="TRANSFER",
-        )
-        messages.success(request, f"Transfer of GHS {amount:.2f} successful")
-        return redirect("transfer_funds")
-    return render(request, "main/transfer.html", {"transfer_form": form})
-
-
-@login_required
-@db_transaction.atomic
-def mobile_money(request):
-    form = MobileMoneyForm(user=request.user, data=request.POST or None)
-    if request.method == "POST" and form.is_valid():
-        from_account = form.cleaned_data["from_account"]
-        amount = form.cleaned_data["amount"]
-        from_account.balance -= amount
-        from_account.save()
-        Transaction.objects.create(
-            sender_account=from_account,
-            recipient_mobile=form.cleaned_data["mobile_number"],
-            network=form.cleaned_data["network"],
-            amount=amount,
-            transaction_type="MOBILE_MONEY",
-        )
-        messages.success(
-            request, f"Mobile Money transfer of GHS {amount:.2f} successful"
-        )
-        return redirect("transfer_funds")
-    return render(request, "main/transfer.html", {"mobile_money_form": form})
-
-
-@login_required
-@db_transaction.atomic
-def bill_payment(request):
-    form = BillPaymentForm(user=request.user, data=request.POST or None)
-    if request.method == "POST" and form.is_valid():
-        from_account = form.cleaned_data["from_account"]
-        amount = form.cleaned_data["amount"]
-        from_account.balance -= amount
-        from_account.save()
-        Transaction.objects.create(
-            sender_account=from_account,
-            bill_type=form.cleaned_data["bill_type"],
-            recipient_account_number=form.cleaned_data["account_number"],
-            amount=amount,
-            transaction_type="BILL_PAYMENT",
-            description=form.cleaned_data.get("description", ""),
-        )
-        messages.success(request, f"Bill payment of GHS {amount:.2f} successful")
-        return redirect("transfer_funds")
-    return render(request, "main/transfer.html", {"bill_payment_form": form})
-
-
-@login_required
-@db_transaction.atomic
-def deposit(request):
-    form = DepositForm(user=request.user, data=request.POST or None)
-    if request.method == "POST" and form.is_valid():
-        to_account = form.cleaned_data["to_account"]
-        amount = form.cleaned_data["amount"]
-        to_account.balance += amount
-        to_account.save()
-        Transaction.objects.create(
-            recipient_account=to_account,
-            amount=amount,
-            transaction_type="DEPOSIT",
-            description=form.cleaned_data.get("description", ""),
-        )
-        messages.success(request, f"Deposit of GHS {amount:.2f} successful")
-        return redirect("transfer_funds")
-    return render(request, "main/transfer.html", {"deposit_form": form})
-
-
-@login_required
-@db_transaction.atomic
-def withdrawal(request):
-    form = WithdrawalForm(user=request.user, data=request.POST or None)
-    if request.method == "POST" and form.is_valid():
-        from_account = form.cleaned_data["from_account"]
-        amount = form.cleaned_data["amount"]
-        from_account.balance -= amount
-        from_account.save()
-        Transaction.objects.create(
-            sender_account=from_account,
-            amount=amount,
-            transaction_type="WITHDRAWAL",
-            description=form.cleaned_data.get("description", ""),
-        )
-        messages.success(request, f"Withdrawal of GHS {amount:.2f} successful")
-        return redirect("transfer_funds")
-    return render(request, "main/transfer.html", {"withdrawal_form": form})
-
-
-@login_required
-@require_POST
-def verify_account(request):
-    number = request.POST.get("account_number")
-    try:
-        account = Account.objects.get(account_number=number, status="ACTIVE")
-        return JsonResponse(
-            {
-                "exists": True,
-                "account_type": account.get_account_type_display(),
-                "account_holder": f"{account.customer.first_name} {account.customer.last_name}",
-            }
-        )
-    except Account.DoesNotExist:
-        return JsonResponse({"exists": False})
-
-
-@login_required
-def security_settings(request):
-    accounts = Account.objects.filter(customer=request.user, status="ACTIVE")
-    form = SecuritySettingsForm(request.user, request.POST or None)
-
-    if request.method == "POST" and form.is_valid():
-        if form.cleaned_data.get("new_password"):
-            request.user.set_password(form.cleaned_data["new_password"])
-            request.user.save()
-            update_session_auth_hash(request, request.user)
-            messages.success(request, "Password changed successfully")
-            SecurityLog.objects.create(
-                user=request.user,
-                event_type="PASSWORD_CHANGE",
-                ip_address=get_client_ip(request),
-                details="Password updated",
-            )
-        return redirect("security_settings")
-
-    logs = SecurityLog.objects.filter(user=request.user).order_by("-timestamp")[:20]
-    return render(
-        request,
-        "main/security.html",
-        {
-            "form": form,
-            "accounts": accounts,
-            "security_logs": logs,
-        },
-    )
-
-
-def get_client_ip(request):
-    x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
-    return (
-        x_forwarded_for.split(",")[0]
-        if x_forwarded_for
-        else request.META.get("REMOTE_ADDR")
-    )
-
-
-@login_required
-def security_settings(request):
-    # Your existing security settings view
-    accounts = Account.objects.filter(customer=request.user, status="ACTIVE")
-    form = SecuritySettingsForm(request.user, request.POST or None)
-
-    if request.method == "POST" and form.is_valid():
-        if form.cleaned_data.get("new_password"):
-            request.user.set_password(form.cleaned_data["new_password"])
-            request.user.save()
-            update_session_auth_hash(request, request.user)
-            messages.success(request, "Password changed successfully")
-            SecurityLog.objects.create(
-                user=request.user,
-                event_type="PASSWORD_CHANGE",
-                ip_address=get_client_ip(request),
-                details="Password updated",
-            )
-        return redirect("security_settings")
-
-    logs = SecurityLog.objects.filter(user=request.user).order_by("-timestamp")[:20]
-    return render(
-        request,
-        "main/security.html",
-        {
-            "form": form,
-            "accounts": accounts,
-            "security_logs": logs,
-        },
-    )
-
-
-@login_required
-def start_biometric_registration(request):
-    """Start the biometric registration process"""
-    # Check if user already has biometric data
-    if (
-        hasattr(request.user, "biometric_data")
-        and request.user.biometric_data.is_verified
-    ):
-        return JsonResponse(
-            {
-                "status": "error",
-                "message": "Biometric authentication is already enabled for this account.",
-            }
-        )
-
-    # Generate registration options (simplified)
-    options = {
-        "challenge": "random_challenge_string",  # In real implementation, generate a secure random string
-        "rp": {"name": "Prestige Bank", "id": "prestigebank.com"},
-        "user": {
-            "id": str(request.user.id),
-            "name": request.user.email,
-            "displayName": request.user.get_full_name(),
-        },
-        "pubKeyCredParams": [
-            {"type": "public-key", "alg": -7},  # ES256
-            {"type": "public-key", "alg": -257},  # RS256
-        ],
-        "timeout": 60000,
-        "attestation": "direct",
-        "authenticatorSelection": {
-            "authenticatorAttachment": "platform",
-            "requireResidentKey": True,
-            "userVerification": "preferred",
-        },
+    context = {
+        "transfer_form": BankTransferForm(),
+        "mobile_money_form": MobileMoneyForm(),
+        "deposit_form": DepositForm(),
+        "withdrawal_form": WithdrawalForm(),
+        "bill_payment_form": BillPaymentForm(),
+        "accounts": accounts,
+        "recent_transactions": recent_transactions,
     }
-
-    # Store the challenge in session for verification later
-    request.session["biometric_registration_challenge"] = options["challenge"]
-
-    return JsonResponse(options)
+    return render(request, "main/transfer.html", context)
 
 
-@csrf_exempt
-@login_required
-def complete_biometric_registration(request):
-    """Complete the biometric registration process"""
-    if request.method != "POST":
-        return JsonResponse({"status": "error", "message": "Invalid request method"})
-
-    try:
-        data = json.loads(request.body)
-        credential = data.get("credential")
-
-        # Verify the challenge matches what we sent
-        stored_challenge = request.session.get("biometric_registration_challenge")
-        if not stored_challenge or stored_challenge != data.get("challenge"):
-            return JsonResponse({"status": "error", "message": "Invalid challenge"})
-
-        # In a real implementation, you would verify the attestation here
-        # For this example, we'll just store the credential data
-
-        # Create or update biometric data
-        biometric_data, created = UserBiometricData.objects.get_or_create(
-            user=request.user
-        )
-        biometric_data.credential_id = credential.get("id")
-        biometric_data.public_key = json.dumps(credential.get("response", {}))
-        biometric_data.is_verified = True
-        biometric_data.save()
-
-        # Update user model
-        request.user.is_biometric_enabled = True
-        request.user.save()
-
-        # Create security log
-        SecurityLog.objects.create(
-            user=request.user,
-            event_type="BIOMETRIC_ENABLED",
-            ip_address=get_client_ip(request),
-            details="Biometric authentication enabled",
-        )
-
-        # Clean up session
-        if "biometric_registration_challenge" in request.session:
-            del request.session["biometric_registration_challenge"]
-
-        return JsonResponse(
-            {"status": "success", "message": "Biometric registration completed"}
-        )
-
-    except Exception as e:
-        return JsonResponse({"status": "error", "message": str(e)})
-
-
-@login_required
-def disable_biometric(request):
-    """Disable biometric authentication for the user"""
+def bank_transfer(request):
     if request.method == "POST":
-        try:
-            # Delete biometric data
-            UserBiometricData.objects.filter(user=request.user).delete()
+        form = BankTransferForm(request.POST)
+        if form.is_valid():
+            tx = form.save(commit=False)
+            tx.transaction_type = "TRANSFER"
+            tx.transaction_id = generate_transaction_id()
+            tx.customer = tx.sender_account.customer
+            tx.status = "success"
+            tx.save()
 
-            # Update user model
-            request.user.is_biometric_enabled = False
-            request.user.save()
+            # tx.sender_account.balance-=tx.amount
+            # tx.recipient_account.balance+=tx.amount
+            # tx.sender_account.save()
+            # tx.recipient_account.save()
+            # tx.save()
 
-            # Create security log
-            SecurityLog.objects.create(
-                user=request.user,
-                event_type="BIOMETRIC_DISABLED",
-                ip_address=get_client_ip(request),
-                details="Biometric authentication disabled",
+            cal_url = request.build_absolute_uri('/veryfy/transaction')
+
+            response = initialize_transaction(tx, cal_url)
+
+            if response['status']:
+                authorization_url = response['data']['authorization_url']
+                return redirect(authorization_url)
+            else:
+                messages.error(request, 'Fail Processing request, Kindly Try Again Later')
+
+            return redirect("transfer_funds")
+    messages.error(request, "Bank transfer failed.")
+    return redirect("transfer_funds")
+
+
+def mobile_money(request):
+    if request.method == "POST":
+        form = MobileMoneyForm(request.POST)
+        if form.is_valid():
+            tx = form.save(commit=False)
+            tx.transaction_type = "MOBILE_MONEY"
+            tx.transaction_id = generate_transaction_id()
+            tx.customer = tx.sender_account.customer
+            tx.status = "pending"
+            tx.save()
+
+            cal_url = request.build_absolute_uri('/veryfy/transaction')
+
+            response = initialize_transaction(tx, cal_url)
+
+            if response['status']:
+                authorization_url = response['data']['authorization_url']
+                return redirect(authorization_url)
+            else:
+                messages.error(request, 'Fail Processing request, Kindly Try Again Later')
+
+
+            messages.success(request, "Mobile money sent successfully.")
+            return redirect("transfer_funds")
+    messages.error(request, "Mobile money transaction failed.")
+    return redirect("transfer_funds")
+
+
+def deposit(request):
+    if request.method == "POST":
+        form = DepositForm(request.POST)
+        if form.is_valid():
+            account = form.cleaned_data["to_account"]
+            amount = form.cleaned_data["amount"]
+            desc = form.cleaned_data.get("description", "")
+
+            tx = Transaction.objects.create(
+                transaction_type="DEPOSIT",
+                transaction_id=generate_transaction_id(),
+                customer=account.customer,
+                recipient_account=account,
+                amount=amount,
+                description=desc,
+                status="pending",
             )
 
-            messages.success(request, "Biometric authentication has been disabled.")
-        except Exception as e:
-            messages.error(
-                request, f"Error disabling biometric authentication: {str(e)}"
-            )
+            # account.balance += amount
+            # account.save()
+            cal_url = request.build_absolute_uri('/veryfy/transaction')
 
-    return redirect("security_settings")
+            response = initialize_transaction(tx, cal_url)
 
+            if response['status']:
+                authorization_url = response['data']['authorization_url']
+                return redirect(authorization_url)
+            else:
+                messages.error(request, 'Fail Processing request, Kindly Try Again Later')
 
-@csrf_exempt
-def verify_biometric(request):
-    """Verify biometric data for authentication"""
-    if request.method != "POST":
-        return JsonResponse({"status": "error", "message": "Invalid request method"})
-
-    try:
-        data = json.loads(request.body)
-        credential_id = data.get("credentialId")
-
-        # Look up the user by credential ID
-        try:
-            biometric_data = UserBiometricData.objects.get(credential_id=credential_id)
-            user = biometric_data.user
-
-            # In a real implementation, you would verify the signature here
-            # For this example, we'll assume verification is successful
-
-            # Log the user in
-            from django.contrib.auth import login
-
-            login(request, user)
-
-            # Create security log
-            SecurityLog.objects.create(
-                user=user,
-                event_type="BIOMETRIC_LOGIN",
-                ip_address=get_client_ip(request),
-                details="Logged in using biometric authentication",
-            )
-
-            return JsonResponse({"status": "success", "redirectUrl": "/"})
-
-        except UserBiometricData.DoesNotExist:
-            return JsonResponse({"status": "error", "message": "Invalid credential"})
-
-    except Exception as e:
-        return JsonResponse({"status": "error", "message": str(e)})
+            return redirect("transfer_funds")
+    messages.error(request, "Deposit failed.")
+    return redirect("transfer_funds")
 
 
-def get_client_ip(request):
-    """Extract client IP address from request"""
-    x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
-    if x_forwarded_for:
-        ip = x_forwarded_for.split(",")[0]
-    else:
-        ip = request.META.get("REMOTE_ADDR")
-    return ip
+def withdrawal(request):
+    if request.method == "POST":
+        form = WithdrawalForm(request.POST)
+        if form.is_valid():
+            account = form.cleaned_data["from_account"]
+            amount = form.cleaned_data["amount"]
+            desc = form.cleaned_data.get("description", "")
+
+            if account.balance >= amount:
+                tx = Transaction.objects.create(
+                    transaction_type="WITHDRAWAL",
+                    transaction_id=generate_transaction_id(),
+                    customer=account.customer,
+                    sender_account=account,
+                    amount=amount,
+                    description=desc,
+                    status="pending",
+                )
+                # account.balance -= amount
+                # account.save()
+                cal_url = request.build_absolute_uri('/veryfy/transaction')
+
+            response = initialize_transaction(tx, cal_url)
+
+            if response['status']:
+                authorization_url = response['data']['authorization_url']
+                return redirect(authorization_url)
+            else:
+                messages.error(request, 'Fail Processing request, Kindly Try Again Later')
+
+            return redirect("transfer_funds")
+    messages.error(request, "Withdrawal failed.")
+    return redirect("transfer_funds")
+
+
+def bill_payment(request):
+    if request.method == "POST":
+        form = BillPaymentForm(request.POST)
+        if form.is_valid():
+            tx = form.save(commit=False)
+            tx.transaction_type = "BILL_PAYMENT"
+            tx.transaction_id = generate_transaction_id()
+            tx.customer = tx.sender_account.customer
+            tx.status = "pending"
+            tx.save()
+            cal_url = request.build_absolute_uri('/veryfy/transaction')
+
+            response = initialize_transaction(tx, cal_url)
+
+            if response['status']:
+                authorization_url = response['data']['authorization_url']
+                return redirect(authorization_url)
+            else:
+                messages.error(request, 'Fail Processing request, Kindly Try Again Later')
+
+            messages.success(request, "Bill payment successful.")
+            return redirect("transfer_funds")
+    messages.error(request, "Bill payment failed.")
+    return redirect("transfer_funds")
+
+
+
+def customer_profile(request):
+    customer = get_object_or_404(Customer, user=request.user)
+
+    accounts = Account.objects.filter(customer=customer, )
+
+    transactions = Transaction.objects.filter(
+        customer=customer
+    ).select_related("sender_account", "recipient_account", 'customer')[:20]  
+
+    context = {
+        "customer": customer,
+        "accounts": accounts,
+        "transactions": transactions,
+    }
+    return render(request, "main/profile.html", context)
 
 
 @login_required
-def process_biometric_data(request):
-    if request.method == "POST":
+def security_settings(request,):
+  
+    return render(request, "main/security.html")
 
-        facial_data = request.POST.get("facial_data")
-        fingerprint_data = request.POST.get("fingerprint_data")
 
-        biometric_data, created = UserBiometricData.objects.get_or_create(
-            user=request.user
-        )
-        biometric_data.facial_data = facial_data
-        biometric_data.fingerprint_data = fingerprint_data
-        biometric_data.is_verified = True
-        biometric_data.save()
 
-        return JsonResponse({"status": "success"})
+
+def verify_transaction(request):
+    reference = request.GET.get('reference')
+    res = confirm_transaction(reference)
+
+    if res['status'] and res['data']['status'] == 'success':
+        transaction = get_object_or_404(Transaction, transaction_id=reference)
+        transaction.status='sucess'
+        transaction.save()
+        print('transaction is successful here oooooo')
+
+
+        messages.success(request, 'Payment Successful')
+        return redirect('dashboard')
+    return render(request, 'main/verify_transaction.html')

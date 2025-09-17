@@ -1,0 +1,196 @@
+{% extends "main/base.html" %}
+
+{% block content %}
+<div class="main-content">
+    <!-- Header -->
+    <div class="header">
+        <div style="display: flex; align-items: center; gap: 1rem;">
+            <button class="mobile-menu-toggle" id="menuToggle">
+                <i class="fas fa-bars"></i>
+            </button>
+            <div class="page-title">My Profile</div>
+        </div>
+        <div class="user-profile">
+            <div class="user-avatar">
+                {% if customer.image %}
+                    <img src="{{ customer.image.url }}" alt="Profile Picture" class="profile-avatar-img">
+                {% else %}
+                    <i class="fas fa-user-circle"></i>
+                {% endif %}
+            </div>
+            <div class="user-name">{{ customer.full_name }}</div>
+        </div>
+    </div>
+
+    <!-- Profile Section -->
+    <div class="profile-container">
+        <div class="profile-card">
+            <h2 class="section-title">Profile Information</h2>
+            <div class="profile-details">
+                <p><strong>Full Name:</strong> {{ customer.full_name }}</p>
+                <p><strong>Username:</strong> {{ customer.username }}</p>
+                <p><strong>Email:</strong> {{ request.user.email }}</p>
+                <p><strong>ID Card:</strong> {{ customer.id_card|default:"N/A" }}</p>
+                <p><strong>Biometric Login:</strong>
+                    {% if customer.is_biometric_enabled %}
+                        <span style="color:green;">Enabled</span>
+                    {% else %}
+                        <span style="color:red;">Disabled</span>
+                    {% endif %}
+                </p>
+                <p><strong>Joined:</strong> {{ request.user.date_joined|date:"M d, Y" }}</p>
+            </div>
+            
+        </div>
+    </div>
+
+    <!-- Accounts Section -->
+    <div class="accounts-section">
+        <h2 class="section-title">My Accounts</h2>
+        <div class="accounts-list">
+            {% for account in accounts %}
+            <div class="account-card">
+                <h3>{{ account.get_account_type_display }}</h3>
+                <p><strong>Account Number:</strong> {{ account.account_number }}</p>
+                <p><strong>Balance:</strong> ₵{{ account.balance }}</p>
+                <p><strong>Status:</strong> {{ account.get_status_display }}</p>
+            </div>
+            {% empty %}
+            <p>You don’t have any accounts yet.</p>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Transactions Section -->
+    <div class="transactions-section">
+        <h2 class="section-title">Recent Transactions</h2>
+        <table class="transactions-table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Type</th>
+                    <th>Description</th>
+                    <th>Amount</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for tx in transactions %}
+                <tr>
+                    <td>{{ tx.timestamp|date:"M d, Y H:i" }}</td>
+                    <td>{{ tx.get_transaction_type_display }}</td>
+                    <td>{{ tx.description|default:"-" }}</td>
+                    <td class="{% if tx.transaction_type in 'WITHDRAWAL,TRANSFER' %}debit{% else %}credit{% endif %}">
+                        {% if tx.transaction_type in 'WITHDRAWAL,TRANSFER' %}-{% else %}+{% endif %}₵{{ tx.amount }}
+                    </td>
+                    <td>
+                        <span class="transaction-status status-{{ tx.status|lower }}">
+                            {{ tx.get_status_display }}
+                        </span>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" style="text-align: center;">No recent transactions found.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<style>
+.profile-container, .accounts-section, .transactions-section {
+    margin-top: 2rem;
+    padding: 1.5rem;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.profile-card .profile-details p {
+    margin: 0.5rem 0;
+}
+
+.profile-avatar-img {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.accounts-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1rem;
+}
+
+.account-card {
+    padding: 1rem;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background: #fafafa;
+}
+
+.transactions-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+}
+
+.transactions-table th, .transactions-table td {
+    padding: 0.75rem;
+    border: 1px solid #ddd;
+    text-align: left;
+}
+
+.transactions-table th {
+    background: #f4f4f4;
+}
+
+.transaction-status {
+    padding: 0.25rem 0.5rem;
+    border-radius: 6px;
+    font-size: 0.85rem;
+}
+
+.status-completed {
+    background: #d4edda;
+    color: #155724;
+}
+.status-pending {
+    background: #fff3cd;
+    color: #856404;
+}
+.status-failed {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.debit {
+    color: red;
+}
+.credit {
+    color: green;
+}
+
+.profile-actions {
+    margin-top: 1rem;
+    display: flex;
+    gap: 1rem;
+}
+</style>
+
+<script>
+const sidebar = document.getElementById('sidebar');
+document.getElementById('menuToggle').addEventListener('click', e => {
+    e.stopPropagation();
+    sidebar.classList.toggle('active');
+});
+document.addEventListener('click', e => {
+    if (window.innerWidth <= 992 && !sidebar.contains(e.target)) {
+        sidebar.classList.remove('active');
+    }
+});
+</script>
+{% endblock %}

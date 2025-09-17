@@ -2,6 +2,7 @@
 
 {% block content %}
 <div class="main-content">
+    <!-- Header -->
     <div class="header">
         <div style="display: flex; align-items: center; gap: 1rem;">
             <button class="mobile-menu-toggle" id="menuToggle">
@@ -15,14 +16,26 @@
         </div>
     </div>
 
+    <!-- Transaction Types -->
     <div class="transaction-types">
-        <div class="transaction-type-btn" data-type="TRANSFER"><i class="fas fa-exchange-alt"></i><span>Bank Transfer</span></div>
-        <div class="transaction-type-btn" data-type="MOBILE_MONEY"><i class="fas fa-mobile-alt"></i><span>Mobile Money</span></div>
-        <div class="transaction-type-btn" data-type="DEPOSIT"><i class="fas fa-money-bill-wave"></i><span>Deposit</span></div>
-        <div class="transaction-type-btn" data-type="WITHDRAWAL"><i class="fas fa-hand-holding-usd"></i><span>Withdrawal</span></div>
-        <div class="transaction-type-btn" data-type="BILL_PAYMENT"><i class="fas fa-file-invoice-dollar"></i><span>Bill Payment</span></div>
+        <div class="transaction-type-btn" data-type="TRANSFER">
+            <i class="fas fa-exchange-alt"></i><span>Bank Transfer</span>
+        </div>
+        <div class="transaction-type-btn" data-type="MOBILE_MONEY">
+            <i class="fas fa-mobile-alt"></i><span>Mobile Money</span>
+        </div>
+        <div class="transaction-type-btn" data-type="DEPOSIT">
+            <i class="fas fa-money-bill-wave"></i><span>Deposit</span>
+        </div>
+        <div class="transaction-type-btn" data-type="WITHDRAWAL">
+            <i class="fas fa-hand-holding-usd"></i><span>Withdrawal</span>
+        </div>
+        <div class="transaction-type-btn" data-type="BILL_PAYMENT">
+            <i class="fas fa-file-invoice-dollar"></i><span>Bill Payment</span>
+        </div>
     </div>
 
+    <!-- Bank Transfer -->
     <div class="transfer-container" id="transferForm">
         <h2>Bank Transfer</h2>
         <form method="POST" action="{% url 'bank_transfer' %}">
@@ -35,6 +48,7 @@
         </form>
     </div>
 
+    <!-- Mobile Money -->
     <div class="transfer-container" id="mobileMoneyForm">
         <h2>Mobile Money</h2>
         <form method="POST" action="{% url 'mobile_money' %}">
@@ -47,6 +61,7 @@
         </form>
     </div>
 
+    <!-- Deposit -->
     <div class="transfer-container" id="depositForm">
         <h2>Deposit</h2>
         <form method="POST" action="{% url 'deposit' %}">
@@ -56,12 +71,21 @@
                 <select class="form-control" name="to_account" required>
                     <option value="">Select Account</option>
                     {% for account in accounts %}
-                        <option value="{{ account.id }}">{{ account.account_number }} - {{ account.get_account_type_display }} (GHS {{ account.balance }})</option>
+                        <option value="{{ account.id }}">
+                            {{ account.account_number }} - {{ account.get_account_type_display }} 
+                            (₵{{ account.balance }})
+                        </option>
                     {% endfor %}
                 </select>
             </div>
-            <div class="form-group"><label>Amount (GHS)</label><input type="number" name="amount" class="form-control" required min="1" step="0.01"></div>
-            <div class="form-group"><label>Description</label><input type="text" name="description" class="form-control"></div>
+            <div class="form-group">
+                <label>Amount (₵)</label>
+                <input type="number" name="amount" class="form-control" required min="1" step="0.01">
+            </div>
+            <div class="form-group">
+                <label>Description</label>
+                <input type="text" name="description" class="form-control">
+            </div>
             <div class="form-actions">
                 <button type="submit" class="btn btn-block">Deposit Funds</button>
                 <button type="button" class="btn btn-block btn-cancel" onclick="closeAllForms()">Cancel</button>
@@ -69,6 +93,7 @@
         </form>
     </div>
 
+    <!-- Withdrawal -->
     <div class="transfer-container" id="withdrawalForm">
         <h2>Withdrawal</h2>
         <form method="POST" action="{% url 'withdrawal' %}">
@@ -78,12 +103,21 @@
                 <select class="form-control" name="from_account" required>
                     <option value="">Select Account</option>
                     {% for account in accounts %}
-                        <option value="{{ account.id }}">{{ account.account_number }} - {{ account.get_account_type_display }} (GHS {{ account.balance }})</option>
+                        <option value="{{ account.id }}">
+                            {{ account.account_number }} - {{ account.get_account_type_display }} 
+                            (₵{{ account.balance }})
+                        </option>
                     {% endfor %}
                 </select>
             </div>
-            <div class="form-group"><label>Amount (GHS)</label><input type="number" name="amount" class="form-control" required min="1" step="0.01"></div>
-            <div class="form-group"><label>Description</label><input type="text" name="description" class="form-control"></div>
+            <div class="form-group">
+                <label>Amount (₵)</label>
+                <input type="number" name="amount" class="form-control" required min="1" step="0.01">
+            </div>
+            <div class="form-group">
+                <label>Description</label>
+                <input type="text" name="description" class="form-control">
+            </div>
             <div class="form-actions">
                 <button type="submit" class="btn btn-block">Withdraw Funds</button>
                 <button type="button" class="btn btn-block btn-cancel" onclick="closeAllForms()">Cancel</button>
@@ -91,6 +125,7 @@
         </form>
     </div>
 
+    <!-- Bill Payment -->
     <div class="transfer-container" id="billPaymentForm">
         <h2>Bill Payment</h2>
         <form method="POST" action="{% url 'bill_payment' %}">
@@ -103,6 +138,7 @@
         </form>
     </div>
 
+    <!-- Transaction History -->
     <div class="transactions-section">
         <div class="transactions-header">
             <h2 class="section-title">Transaction History</h2>
@@ -115,7 +151,13 @@
         </div>
         <table class="transactions-table">
             <thead>
-                <tr><th>Date</th><th>Description</th><th>From/To</th><th>Amount</th><th>Status</th></tr>
+                <tr>
+                    <th>Date</th>
+                    <th>Description</th>
+                    <th>From/To</th>
+                    <th>Amount</th>
+                    <th>Status</th>
+                </tr>
             </thead>
             <tbody>
                 {% for tx in recent_transactions %}
@@ -125,14 +167,21 @@
                     <td>
                         {% if tx.sender_account %}From: {{ tx.sender_account.account_number }}{% endif %}
                         {% if tx.recipient_account %} To: {{ tx.recipient_account.account_number }}{% endif %}
+                        {% if tx.recipient_number %} To: {{ tx.recipient_number }} ({{ tx.network }}){% endif %}
                     </td>
-                    <td class="transaction-amount {% if tx.transaction_type in 'DEBIT,WITHDRAWAL' %}debit{% else %}credit{% endif %}">
-                        {% if tx.transaction_type in 'DEBIT,WITHDRAWAL' %}-{% else %}+{% endif %}₵{{ tx.amount }}
+                    <td class="transaction-amount {% if tx.sender_account and tx.sender_account.customer.user == request.user %}debit{% else %}credit{% endif %}">
+                        {% if tx.sender_account and tx.sender_account.customer.user == request.user %}-{% else %}+{% endif %}₵{{ tx.amount }}
                     </td>
-                    <td><span class="transaction-status status-{{ tx.status|lower }}">{{ tx.get_status_display }}</span></td>
+                    <td>
+                        <span class="transaction-status status-{{ tx.status|lower }}">
+                            {{ tx.get_status_display }}
+                        </span>
+                    </td>
                 </tr>
                 {% empty %}
-                <tr><td colspan="5" style="text-align: center;">No transactions found.</td></tr>
+                <tr>
+                    <td colspan="5" style="text-align: center;">No transactions found.</td>
+                </tr>
                 {% endfor %}
             </tbody>
         </table>
@@ -140,6 +189,53 @@
 </div>
 
 <script>
-const sidebar=document.getElementById('sidebar');document.getElementById('menuToggle').addEventListener('click',e=>{e.stopPropagation();sidebar.classList.toggle('active')});document.addEventListener('click',e=>{if(window.innerWidth<=992&&!sidebar.contains(e.target))sidebar.classList.remove('active')});const formMap={TRANSFER:"transferForm",MOBILE_MONEY:"mobileMoneyForm",DEPOSIT:"depositForm",WITHDRAWAL:"withdrawalForm",BILL_PAYMENT:"billPaymentForm"};document.querySelectorAll('.transaction-type-btn').forEach(btn=>{btn.addEventListener('click',()=>{closeAllForms();document.querySelectorAll('.transaction-type-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');const formElement=document.getElementById(formMap[btn.dataset.type]);if(formElement){formElement.style.display='block';window.scrollTo({top:formElement.offsetTop-20,behavior:'smooth'})}})});function closeAllForms(){document.querySelectorAll('.transfer-container').forEach(form=>form.style.display='none');document.querySelectorAll('.transaction-type-btn').forEach(btn=>btn.classList.remove('active'))}document.querySelectorAll('.filter-btn').forEach(btn=>{btn.addEventListener('click',()=>{document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');const filter=btn.dataset.filter;document.querySelectorAll('.transaction-row').forEach(row=>{row.style.display=(filter==='all'||row.dataset.status===filter)?'':'none'})})});
+const sidebar = document.getElementById('sidebar');
+document.getElementById('menuToggle').addEventListener('click', e => {
+    e.stopPropagation();
+    sidebar.classList.toggle('active');
+});
+document.addEventListener('click', e => {
+    if (window.innerWidth <= 992 && !sidebar.contains(e.target)) {
+        sidebar.classList.remove('active');
+    }
+});
+
+// Forms toggle
+const formMap = {
+    TRANSFER: "transferForm",
+    MOBILE_MONEY: "mobileMoneyForm",
+    DEPOSIT: "depositForm",
+    WITHDRAWAL: "withdrawalForm",
+    BILL_PAYMENT: "billPaymentForm"
+};
+document.querySelectorAll('.transaction-type-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        closeAllForms();
+        document.querySelectorAll('.transaction-type-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const formElement = document.getElementById(formMap[btn.dataset.type]);
+        if (formElement) {
+            formElement.style.display = 'block';
+            window.scrollTo({ top: formElement.offsetTop - 20, behavior: 'smooth' });
+        }
+    });
+});
+
+function closeAllForms() {
+    document.querySelectorAll('.transfer-container').forEach(form => form.style.display = 'none');
+    document.querySelectorAll('.transaction-type-btn').forEach(btn => btn.classList.remove('active'));
+}
+
+// Transactions filter
+document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const filter = btn.dataset.filter;
+        document.querySelectorAll('.transaction-row').forEach(row => {
+            row.style.display = (filter === 'all' || row.dataset.status === filter) ? '' : 'none';
+        });
+    });
+});
 </script>
 {% endblock %}

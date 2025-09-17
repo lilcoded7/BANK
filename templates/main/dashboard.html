@@ -11,13 +11,13 @@
         </div>
         <div class="user-profile">
             <div class="user-avatar">
-                {% if user.is_biometric_enabled %}
+                {% if customer.is_biometric_enabled %}
                     <i class="fas fa-fingerprint"></i>
                 {% else %}
-                    {{ user.first_name|first }}{{ user.last_name|first }}
+                    {{ customer.full_name|slice:":1" }}
                 {% endif %}
             </div>
-            <div class="user-name">{{ user.first_name }} {{ user.last_name }}</div>
+            <div class="user-name">{{ customer.full_name }}</div>
         </div>
     </div>
 
@@ -49,7 +49,7 @@
                 <div class="card-icon"><i class="fas fa-shield-alt"></i></div>
             </div>
             <div class="card-value">
-                {% if user.is_biometric_enabled %}
+                {% if customer.is_biometric_enabled %}
                     Verified <span class="status-indicator status-active"></span>
                 {% else %}
                     Standard <span class="status-indicator status-pending"></span>
@@ -98,116 +98,57 @@
         </div>
         <div class="card">
             <table class="transactions-table">
-    <thead>
-        <tr>
-            <th>Date</th>
-            <th>Type</th>
-            <th>Description</th>
-            <th style="text-align: right;">Amount (₵)</th>
-            <th>Status</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for transaction in recent_transactions %}
-        <tr>
-            <!-- Date -->
-            <td>{{ transaction.timestamp|date:"M d, Y" }}</td>
-
-            <!-- Transaction Type with Icon -->
-            <td>
-                {% if transaction.transaction_type == "TRANSFER" %}
-                    <i class="fas fa-exchange-alt" style="color:#0984e3;"></i> Bank Transfer
-                {% elif transaction.transaction_type == "MOBILE_MONEY" %}
-                    <i class="fas fa-mobile-alt" style="color:#6c5ce7;"></i> Mobile Money
-                {% elif transaction.transaction_type == "DEPOSIT" %}
-                    <i class="fas fa-arrow-down" style="color:#00b894;"></i> Deposit
-                {% elif transaction.transaction_type == "WITHDRAWAL" %}
-                    <i class="fas fa-arrow-up" style="color:#d63031;"></i> Withdrawal
-                {% elif transaction.transaction_type == "BILL_PAYMENT" %}
-                    <i class="fas fa-file-invoice" style="color:#fdcb6e;"></i> Bill Payment
-                {% else %}
-                    <i class="fas fa-question-circle" style="color:#636e72;"></i> Unknown
-                {% endif %}
-            </td>
-
-            <!-- Description -->
-            <td>{{ transaction.description|default:"Pending transaction" }}</td>
-
-            <!-- Amount -->
-            <td style="text-align:right; {% if transaction.sender_account.customer == user %}color:#d63031;{% else %}color:#00b894;{% endif %}">
-                {% if transaction.sender_account.customer == user %}-{% else %}+{% endif %}
-                {{ transaction.amount|floatformat:2 }}
-            </td>
-
-            <!-- Status Badge -->
-            <td>
-                <span class="badge 
-                    {% if transaction.status == 'COMPLETED' %}badge-success
-                    {% elif transaction.status == 'PENDING' %}badge-warning
-                    {% else %}badge-danger{% endif %}">
-                    {{ transaction.get_status_display }}
-                </span>
-            </td>
-        </tr>
-        {% empty %}
-        <tr>
-            <td colspan="5" style="text-align:center; padding:1rem; color:#636e72;">
-                <i class="fas fa-info-circle"></i> No recent transactions
-            </td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
-<script>
-    .transactions-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 14px;
-}
-
-.transactions-table th {
-    text-align: left;
-    padding: 12px 10px;
-    background: #f5f6fa;
-    color: #2d3436;
-    font-weight: 600;
-    border-bottom: 2px solid #dfe6e9;
-}
-
-.transactions-table td {
-    padding: 12px 10px;
-    border-bottom: 1px solid #ecf0f1;
-    vertical-align: middle;
-}
-
-.transactions-table tr:hover {
-    background: #f9f9f9;
-}
-
-.badge {
-    padding: 4px 10px;
-    border-radius: 12px;
-    font-size: 12px;
-    font-weight: 500;
-    text-transform: uppercase;
-}
-
-.badge-success {
-    background: #dff9fb;
-    color: #00b894;
-}
-
-.badge-warning {
-    background: #ffeaa7;
-    color: #e17055;
-}
-
-.badge-danger {
-    background: #fab1a0;
-    color: #d63031;
-}
-
-</script>
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Type</th>
+                        <th>Description</th>
+                        <th style="text-align: right;">Amount (₵)</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for transaction in recent_transactions %}
+                    <tr>
+                        <td>{{ transaction.timestamp|date:"M d, Y" }}</td>
+                        <td>
+                            {% if transaction.transaction_type == "TRANSFER" %}
+                                <i class="fas fa-exchange-alt" style="color:#0984e3;"></i> Bank Transfer
+                            {% elif transaction.transaction_type == "MOBILE_MONEY" %}
+                                <i class="fas fa-mobile-alt" style="color:#6c5ce7;"></i> Mobile Money
+                            {% elif transaction.transaction_type == "DEPOSIT" %}
+                                <i class="fas fa-arrow-down" style="color:#00b894;"></i> Deposit
+                            {% elif transaction.transaction_type == "WITHDRAWAL" %}
+                                <i class="fas fa-arrow-up" style="color:#d63031;"></i> Withdrawal
+                            {% elif transaction.transaction_type == "BILL_PAYMENT" %}
+                                <i class="fas fa-file-invoice" style="color:#fdcb6e;"></i> Bill Payment
+                            {% else %}
+                                <i class="fas fa-question-circle" style="color:#636e72;"></i> Unknown
+                            {% endif %}
+                        </td>
+                        <td>{{ transaction.description|default:"Pending transaction" }}</td>
+                        <td style="text-align:right; {% if transaction.sender_account.customer == customer %}color:#d63031;{% else %}color:#00b894;{% endif %}">
+                            {% if transaction.sender_account.customer == customer %}-{% else %}+{% endif %}
+                            {{ transaction.amount|floatformat:2 }}
+                        </td>
+                        <td>
+                            <span class="badge 
+                                {% if transaction.status == 'COMPLETED' %}badge-success
+                                {% elif transaction.status == 'PENDING' %}badge-warning
+                                {% else %}badge-danger{% endif %}">
+                                {{ transaction.get_status_display }}
+                            </span>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" style="text-align:center; padding:1rem; color:#636e72;">
+                            <i class="fas fa-info-circle"></i> No recent transactions
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
     </div>
 
@@ -216,13 +157,61 @@
             <div class="section-title">Transaction Flow</div>
         </div>
         <div class="card">
-            <div id="transactionChart" style="height: 300px;"></div>
+            <canvas id="transactionChart" height="300"></canvas>
         </div>
     </div>
 </div>
 
-<div class="assistant" onclick="alert('AI Assistant coming soon!')">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    const ctx = document.getElementById('transactionChart').getContext('2d');
+    const transactionChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: [{% for t in recent_transactions reversed %}'{{ t.timestamp|date:"M d" }}',{% endfor %}],
+            datasets: [{
+                label: 'Transaction Amounts',
+                data: [{% for t in recent_transactions reversed %}{{ t.amount }},{% endfor %}],
+                borderColor: '#0984e3',
+                backgroundColor: 'rgba(9,132,227,0.2)',
+                fill: true,
+                tension: 0.3
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { display: true },
+            },
+            scales: {
+                y: { beginAtZero: true }
+            }
+        }
+    });
+</script>
+
+
+<div class="assistant" id="assistantButton">
     <i class="fas fa-robot"></i>
+</div>
+
+<div class="ai-chat-modal" id="aiChatModal">
+    <div class="ai-chat-container">
+        <div class="ai-chat-header">
+            <h3>AI Assistant</h3>
+            <button class="close-chat" id="closeChat">&times;</button>
+        </div>
+        <div class="ai-chat-messages" id="chatMessages">
+            <div class="ai-message ai-message-bot">
+                <div class="ai-avatar"><i class="fas fa-robot"></i></div>
+                <div class="ai-text">Hello! How can I help you with your banking today?</div>
+            </div>
+        </div>
+        <div class="ai-chat-input">
+            <input type="text" id="userInput" placeholder="Ask me anything...">
+            <button id="sendMessage"><i class="fas fa-paper-plane"></i></button>
+        </div>
+    </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
@@ -284,5 +273,248 @@
         if (window.innerWidth <= 992 && !sidebar.contains(e.target)) sidebar.classList.remove('active');
     });
     sidebar.addEventListener('click', e => e.stopPropagation());
+
+    const assistantButton = document.getElementById('assistantButton');
+    const aiChatModal = document.getElementById('aiChatModal');
+    const closeChat = document.getElementById('closeChat');
+    const chatMessages = document.getElementById('chatMessages');
+    const userInput = document.getElementById('userInput');
+    const sendMessage = document.getElementById('sendMessage');
+
+    assistantButton.addEventListener('click', () => {
+        aiChatModal.style.display = 'flex';
+    });
+
+    closeChat.addEventListener('click', () => {
+        aiChatModal.style.display = 'none';
+    });
+
+    function addMessage(text, isUser) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `ai-message ${isUser ? 'ai-message-user' : 'ai-message-bot'}`;
+        
+        const avatarDiv = document.createElement('div');
+        avatarDiv.className = 'ai-avatar';
+        avatarDiv.innerHTML = `<i class="fas ${isUser ? 'fa-user' : 'fa-robot'}"></i>`;
+        
+        const textDiv = document.createElement('div');
+        textDiv.className = 'ai-text';
+        textDiv.textContent = text;
+        
+        messageDiv.appendChild(avatarDiv);
+        messageDiv.appendChild(textDiv);
+        chatMessages.appendChild(messageDiv);
+        
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    function handleSendMessage() {
+        const message = userInput.value.trim();
+        if (message) {
+            addMessage(message, true);
+            userInput.value = '';
+            
+            setTimeout(() => {
+                const responses = [
+                    "I can help you with account balances, transactions, and general banking questions.",
+                    "For security reasons, I cannot process transactions. Please use the appropriate menus for transfers.",
+                    "Your recent transactions appear normal. Is there something specific you're concerned about?",
+                    "I'd be happy to help you understand our banking services better.",
+                    "You can check your account balances and transaction history directly from your dashboard."
+                ];
+                const randomResponse = responses[Math.floor(Math.random() * responses.length)];
+                addMessage(randomResponse, false);
+            }, 1000);
+        }
+    }
+
+    sendMessage.addEventListener('click', handleSendMessage);
+    userInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            handleSendMessage();
+        }
+    });
 </script>
+
+<style>
+.assistant {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    width: 60px;
+    height: 60px;
+    background: linear-gradient(135deg, #6c5ce7, #0984e3);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.5rem;
+    cursor: pointer;
+    box-shadow: 0 4px 20px rgba(108, 92, 231, 0.4);
+    z-index: 1000;
+    transition: transform 0.3s ease;
+}
+
+.assistant:hover {
+    transform: scale(1.1);
+}
+
+.ai-chat-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1001;
+    align-items: center;
+    justify-content: center;
+}
+
+.ai-chat-container {
+    width: 400px;
+    max-width: 90%;
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+.ai-chat-header {
+    background: linear-gradient(135deg, #6c5ce7, #0984e3);
+    color: white;
+    padding: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.close-chat {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1.5rem;
+    cursor: pointer;
+}
+
+.ai-chat-messages {
+    height: 400px;
+    overflow-y: auto;
+    padding: 1rem;
+    background: #f8f9fa;
+}
+
+.ai-message {
+    display: flex;
+    margin-bottom: 1rem;
+}
+
+.ai-message-user {
+    flex-direction: row-reverse;
+}
+
+.ai-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #6c5ce7;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    margin: 0 0.5rem;
+}
+
+.ai-message-user .ai-avatar {
+    background: #0984e3;
+}
+
+.ai-text {
+    background: white;
+    padding: 0.75rem;
+    border-radius: 18px;
+    max-width: 70%;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.ai-message-user .ai-text {
+    background: #0984e3;
+    color: white;
+}
+
+.ai-chat-input {
+    display: flex;
+    padding: 1rem;
+    border-top: 1px solid #e0e0e0;
+}
+
+.ai-chat-input input {
+    flex: 1;
+    padding: 0.75rem;
+    border: 1px solid #ddd;
+    border-radius: 24px;
+    outline: none;
+}
+
+.ai-chat-input button {
+    margin-left: 0.5rem;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #6c5ce7;
+    color: white;
+    border: none;
+    cursor: pointer;
+}
+
+.transactions-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+.transactions-table th {
+    text-align: left;
+    padding: 12px 10px;
+    background: #f5f6fa;
+    color: #2d3436;
+    font-weight: 600;
+    border-bottom: 2px solid #dfe6e9;
+}
+
+.transactions-table td {
+    padding: 12px 10px;
+    border-bottom: 1px solid #ecf0f1;
+    vertical-align: middle;
+}
+
+.transactions-table tr:hover {
+    background: #f9f9f9;
+}
+
+.badge {
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+    text-transform: uppercase;
+}
+
+.badge-success {
+    background: #dff9fb;
+    color: #00b894;
+}
+
+.badge-warning {
+    background: #ffeaa7;
+    color: #e17055;
+}
+
+.badge-danger {
+    background: #fab1a0;
+    color: #d63031;
+}
+</style>
 {% endblock content %}

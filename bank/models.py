@@ -7,6 +7,17 @@ import uuid
 User = get_user_model()
 
 
+class Customer(TimeBaseModel):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="customer_profile", null=True, blank=True)
+    username = models.CharField(max_length=100)
+    full_name = models.CharField(max_length=100)
+    id_card = models.CharField(max_length=100, null=True, blank=True)
+    image = models.ImageField(null=True, blank=True)
+    is_biometric_enabled = models.BooleanField(default=False)
+
+    def __str__(self):
+        return self.username
+
 class Account(TimeBaseModel):
     ACCOUNT_TYPES = [
         ("SAVINGS", "Savings Account"),
@@ -21,7 +32,7 @@ class Account(TimeBaseModel):
     ]
 
     BIN = "123456"
-    customer = models.ForeignKey(User, on_delete=models.CASCADE)
+    customer = models.ForeignKey(Customer, on_delete=models.CASCADE)
     account_number = models.CharField(max_length=20, unique=True, null=True, blank=True)
     account_type = models.CharField(max_length=20, choices=ACCOUNT_TYPES)
     balance = models.DecimalField(max_digits=15, decimal_places=2, default=0.00)
@@ -65,36 +76,49 @@ class Transaction(TimeBaseModel):
     ]
 
     STATUS_CHOICES = [
-        ("PENDING", "Pending"),
-        ("COMPLETED", "Completed"),
-        ("FAILED", "Failed"),
+        ("pending", "pending"),
+        ("success", "success"),
+        ("failed", "Failed"),
     ]
 
-    transaction_id = models.CharField(max_length=30, unique=True, null=True, blank=True)
+    customer = models.ForeignKey(
+        Customer, on_delete=models.CASCADE, null=True, blank=True
+    )
+    transaction_id = models.CharField(
+        max_length=30, unique=True, null=True, blank=True
+    )
     transaction_type = models.CharField(max_length=20, choices=TRANSACTION_TYPES)
     amount = models.DecimalField(max_digits=15, decimal_places=2)
     currency = models.CharField(max_length=3, default="GHS")
+
     sender_account = models.ForeignKey(
-        Account, on_delete=models.PROTECT, related_name="sent_transactions"
+        Account, on_delete=models.PROTECT,
+        related_name="sent_transactions",
+        null=True, blank=True
     )
     recipient_account = models.ForeignKey(
-        Account,
-        on_delete=models.PROTECT,
+        Account, on_delete=models.PROTECT,
         related_name="received_transactions",
-        null=True,
-        blank=True,
+        null=True, blank=True,
     )
+
+    # Mobile Money
     recipient_number = models.CharField(max_length=20, null=True, blank=True)
+    network = models.CharField(max_length=50, null=True, blank=True)
+
+    # Bill Payment
+    bill_type = models.CharField(max_length=100, null=True, blank=True)
+    recipient_account_number = models.CharField(max_length=50, null=True, blank=True)
+
     description = models.TextField(null=True, blank=True)
-    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="PENDING")
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="COMPLETED")
     timestamp = models.DateTimeField(auto_now_add=True)
-    metadata = models.JSONField(default=dict)
 
     class Meta:
         ordering = ["-timestamp"]
 
     def __str__(self):
-        return f"{self.transaction_id} - {self.get_transaction_type_display()}"
+        return f"{self.transaction_type} - {self.amount} {self.currency}"
 
 
 class SecurityLog(TimeBaseModel):
@@ -119,12 +143,11 @@ class SecurityLog(TimeBaseModel):
     def __str__(self):
         return f"{self.user.email} - {self.get_event_type_display()}"
 
+class SupportAgent(TimeBaseModel):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, null=True, blank=True)
+    is_available = models.BooleanField(default=True)
 
+    def __str__(self):
+        return self.user.username
+    
 
-class UserBiometricData(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
-    fingerprint_data = models.BinaryField(null=True, blank=True)
-    facial_data = models.BinaryField(null=True, blank=True)  # Store facial embeddings
-    is_verified = models.BooleanField(default=False)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)

@@ -22,6 +22,13 @@
         </div>
     </div>
 
+    <!-- PDF Download Button -->
+    <div class="profile-actions">
+        <button id="downloadPDF" class="btn-download">
+            <i class="fas fa-file-pdf"></i> Download Bank Statement (PDF)
+        </button>
+    </div>
+
     <!-- Profile Section -->
     <div class="profile-container">
         <div class="profile-card">
@@ -40,7 +47,6 @@
                 </p>
                 <p><strong>Joined:</strong> {{ request.user.date_joined|date:"M d, Y" }}</p>
             </div>
-            
         </div>
     </div>
 
@@ -64,7 +70,30 @@
     <!-- Transactions Section -->
     <div class="transactions-section">
         <h2 class="section-title">Recent Transactions</h2>
-        <table class="transactions-table">
+
+        <!-- Filters -->
+        <div class="filters">
+            <label>
+                Type:
+                <select id="filterType">
+                    <option value="all">All</option>
+                    <option value="deposit">Deposit</option>
+                    <option value="withdrawal">Withdrawal</option>
+                    <option value="transfer">Transfer</option>
+                </select>
+            </label>
+            <label>
+                From:
+                <input type="date" id="filterFrom">
+            </label>
+            <label>
+                To:
+                <input type="date" id="filterTo">
+            </label>
+            <button id="applyFilters" class="btn-filter">Apply</button>
+        </div>
+
+        <table class="transactions-table" id="transactionsTable">
             <thead>
                 <tr>
                     <th>Date</th>
@@ -76,7 +105,7 @@
             </thead>
             <tbody>
                 {% for tx in transactions %}
-                <tr>
+                <tr data-type="{{ tx.transaction_type|lower }}" data-date="{{ tx.timestamp|date:'Y-m-d' }}">
                     <td>{{ tx.timestamp|date:"M d, Y H:i" }}</td>
                     <td>{{ tx.get_transaction_type_display }}</td>
                     <td>{{ tx.description|default:"-" }}</td>
@@ -107,80 +136,89 @@
     border-radius: 12px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
-
 .profile-card .profile-details p {
     margin: 0.5rem 0;
 }
-
 .profile-avatar-img {
     width: 60px;
     height: 60px;
     border-radius: 50%;
     object-fit: cover;
 }
-
 .accounts-list {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
     gap: 1rem;
 }
-
 .account-card {
     padding: 1rem;
     border: 1px solid #ddd;
     border-radius: 8px;
     background: #fafafa;
 }
-
 .transactions-table {
     width: 100%;
     border-collapse: collapse;
     margin-top: 1rem;
 }
-
 .transactions-table th, .transactions-table td {
     padding: 0.75rem;
     border: 1px solid #ddd;
     text-align: left;
 }
-
 .transactions-table th {
     background: #f4f4f4;
 }
-
 .transaction-status {
     padding: 0.25rem 0.5rem;
     border-radius: 6px;
     font-size: 0.85rem;
 }
-
-.status-completed {
-    background: #d4edda;
-    color: #155724;
-}
-.status-pending {
-    background: #fff3cd;
-    color: #856404;
-}
-.status-failed {
-    background: #f8d7da;
-    color: #721c24;
-}
-
-.debit {
-    color: red;
-}
-.credit {
-    color: green;
-}
-
+.status-completed { background: #d4edda; color: #155724; }
+.status-pending { background: #fff3cd; color: #856404; }
+.status-failed { background: #f8d7da; color: #721c24; }
+.debit { color: red; }
+.credit { color: green; }
 .profile-actions {
     margin-top: 1rem;
     display: flex;
     gap: 1rem;
 }
+.btn-download {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 1.2rem;
+    background: #dc3545;
+    color: #fff;
+    text-decoration: none;
+    border-radius: 8px;
+    font-weight: 500;
+    transition: background 0.3s;
+    border: none;
+    cursor: pointer;
+}
+.btn-download:hover { background: #b52b3a; }
+.filters {
+    margin: 1rem 0;
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    align-items: center;
+}
+.btn-filter {
+    padding: 0.5rem 1rem;
+    background: #007bff;
+    color: #fff;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+}
+.btn-filter:hover { background: #0056b3; }
 </style>
 
+<!-- Scripts -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
 const sidebar = document.getElementById('sidebar');
 document.getElementById('menuToggle').addEventListener('click', e => {
@@ -191,6 +229,53 @@ document.addEventListener('click', e => {
     if (window.innerWidth <= 992 && !sidebar.contains(e.target)) {
         sidebar.classList.remove('active');
     }
+});
+
+// Filters
+document.getElementById("applyFilters").addEventListener("click", () => {
+    const type = document.getElementById("filterType").value;
+    const from = document.getElementById("filterFrom").value;
+    const to = document.getElementById("filterTo").value;
+
+    document.querySelectorAll("#transactionsTable tbody tr").forEach(row => {
+        const rowType = row.dataset.type;
+        const rowDate = row.dataset.date;
+
+        let visible = true;
+
+        if (type !== "all" && rowType !== type) visible = false;
+        if (from && rowDate < from) visible = false;
+        if (to && rowDate > to) visible = false;
+
+        row.style.display = visible ? "" : "none";
+    });
+});
+
+// PDF Download
+document.getElementById("downloadPDF").addEventListener("click", () => {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    doc.setFontSize(16);
+    doc.text("Bank Statement", 80, 20);
+
+    doc.setFontSize(12);
+    let y = 40;
+
+    document.querySelectorAll("#transactionsTable tbody tr").forEach(row => {
+        if (row.style.display === "none") return; // skip hidden rows
+        const cols = row.querySelectorAll("td");
+        let line = "";
+        cols.forEach(col => line += col.innerText + " | ");
+        doc.text(line, 10, y);
+        y += 10;
+        if (y > 280) {
+            doc.addPage();
+            y = 20;
+        }
+    });
+
+    doc.save("bank_statement.pdf");
 });
 </script>
 {% endblock %}

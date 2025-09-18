@@ -1,0 +1,158 @@
+{% extends "dash/base.html" %}
+{% block content %}
+<main class="main-content">
+    <!-- Header -->
+    <header class="main-header">
+        <h2>Transactions Dashboard</h2>
+    </header>
+
+    <!-- Summary Cards -->
+    <section class="analytics-cards">
+        <div class="card">
+            <h3>Amount In</h3>
+            <p>₵{{ amount_in }}</p>
+        </div>
+        <div class="card">
+            <h3>Amount Out</h3>
+            <p>₵{{ amount_out }}</p>
+        </div>
+        <div class="card">
+            <h3>Total Balance</h3>
+            <p>₵{{ total_balance }}</p>
+        </div>
+        <div class="card">
+            <h3>Average Transaction</h3>
+            <p>₵{{ average_transaction|floatformat:2 }}</p>
+        </div>
+    </section>
+
+    <!-- Filters -->
+    <section class="dashboard-section">
+        <h3>Transactions</h3>
+        <div class="filters">
+            <input type="text" id="searchInput" placeholder="Search description...">
+            <select id="typeFilter">
+                <option value="">All Types</option>
+                <option value="DEPOSIT">Deposit</option>
+                <option value="WITHDRAWAL">Withdrawal</option>
+                <option value="TRANSFER">Transfer</option>
+                <option value="MOBILE_MONEY">Mobile Money</option>
+                <option value="BILL_PAYMENT">Bill Payment</option>
+            </select>
+            <select id="statusFilter">
+                <option value="">All Status</option>
+                <option value="success">Success</option>
+                <option value="pending">Pending</option>
+                <option value="failed">Failed</option>
+            </select>
+        </div>
+
+        <!-- Transactions Table -->
+        <table class="transactions-table" id="transactionsTable">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Customer</th>
+                    <th>Type</th>
+                    <th>Description</th>
+                    <th>Amount</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for tx in transactions %}
+                <tr>
+                    <td>{{ tx.timestamp|date:"M d, Y H:i" }}</td>
+                    <td>{{ tx.customer.full_name }}</td>
+                    <td>{{ tx.get_transaction_type_display }}</td>
+                    <td>{{ tx.description|default:"-" }}</td>
+                    <td>₵{{ tx.amount }}</td>
+                    <td>{{ tx.status }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="6" style="text-align:center;">No transactions found.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </section>
+</main>
+
+<!-- Filtering Script -->
+<script>
+const searchInput = document.getElementById("searchInput");
+const typeFilter = document.getElementById("typeFilter");
+const statusFilter = document.getElementById("statusFilter");
+const table = document.getElementById("transactionsTable").getElementsByTagName("tbody")[0];
+
+function filterTable() {
+    const search = searchInput.value.toLowerCase();
+    const type = typeFilter.value.toLowerCase();
+    const status = statusFilter.value.toLowerCase();
+
+    for (let row of table.rows) {
+        const description = row.cells[3].textContent.toLowerCase();
+        const txType = row.cells[2].textContent.toLowerCase();
+        const txStatus = row.cells[5].textContent.toLowerCase();
+
+        const matchSearch = !search || description.includes(search);
+        const matchType = !type || txType.includes(type);
+        const matchStatus = !status || txStatus.includes(status);
+
+        row.style.display = (matchSearch && matchType && matchStatus) ? "" : "none";
+    }
+}
+
+searchInput.addEventListener("input", filterTable);
+typeFilter.addEventListener("change", filterTable);
+statusFilter.addEventListener("change", filterTable);
+</script>
+
+<style>
+/* Cards */
+.analytics-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+.card {
+    background: #fff;
+    padding: 1.5rem;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    text-align: center;
+}
+.card h3 { margin-bottom: 0.5rem; }
+.card p {
+    font-size: 1.6rem;
+    font-weight: bold;
+    color: #007bff;
+}
+
+/* Filters */
+.filters {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+.filters input, .filters select {
+    padding: 0.5rem;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+}
+
+/* Table */
+.transactions-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+.transactions-table th, .transactions-table td {
+    padding: 0.8rem;
+    border: 1px solid #ddd;
+    text-align: left;
+}
+.transactions-table th {
+    background: #f4f4f4;
+}
+</style>
+{% endblock %}

@@ -1,0 +1,142 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prestige Bank | OTP Verification</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+    body {
+        margin: 0;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background: #f1f3f6;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+    }
+
+    .otp-container {
+        background: #fff;
+        padding: 3rem 2.5rem;
+        border-radius: 20px;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        max-width: 400px;
+        width: 100%;
+        text-align: center;
+    }
+
+    .otp-container h2 {
+        color: #2c3e50;
+        margin-bottom: 1rem;
+    }
+
+    .otp-container p {
+        font-size: 0.95rem;
+        color: #555;
+        margin-bottom: 2rem;
+    }
+
+    .otp-input {
+        width: 50px;
+        height: 50px;
+        margin: 0 5px;
+        font-size: 1.5rem;
+        text-align: center;
+        border: 1px solid #ddd;
+        border-radius: 10px;
+        transition: all 0.3s;
+    }
+
+    .otp-input:focus {
+        border-color: #007bff;
+        box-shadow: 0 0 6px rgba(0,123,255,0.4);
+        outline: none;
+    }
+
+    button {
+        width: 100%;
+        padding: 1rem;
+        background: #007bff;
+        color: #fff;
+        border: none;
+        border-radius: 10px;
+        font-size: 1rem;
+        cursor: pointer;
+        transition: background 0.3s;
+        margin-top: 1.5rem;
+    }
+    button:hover {
+        background: #0056b3;
+    }
+
+    .resend {
+        margin-top: 1rem;
+        font-size: 0.85rem;
+        color: #007bff;
+        cursor: pointer;
+    }
+
+    .resend:hover {
+        text-decoration: underline;
+    }
+
+    .warning {
+        margin-top: 1rem;
+        font-size: 0.8rem;
+        color: #e74c3c;
+    }
+
+    .messages { margin-bottom: 1rem; color: red; font-size: 0.9rem; }
+</style>
+</head>
+<body>
+    <div class="otp-container">
+        <h2><i class="fas fa-shield-alt"></i> OTP Verification</h2>
+        <p>Please enter the 6-digit code sent to your registered email or phone. Do not share it with anyone.</p>
+
+        {% if messages %}
+            <div class="messages">
+                {% for message in messages %}
+                    <p>{{ message }}</p>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <form method="post">
+            {% csrf_token %}
+            <div id="otp-fields">
+                <!-- Split form.code into 6 single-character inputs -->
+                {% for i in "123456" %}
+                    <input type="text" maxlength="1" class="otp-input" required>
+                {% endfor %}
+                <input type="hidden" name="code" id="hiddenCode">
+            </div>
+            <button type="submit"><i class="fas fa-check-circle"></i> Verify OTP</button>
+        </form>
+
+        <div class="resend">Didn't receive OTP? <span onclick="alert('OTP resent!')">Resend</span></div>
+        <div class="warning">⚠ Never share your OTP with anyone. Prestige Bank will never ask for it.</div>
+    </div>
+
+<script>
+    const inputs = document.querySelectorAll(".otp-input");
+    const hiddenCode = document.getElementById("hiddenCode");
+
+    // Automatically move to next input
+    inputs.forEach((input, i) => {
+        input.addEventListener("keyup", (e) => {
+            if (e.key >= 0 && e.key <= 9) {
+                if (i < inputs.length - 1) inputs[i + 1].focus();
+            } else if (e.key === "Backspace") {
+                if (i > 0) inputs[i - 1].focus();
+            }
+            // Update hidden field with concatenated value
+            let codeValue = Array.from(inputs).map(inp => inp.value).join("");
+            hiddenCode.value = codeValue;
+        });
+    });
+</script>
+</body>
+</html>

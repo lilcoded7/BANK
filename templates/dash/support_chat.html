@@ -1,0 +1,211 @@
+{% extends "dash/base.html" %}
+{% block content %}
+<div class="chat-layout">
+    <!-- Sidebar (Customers) -->
+    <div class="chat-sidebar">
+        <div class="sidebar-header">
+            <h3>Customers</h3>
+        </div>
+        <ul class="customer-list">
+            {% for u in users %}
+            <li>
+                <a href="{% url 'support_chat_dashboard' u.id %}"
+                   class="customer-link {% if customer and u.id == customer.id %}active{% endif %}">
+                    <i class="fas fa-user-circle"></i>
+                    <span>{{ u.get_full_name|default:u.username }}</span>
+                </a>
+            </li>
+            {% empty %}
+            <p class="no-customers">No active chats</p>
+            {% endfor %}
+        </ul>
+    </div>
+
+    <!-- Chat Window -->
+    <div class="chat-main">
+        {% if customer %}
+            <div class="chat-header">
+                <i class="fas fa-user-circle"></i>
+                <h3>{{ customer.get_full_name|default:customer.username }}</h3>
+            </div>
+
+            <div class="chat-body" id="chatBody">
+                {% for msg in messages %}
+                    <div class="chat-message {% if msg.sender == 'support' %}support{% else %}customer{% endif %}">
+                        <div class="bubble">
+                            <p>{{ msg.message }}</p>
+                            <span class="timestamp">{{ msg.timestamp|date:"M d, H:i" }}</span>
+                        </div>
+                    </div>
+                {% empty %}
+                    <p class="no-messages">No messages yet.</p>
+                {% endfor %}
+            </div>
+
+            <form method="POST" class="chat-form">
+                {% csrf_token %}
+                <input type="text" name="message" placeholder="Type a reply..." required>
+                <button type="submit"><i class="fas fa-paper-plane"></i></button>
+            </form>
+        {% else %}
+            <div class="no-chat-selected">
+                <p>Select a customer to start chatting</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+.chat-layout {
+    display: flex;
+    height: 80vh;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+    background: #fff;
+}
+
+/* Sidebar */
+.chat-sidebar {
+    width: 280px;
+    background: #2c3e50;
+    color: white;
+    display: flex;
+    flex-direction: column;
+}
+.sidebar-header {
+    padding: 1rem;
+    background: #1a252f;
+    text-align: center;
+    font-size: 1.2rem;
+    font-weight: bold;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+.customer-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    flex: 1;
+    overflow-y: auto;
+}
+.customer-list li {
+    margin: 0;
+}
+.customer-link {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.8rem 1rem;
+    color: #ddd;
+    text-decoration: none;
+    transition: 0.2s;
+}
+.customer-link:hover, .customer-link.active {
+    background: #34495e;
+    color: #fff;
+}
+.customer-link i {
+    font-size: 1.4rem;
+}
+
+/* Chat Window */
+.chat-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+.chat-header {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    padding: 1rem;
+    background: #f7f7f7;
+    border-bottom: 1px solid #ddd;
+}
+.chat-header i {
+    font-size: 1.8rem;
+    color: #007bff;
+}
+.chat-body {
+    flex: 1;
+    padding: 1rem;
+    overflow-y: auto;
+    background: #ecf0f1;
+    display: flex;
+    flex-direction: column;
+}
+.chat-message {
+    display: flex;
+    margin: 0.4rem 0;
+}
+.chat-message.customer { justify-content: flex-start; }
+.chat-message.support { justify-content: flex-end; }
+.chat-message .bubble {
+    max-width: 60%;
+    padding: 0.8rem 1rem;
+    border-radius: 20px;
+    position: relative;
+}
+.chat-message.customer .bubble {
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 20px 20px 20px 0;
+}
+.chat-message.support .bubble {
+    background: #007bff;
+    color: #fff;
+    border-radius: 20px 20px 0 20px;
+}
+.timestamp {
+    display: block;
+    font-size: 0.75rem;
+    margin-top: 0.4rem;
+    opacity: 0.7;
+    text-align: right;
+}
+.chat-form {
+    display: flex;
+    padding: 0.8rem;
+    border-top: 1px solid #ddd;
+    background: #fff;
+}
+.chat-form input {
+    flex: 1;
+    padding: 0.8rem 1rem;
+    border: 1px solid #ddd;
+    border-radius: 20px;
+    outline: none;
+}
+.chat-form button {
+    margin-left: 0.5rem;
+    background: #007bff;
+    border: none;
+    color: white;
+    border-radius: 50%;
+    width: 45px;
+    height: 45px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.chat-form button:hover { background: #0056b3; }
+
+.no-chat-selected {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex: 1;
+    font-size: 1.2rem;
+    color: #666;
+}
+</style>
+
+<script>
+// Auto-scroll chat to bottom
+const chatBody = document.getElementById("chatBody");
+if (chatBody) {
+    chatBody.scrollTop = chatBody.scrollHeight;
+}
+</script>
+{% endblock %}

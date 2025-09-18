@@ -11,3 +11,4 @@ admin.site.register(Transaction)
 admin.site.register(Customer)
 admin.site.register(SecurityLog)
 
+admin.site.register(ChatMessage)

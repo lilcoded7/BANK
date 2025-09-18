@@ -38,6 +38,8 @@ class User(AbstractBaseUser):
     full_name = models.CharField(max_length=200, blank=True, null=True)
     email = models.EmailField(unique=True)
     phone = models.CharField(max_length=20, null=True, blank=True)
+
+    code = models.CharField(max_length=10, null=True, blank=True)
     
     biometric_data = models.TextField(null=True, blank=True)
     is_biometric_enabled = models.BooleanField(default=False)
@@ -53,6 +55,7 @@ class User(AbstractBaseUser):
  
     is_ceo = models.BooleanField(default=False, null=True, blank=True)
     is_manager = models.BooleanField(default=False, null=True, blank=True)
+    is_2factor_authentication = models.BooleanField(default=False)
 
     objects = MyAccountManager()
 

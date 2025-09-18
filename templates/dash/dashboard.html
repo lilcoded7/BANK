@@ -1,0 +1,164 @@
+{% extends "dash/base.html" %}
+{% block content %}
+<main class="main-content">
+    <!-- Header -->
+    <header class="main-header">
+        <h2>Admin Dashboard</h2>
+    </header>
+
+    <!-- Analytics Section -->
+    <section class="analytics-cards">
+        <div class="card">
+            <h3>Total Customers</h3>
+            <p>{{ total_customers }}</p>
+        </div>
+        <div class="card">
+            <h3>Total Accounts</h3>
+            <p>{{ total_accounts }}</p>
+        </div>
+        <div class="card">
+            <h3>Total Transactions</h3>
+            <p>{{ total_transactions }}</p>
+        </div>
+        <div class="card">
+            <h3>Total Balance</h3>
+            <p>₵{{ total_balance }}</p>
+        </div>
+    </section>
+
+    <!-- Chart Section -->
+    <section class="dashboard-section">
+        <h3>Transaction Flow</h3>
+        <canvas id="transactionsChart" height="100"></canvas>
+    </section>
+
+    <!-- Active Chats Section -->
+    <section class="dashboard-section">
+        <h3>Active Chats</h3>
+        <table class="chat-table">
+            <thead>
+                <tr>
+                    <th>Customer</th>
+                    <th>Email</th>
+                    <th>Last Message</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in users %}
+                <tr>
+                    <td>{{ user.get_full_name|default:user.username }}</td>
+                    <td>{{ user.email }}</td>
+                    <td>
+                        {% with user.chat_messages.last as last_msg %}
+                            {% if last_msg %}
+                                {{ last_msg.message|truncatewords:8 }}
+                                <small>({{ last_msg.timestamp|date:"M d, H:i" }})</small>
+                            {% else %}
+                                No messages yet
+                            {% endif %}
+                        {% endwith %}
+                    </td>
+                    <td>
+                        <a href="##" class="btn">Open Chat</a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="4" style="text-align:center;">No active chats yet.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </section>
+</main>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    const ctx = document.getElementById('transactionsChart').getContext('2d');
+    const transactionsChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: {{ chart_labels|safe }},  // e.g. ["Jan", "Feb", "Mar"]
+            datasets: [{
+                label: 'Transactions',
+                data: {{ chart_data|safe }},   // e.g. [50, 75, 100]
+                borderColor: '#007bff',
+                backgroundColor: 'rgba(0,123,255,0.1)',
+                tension: 0.3,
+                fill: true,
+                pointRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { display: true }
+            },
+            scales: {
+                y: { beginAtZero: true }
+            }
+        }
+    });
+</script>
+
+<style>
+/* Cards */
+.analytics-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+.card {
+    background: #fff;
+    padding: 1.5rem;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    text-align: center;
+}
+.card h3 {
+    margin-bottom: 0.5rem;
+    font-size: 1.2rem;
+}
+.card p {
+    font-size: 1.6rem;
+    font-weight: bold;
+    color: #007bff;
+}
+
+/* Dashboard Section */
+.dashboard-section {
+    background: #fff;
+    padding: 1.5rem;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    margin-top: 2rem;
+}
+
+/* Table */
+.chat-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+}
+.chat-table th, .chat-table td {
+    padding: 0.8rem;
+    border: 1px solid #ddd;
+    text-align: left;
+}
+.chat-table th {
+    background: #f4f4f4;
+}
+.btn {
+    padding: 0.5rem 1rem;
+    background: #007bff;
+    color: white;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 0.9rem;
+}
+.btn:hover {
+    background: #0056b3;
+}
+</style>
+{% endblock %}

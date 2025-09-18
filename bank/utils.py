@@ -24,3 +24,125 @@ def get_geolocation(request):
 def verify_biometric(user, biometric_data):
     # Simplified - would verify against stored biometric template in real implementation
     return True  # Always return true for this example
+
+
+from django.db import transaction as db_transaction
+
+@db_transaction.atomic
+def credit_bank_transfer(tx):
+    """Handle bank transfer between accounts."""
+    if tx.status == "success":  # Idempotency check
+        return "Already processed"
+
+    tx.sender_account.balance -= tx.amount
+    tx.recipient_account.balance += tx.amount
+    tx.sender_account.save()
+    tx.recipient_account.save()
+    tx.status = "success"
+    tx.save()
+    return "Bank transfer successful"
+
+
+@db_transaction.atomic
+def credit_deposit(tx):
+    """Handle deposit into account."""
+    if tx.status == "success":
+        return "Already processed"
+
+    tx.recipient_account.balance += tx.amount
+    tx.recipient_account.save()
+    tx.status = "success"
+    tx.save()
+    return "Deposit successful"
+
+
+@db_transaction.atomic
+def process_withdrawal(tx):
+    """Handle withdrawals from account."""
+    if tx.status == "success":
+        return "Already processed"
+
+    if tx.sender_account.balance < tx.amount:
+        tx.status = "failed"
+        tx.save()
+        return "Insufficient funds"
+
+    tx.sender_account.balance -= tx.amount
+    tx.sender_account.save()
+    tx.status = "success"
+    tx.save()
+    return "Withdrawal successful"
+
+
+@db_transaction.atomic
+def process_bill_payment(tx):
+    """Handle bill payments."""
+    if tx.status == "success":
+        return "Already processed"
+
+    if tx.sender_account.balance < tx.amount:
+        tx.status = "failed"
+        tx.save()
+        return "Insufficient funds"
+
+    tx.sender_account.balance -= tx.amount
+    tx.sender_account.save()
+    tx.status = "success"
+    tx.save()
+    return f"Bill payment for {tx.bill_type} successful"
+
+
+@db_transaction.atomic
+def process_mobile_money(tx):
+    """Handle mobile money transaction."""
+    if tx.status == "success":
+        return "Already processed"
+
+    if tx.sender_account and tx.sender_account.balance < tx.amount:
+        tx.status = "failed"
+        tx.save()
+        return "Insufficient funds"
+
+    if tx.sender_account:
+        tx.sender_account.balance -= tx.amount
+        tx.sender_account.save()
+
+    tx.status = "success"
+    tx.save()
+    return "Mobile money transaction successful"
+
+
+
+from django.contrib.auth import get_user_model
+from django.template.loader import render_to_string
+from django.core.mail import EmailMessage
+from django.shortcuts import get_object_or_404
+
+
+class EmailSender:
+    def send_email(self, data):
+        email = EmailMessage(
+            subject    = data['email_subject'],
+            body       = data['email_body'],
+            to         = [data['to_email']],
+        )
+        email.content_subtype = 'html'
+        email.send()
+
+    def send_otp(self, user):
+        message = render_to_string('mails/send_otp.html', {'user':user})
+        data = {
+            'email_subject':'OTP CODE',
+            'email_body': message,
+            'to_email':user.email
+            }
+        self.send_email(data)
+
+    def send_reset_password_success_message(self, user):
+        message = render_to_string('mails/reset_pws_success.html', {'user':user})
+        data = {
+            'email_subject':'Verification Code',
+            'email_body': message,
+            'to_email':user.email
+            }
+        self.send_email(data)

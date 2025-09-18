@@ -39,10 +39,13 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'bank',
     'accounts',
+    'corsheaders',
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -76,8 +79,15 @@ AUTH_USER_MODEL = 'accounts.User'
 
 LOGIN_URL = 'login'
 
-PAYSTACK_SECRET_KEY = 'sk_live_8a2fed25809b957dc573bee72774cbc9986450f1'
-PAYSTACK_PUBLIC_KEY = 'pk_live_61a41e6bdf6d091ce1a18c8043b5f94d8aed5801'
+PAYSTACK_SECRET_KEY = 'sk_test_d44a3367becce5cfc56d625352ab17f04c28ccde'
+PAYSTACK_PUBLIC_KEY = 'pk_test_86d6c0f4054f7820193f1e38bf0ba333265cb3ea'
+
+# Enable Gzip compression
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+
+
+CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_CREDENTIALS = True
 
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
@@ -136,3 +146,12 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
+
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = "smtp.gmail.com"
+EMAIL_USE_TLS = True
+EMAIL_PORT = 587
+EMAIL_HOST_USER = 'wealthcoprestige@gmail.com'
+EMAIL_HOST_PASSWORD = 'llix ucxp zlde fjmt'

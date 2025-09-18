@@ -1,8 +1,8 @@
 from django.db import models
 
 class TimeBaseModel(models.Model):
-    created_at = models.DateTimeField(auto_now_add=True)  # Created once, when the object is first created
-    updated_at = models.DateTimeField(auto_now=True)      # Updated every time the object is saved
+    created_at = models.DateTimeField(auto_now_add=True) 
+    updated_at = models.DateTimeField(auto_now=True)    
 
     class Meta:
         abstract = True

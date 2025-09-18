@@ -24,49 +24,6 @@ User = get_user_model()
 sender = EmailSender()
 
 
-def staff_required(user):
-    return user.is_staff or user.is_superuser
-
-
-def get_user_email_address(request):
-    form = EmailForm(request.POST or None)
-    if request.method == 'POST' and form.is_valid():
-        data = form.cleaned_data
-        user = get_object_or_404(User, email=data.get('email'))
-        otp_code = random.randint(100000, 999999)  # 6-digit OTP
-        user.code = otp_code
-        user.save()
-        try:
-            sender.send_otp(user)
-            return redirect('get_user_email_address')
-        except:
-            pass
-        
-        # Optionally redirect or show success message
-    return render(request, 'auth/get_user_email.html', {'form': form})
-
-
-def  reset_password(request):
-    form = ResetPasswordForm(request.POST or None)
-
-    if request.method == 'POST' and form.is_valid():
-        data = form.cleaned_data
-        code = data.get('code')
-        new_password = data.get('password')
-        
-        # Find the user with this OTP code
-        user = User.objects.filter(code=code).first()
-        if user:
-            user.set_password(new_password)  # Update password securely
-            user.code = ''  # Clear the OTP code
-            user.save()
-            messages.success(request, "Your password has been reset successfully!")
-            return redirect('login')
-        else:
-            messages.error(request, "Invalid OTP code. Please try again.")
-
-    return render(request, 'auth/reset_password.html', {'form': form})
-
 
 def login_view(request):
     if request.user.is_authenticated:
@@ -78,15 +35,11 @@ def login_view(request):
         password = form.cleaned_data["password"]
 
         user = authenticate(request, email=email, password=password)
+
         if user is not None:
             if user.is_2factor_authentication:
-                try:
-                    sender.send_otp(user)
-                except:
-                    pass
-               
+                EmailSender().send_otp(user)
                 return redirect('two_factor_auth', user_id=user.id)
-            
             
             login(request, user)
             messages.success(request, f"Welcome back, {user.email}!")
@@ -97,42 +50,77 @@ def login_view(request):
     return render(request, "auth/login.html", {"form": form})
 
 
+# ------------------ LOGOUT VIEW ------------------
 def logout_view(request):
     logout(request)
     messages.success(request, "You have been successfully logged out")
     return redirect("login")
 
 
+# ------------------ TWO-FACTOR AUTH VIEW ------------------
 def two_factor_auth(request, user_id):
     user = get_object_or_404(User, id=user_id)
-
     form = CodeForm(request.POST or None)
 
     if request.method == "POST" and form.is_valid():
         code = form.cleaned_data["code"]
-        user = User.objects.get(code=code)
-   
-        user.code = ""
-        user.save()
+        print(code, ' Code is printed here ')
+        # Use filter().first() to avoid MultipleObjectsReturned
+        otp_user = User.objects.filter(id=user.id, code=code).first()
 
-        login(request, user)
+        if otp_user:
+            otp_user.code = ""  # Clear OTP
+            otp_user.save()
+            login(request, otp_user)
+            messages.success(request, "Two-Factor authentication successful!")
+            return redirect("dashboard")
+        else:
+            messages.error(request, "Invalid OTP code. Please try again.")
 
-        messages.success(request, "Two-Factor authentication successful!")
-        return redirect("dashboard") 
+    return render(request, "auth/2factor_.html", {"form": form, 'user': user})
 
-    return render(request, "auth/2factor_.html", {"form": form, 'user':user})
 
-def resen_auth_code(request, user_id):
-    opt_code = random.randint(00000, 99999)
+# ------------------ RESEND OTP VIEW ------------------
+def resend_auth_code(request, user_id):
     user = get_object_or_404(User, id=user_id)
-    user.code=opt_code
-    user.save()
-    try:
-        sender.send_otp(user)
-    except:
-        pass
+    EmailSender().send_otp(user)
     messages.success(request, 'OTP Code has been sent to your email address')
-    return redirect('two_factor_auth', user.id)
+    return redirect('two_factor_auth', user_id=user.id)
+
+
+# ------------------ GET USER EMAIL (FOR FORGOT PASSWORD) ------------------
+def get_user_email_address(request):
+    form = EmailForm(request.POST or None)
+    if request.method == 'POST' and form.is_valid():
+        email = form.cleaned_data.get('email')
+        user = get_object_or_404(User, email=email)
+        EmailSender().send_otp(user)
+        messages.success(request, 'OTP has been sent to your email.')
+        return redirect('reset_password')  # Redirect to OTP + reset form
+
+    return render(request, 'auth/get_user_email.html', {'form': form})
+
+
+# ------------------ RESET PASSWORD VIEW ------------------
+def reset_password(request):
+    form = ResetPasswordForm(request.POST or None)
+
+    if request.method == 'POST' and form.is_valid():
+        code = form.cleaned_data.get('code')
+        new_password = form.cleaned_data.get('password')
+
+        # Find user by OTP
+        user = User.objects.filter(code=code).first()
+        if user:
+            user.set_password(new_password)  
+            user.code = ''  # Clear OTP
+            user.save()
+            messages.success(request, "Your password has been reset successfully!")
+            return redirect('login')
+        else:
+            messages.error(request, "Invalid OTP code. Please try again.")
+
+    return render(request, 'auth/reset_password.html', {'form': form})
 
 
 

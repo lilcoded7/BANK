@@ -88,8 +88,8 @@ class CodeForm(forms.Form):
     def clean_code(self):
         code = self.cleaned_data.get('code')
         if User.objects.filter(code=code).exists():
-            raise forms.ValidationError('invalide code ')
-        return code 
+            return code
+        raise forms.ValidationError('invalide code ')
    
 class BankTransferForm(forms.Form):
     sender_account = forms.CharField(

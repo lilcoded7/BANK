@@ -1,5 +1,7 @@
 
 from datetime import datetime, timedelta
+from django.utils import timezone
+import random
 import uuid
 
 
@@ -130,13 +132,22 @@ class EmailSender:
         email.send()
 
     def send_otp(self, user):
-        message = render_to_string('mails/send_otp.html', {'user':user})
+        # 1️⃣ Generate a secure 6-digit OTP
+        otp_code = random.randint(100000, 999999)
+        user.code = str(otp_code)  # Save as string for consistency
+        user.save()  # Persist OTP in the database immediately
+
+        # 2️⃣ Render the email template with the user object
+        message = render_to_string('mail/send_opt.html', {'user': user, 'now': timezone.now()})
+
         data = {
-            'email_subject':'OTP CODE',
+            'email_subject': 'Your One-Time Password (OTP)',
             'email_body': message,
-            'to_email':user.email
-            }
+            'to_email': user.email
+        }
+
         self.send_email(data)
+        print(f"OTP {user.code} sent to {user.email}")
 
     def send_reset_password_success_message(self, user):
         message = render_to_string('mails/reset_pws_success.html', {'user':user})

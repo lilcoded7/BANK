@@ -257,6 +257,9 @@ class CustomerCreateForm(forms.Form):
             id_card=self.cleaned_data.get("id_card"),
             image=self.cleaned_data.get("image"),
         )
+        user.username=customer.username
+        user.full_name=customer.full_name
+        user.save()
 
         # ✅ Create Account for Customer
         Account.objects.create(

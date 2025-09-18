@@ -79,8 +79,8 @@ AUTH_USER_MODEL = 'accounts.User'
 
 LOGIN_URL = 'login'
 
-PAYSTACK_SECRET_KEY = 'sk_test_d44a3367becce5cfc56d625352ab17f04c28ccde'
-PAYSTACK_PUBLIC_KEY = 'pk_test_86d6c0f4054f7820193f1e38bf0ba333265cb3ea'
+PAYSTACK_SECRET_KEY = 'sk_live_4e3d441c63900300e78b1d471e5adc32e4bc27c8'
+PAYSTACK_PUBLIC_KEY = 'pk_live_3bd576d20af4885cef66622821b50794e62c1d70'
 
 # Enable Gzip compression
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
